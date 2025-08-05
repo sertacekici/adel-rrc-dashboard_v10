@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users koleksiyonu
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Şubeler koleksiyonu
+    match /subeler/{subeId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sirket_yoneticisi';
+    }
+    
+    // Adisyonlar koleksiyonu - Kurye sistemi için özel kurallar
+    match /Adisyonlar/{adisyonId} {
+      function isCompanyManager() {
+        return request.auth != null && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sirket_yoneticisi';
+      }
+      
+      function isBranchManager() {
+        return request.auth != null && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sube_yoneticisi';
+      }
+      
+      function isCourier() {
+        return request.auth != null && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'kurye';
+      }
+      
+      // Tüm kimlik doğrulaması yapılmış kullanıcılar okuyabilir
+      allow read: if request.auth != null;
+      
+      // Şirket yöneticisi ve şube müdürü oluşturabilir
+      allow create: if request.auth != null && (
+        isCompanyManager() || 
+        isBranchManager()
+      );
+      
+      // Güncelleme izinleri: Yöneticiler + Kuryeler
+      allow update: if request.auth != null && (
+        isCompanyManager() || 
+        isBranchManager() ||
+        isCourier()  // Kurye motorcu alanını güncelleyebilir
+      );
+      
+      // Sadece şirket yöneticisi silebilir
+      allow delete: if request.auth != null && isCompanyManager();
+    }
+    
+    // Şube siparişleri koleksiyonu
+    match /sube_siparisleri/{siparisId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sube_yoneticisi';
+      allow update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sirket_yoneticisi';
+    }
+    
+    // Şube bakiye hareketleri koleksiyonu
+    match /sube_bakiye_hareketleri/{hareketId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sirket_yoneticisi';
+    }
+    
+    // Ürünler koleksiyonu
+    match /urunler/{urunId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sirket_yoneticisi';
+    }
+    
+    // Genel okuma izni - Diğer koleksiyonlar için
+    match /{document=**} {
+      allow read: if request.auth != null;
+      // Yazma sadece şirket yöneticisine
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sirket_yoneticisi';
+    }
+  }
+}

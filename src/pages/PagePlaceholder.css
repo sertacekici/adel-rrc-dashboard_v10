@@ -1,0 +1,38 @@
+.placeholder-page {
+  padding: 1rem 0;
+}
+
+.placeholder-page h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+  color: #202124;
+}
+
+.placeholder-page > p {
+  color: #5f6368;
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.placeholder-content {
+  background-color: white;
+  border-radius: 10px;
+  padding: 4rem 2rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.placeholder-content span.material-icons {
+  font-size: 5rem;
+  color: #dadce0;
+  margin-bottom: 1rem;
+}
+
+.placeholder-content p {
+  color: #5f6368;
+  font-size: 1.2rem;
+}

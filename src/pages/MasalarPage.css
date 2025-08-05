@@ -1,0 +1,643 @@
+.masalar-container {
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+/* Sayfa Başlığı */
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.title-section h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.title-section h1 .material-icons {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.title-section p {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.2rem;
+  margin: 0.5rem 0 0 0;
+  font-weight: 400;
+}
+
+/* Filtreler */
+.filters-section {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 0.9rem;
+}
+
+.filter-group select {
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  transition: border-color 0.2s;
+  max-width: 300px;
+}
+
+.filter-group select:focus {
+  outline: none;
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.filter-group select:disabled {
+  background-color: #f7fafc;
+  cursor: not-allowed;
+}
+
+/* İstatistik Kartları */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon.success {
+  background: linear-gradient(135deg, #38a169, #48bb78);
+  color: white;
+  box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+}
+
+.stat-icon.danger {
+  background: linear-gradient(135deg, #e53e3e, #f56565);
+  color: white;
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
+}
+
+.stat-icon.warning {
+  background: linear-gradient(135deg, #dd6b20, #ed8936);
+  color: white;
+  box-shadow: 0 4px 12px rgba(221, 107, 32, 0.3);
+}
+
+.stat-icon.primary {
+  background: linear-gradient(135deg, #3182ce, #4299e1);
+  color: white;
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
+}
+
+.stat-icon.secondary {
+  background: linear-gradient(135deg, #718096, #a0aec0);
+  color: white;
+  box-shadow: 0 4px 12px rgba(113, 128, 150, 0.3);
+}
+
+.stat-icon .material-icons {
+  font-size: 2rem;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a202c;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #718096;
+  margin-top: 0.25rem;
+}
+
+/* Masa Kartları */
+.masalar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.masa-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-left: 4px solid transparent;
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.masa-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.masa-card.clickable {
+  cursor: pointer;
+}
+
+.masa-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  height: 100%;
+  width: 100%;
+}
+
+.masa-icon {
+  margin-bottom: 0.5rem;
+}
+
+.masa-icon .material-icons {
+  font-size: 2rem;
+  color: #4a5568;
+}
+
+.masa-name {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.masa-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-top: auto;
+}
+
+.masa-status-icon .material-icons {
+  font-size: 18px;
+  color: white;
+}
+
+.masa-status-icon.success {
+  background: #38a169;
+}
+
+.masa-status-icon.warning {
+  background: #dd6b20;
+}
+
+.masa-status-icon.secondary {
+  background: #718096;
+}
+
+.masa-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Masa durumuna göre özel stiller */
+.masa-card.success {
+  border-left-color: #38a169;
+  background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+}
+
+.masa-card.success::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #38a169, #68d391);
+}
+
+.masa-card.secondary {
+  border-left-color: #718096;
+  background: linear-gradient(135deg, #f7fafc 0%, #ffffff 100%);
+  opacity: 0.8;
+}
+
+.masa-card.secondary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #718096, #a0aec0);
+}
+
+.masa-card.warning {
+  border-left-color: #dd6b20;
+  background: linear-gradient(135deg, #fffaf0 0%, #ffffff 100%);
+}
+
+.masa-card.warning::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #dd6b20, #f6ad55);
+}
+
+.masa-card.danger {
+  border-left-color: #e53e3e;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+}
+
+.masa-card.danger::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #e53e3e, #fc8181);
+}
+
+.masa-card.info {
+  border-left-color: #3182ce;
+  background: linear-gradient(135deg, #ebf8ff 0%, #ffffff 100%);
+}
+
+.masa-card.info::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3182ce, #63b3ed);
+}
+
+.masa-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.masa-name {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #1a202c;
+  flex: 1;
+}
+
+.masa-name .material-icons {
+  color: #718096;
+  font-size: 1.5rem;
+}
+
+.masa-status {
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 2px solid transparent;
+  min-width: 120px;
+  text-align: center;
+  position: relative;
+}
+
+.masa-status.success {
+  background: linear-gradient(135deg, #38a169, #48bb78);
+  color: white;
+  box-shadow: 0 2px 8px rgba(56, 161, 105, 0.3);
+  border-color: #38a169;
+}
+
+.masa-status.success::before {
+  content: '●';
+  margin-right: 0.5rem;
+  animation: pulse-green 2s infinite;
+}
+
+.masa-status.secondary {
+  background: linear-gradient(135deg, #718096, #a0aec0);
+  color: white;
+  box-shadow: 0 2px 8px rgba(113, 128, 150, 0.3);
+  border-color: #718096;
+}
+
+.masa-status.secondary::before {
+  content: '●';
+  margin-right: 0.5rem;
+  opacity: 0.7;
+}
+
+.masa-status.warning {
+  background: linear-gradient(135deg, #dd6b20, #ed8936);
+  color: white;
+  box-shadow: 0 2px 8px rgba(221, 107, 32, 0.3);
+  border-color: #dd6b20;
+}
+
+.masa-status.warning::before {
+  content: '●';
+  margin-right: 0.5rem;
+  animation: pulse-orange 2s infinite;
+}
+
+.masa-status.danger {
+  background: linear-gradient(135deg, #e53e3e, #f56565);
+  color: white;
+  box-shadow: 0 2px 8px rgba(229, 62, 62, 0.3);
+  border-color: #e53e3e;
+}
+
+.masa-status.info {
+  background: linear-gradient(135deg, #3182ce, #4299e1);
+  color: white;
+  box-shadow: 0 2px 8px rgba(49, 130, 206, 0.3);
+  border-color: #3182ce;
+}
+
+/* Animasyonlar */
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes pulse-orange {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.masa-details {
+  padding: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-size: 0.9rem;
+  color: #718096;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: #1a202c;
+  font-weight: 600;
+}
+
+/* Loading ve Error States */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  margin: 2rem auto;
+  max-width: 400px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(102, 126, 234, 0.2);
+  border-left: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.loading-container p {
+  color: #4a5568;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  background: rgba(245, 101, 101, 0.1);
+  color: #e53e3e;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(245, 101, 101, 0.2);
+}
+
+.error-message .material-icons {
+  font-size: 1.2rem;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.empty-state .material-icons {
+  font-size: 4rem;
+  color: #cbd5e0;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  font-size: 1.5rem;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #718096;
+  font-size: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .masalar-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .masalar-page {
+    padding: 1rem;
+  }
+  
+  .page-header h1 {
+    font-size: 2rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .masalar-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+  
+  .masa-content {
+    padding: 0.75rem;
+  }
+  
+  .masa-icon .material-icons {
+    font-size: 1.5rem;
+  }
+  
+  .masa-name {
+    font-size: 0.8rem;
+  }
+  
+  .masa-status-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .masa-status-icon .material-icons {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .masalar-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+  }
+  
+  .masa-content {
+    padding: 0.5rem;
+  }
+  
+  .masa-icon .material-icons {
+    font-size: 1.25rem;
+  }
+  
+  .masa-name {
+    font-size: 0.75rem;
+  }
+  
+  .masa-status-icon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .masa-status-icon .material-icons {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .stat-icon .material-icons {
+    font-size: 1.5rem;
+  }
+}
