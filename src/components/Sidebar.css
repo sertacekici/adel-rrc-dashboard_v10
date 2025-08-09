@@ -4,13 +4,13 @@
   top: 0;
   bottom: 0;
   width: 280px;
-  background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(180deg, #1E3A8A 0%, #1E40AF 100%);
+  box-shadow: 0 10px 30px rgba(30, 58, 138, 0.3);
   display: flex;
   flex-direction: column;
   z-index: 1000;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .sidebar.collapsed {
@@ -127,9 +127,9 @@
 }
 
 .sidebar.collapsed .menu-items li.active a {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #0e78f0, #459ef7);
   color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(14, 120, 240, 0.3);
 }
 
 .sidebar.collapsed .menu-items li.active::before {
@@ -271,7 +271,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  background: linear-gradient(135deg, rgba(14, 120, 240, 0.1), rgba(69, 158, 247, 0.1));
   transform: translateX(-100%);
   transition: transform 0.3s ease;
 }
@@ -287,14 +287,14 @@
 }
 
 .menu-items li.active {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+  background: linear-gradient(135deg, rgba(14, 120, 240, 0.2), rgba(69, 158, 247, 0.2));
   border-radius: 0 25px 25px 0;
   margin-right: 1rem;
 }
 
 .menu-items li.active a {
   color: white;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #0e78f0, #459ef7);
   position: relative;
   z-index: 1;
 }

@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import './DashboardPage.css';
+import PageHeader from '../components/PageHeader';
 
 const DashboardPage = () => {
   const { currentUser } = useContext(AuthContext);
@@ -108,6 +109,34 @@ const DashboardPage = () => {
         roles: ['sube_yoneticisi']
       },
       
+      // Gider İşlemleri - Şirket Yöneticisi ve Şube Müdürü
+      {
+        title: 'Gider Kalemi Kaydı',
+        description: 'Gider kategorilerini tanımla',
+        path: '/gider-kalemi-kaydi',
+        icon: 'category',
+        color: 'red',
+        roles: ['sirket_yoneticisi', 'sube_yoneticisi']
+      },
+      {
+        title: 'Gider Kaydı',
+        description: 'Gider kayıtlarını oluştur ve takip et',
+        path: '/gider-kaydi',
+        icon: 'receipt',
+        color: 'pink',
+        roles: ['sirket_yoneticisi', 'sube_yoneticisi']
+      },
+      
+      // Genel Rapor - Şirket Yöneticisi ve Şube Müdürü
+      {
+        title: 'Genel Rapor',
+        description: 'Kapsamlı analiz ve raporlar',
+        path: '/genel-rapor',
+        icon: 'analytics',
+        color: 'deep-purple',
+        roles: ['sirket_yoneticisi', 'sube_yoneticisi']
+      },
+      
       // Kurye
       {
         title: 'Kurye Atama',
@@ -121,7 +150,7 @@ const DashboardPage = () => {
         title: 'Kurye Raporu',
         description: 'Teslimat raporlarını görüntüle',
         path: '/kurye-raporu',
-        icon: 'analytics',
+        icon: 'assessment',
         color: 'green',
         roles: ['kurye', 'sube_yoneticisi', 'sirket_yoneticisi']
       }
@@ -137,26 +166,22 @@ const DashboardPage = () => {
 
   return (
     <div className="dashboard-container">
-      <div className="page-header">
-        <div className="header-content">
-          <div className="title-section">
-            <h1>
-              <span className="material-icons">dashboard</span>
-              Dashboard
-            </h1>
-            <p>Hoş geldiniz, {currentUser?.displayName || 'Kullanıcı'}! Adel RRC sistemine hızlı erişim için aşağıdaki kısayolları kullanın.</p>
-          </div>
-          <div className="user-info">
-            <div className="user-avatar">
+      <PageHeader
+        icon="dashboard"
+        title="Adel Şube Takip ve Yönetim Sistemi"
+        description={`Hoş geldiniz, ${currentUser?.displayName || 'Kullanıcı'}! Adel RRC sistemine hızlı erişim için aşağıdaki kısayolları kullanın.`}
+        rightContent={(
+          <div className="user-info-badge">
+            <div className="user-avatar-circle">
               <span className="material-icons">person</span>
             </div>
-            <div className="user-details">
+            <div className="user-badge-details">
               <h3>{currentUser?.displayName || 'Kullanıcı'}</h3>
               <p>{getRoleName(currentUser?.role)}</p>
             </div>
           </div>
-        </div>
-      </div>
+        )}
+      />
 
       <div className="welcome-section">
         <div className="welcome-card">

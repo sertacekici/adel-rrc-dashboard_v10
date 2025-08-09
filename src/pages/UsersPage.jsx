@@ -3,6 +3,7 @@ import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase
 import { getFirestore, collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import './UsersPage.css';
+import PageHeader from '../components/PageHeader';
 
 const UsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -485,24 +486,20 @@ const UsersPage = () => {
 
   return (
     <div className="users-container">
-      <div className="page-header">
-        <div className="header-content">
-          <div className="title-section">
-            <h1>
-              <span className="material-icons">people</span>
-              Kullanıcı Yönetimi
-            </h1>
-            <p>Sistem kullanıcılarını yönetin ve yeni kullanıcılar ekleyin</p>
-          </div>
+      <PageHeader
+        icon="people"
+        title="Kullanıcı Yönetimi"
+        description="Sistem kullanıcılarını yönetin ve yeni kullanıcılar ekleyin"
+        actions={(
           <button 
             className="add-button modern"
             onClick={() => setFormVisible(!formVisible)}
           >
             <span className="material-icons">add</span>
-            Yeni Kullanıcı Ekle
+            {formVisible ? 'Formu Kapat' : 'Yeni Kullanıcı Ekle'}
           </button>
-        </div>
-      </div>
+        )}
+      />
       
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}

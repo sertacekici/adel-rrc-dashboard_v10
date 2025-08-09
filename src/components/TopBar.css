@@ -3,13 +3,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  background: rgba(59, 130, 246, 0.1);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 20px rgba(30, 58, 138, 0.1);
   position: sticky;
   top: 0;
   z-index: 10;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .topbar-left {
@@ -18,21 +18,23 @@
 }
 
 .menu-toggle {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
   border: none;
   color: white;
   margin-right: 1rem;
   cursor: pointer;
   padding: 0.75rem;
-  border-radius: 12px;
+  border-radius: 8px;
   display: none;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(46, 91, 255, 0.3);
+  min-height: 44px;
 }
 
 .menu-toggle:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 16px rgba(14, 120, 240, 0.4);
+  background: linear-gradient(135deg, #459ef7, #0e78f0);
 }
 
 @media (max-width: 991px) {
@@ -49,9 +51,10 @@
 
 .topbar h1 {
   font-size: 1.5rem;
-  font-weight: 500;
+  font-weight: 600;
   margin: 0;
-  color: #202124;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .topbar-right {

@@ -16,6 +16,7 @@ const SubeBakiyeTakipPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedHareket, setSelectedHareket] = useState(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
   const [formData, setFormData] = useState({
     sube_id: '',
     hareket_tipi: 'borc', // borc, alacak
@@ -57,6 +58,30 @@ const SubeBakiyeTakipPage = () => {
       fetchBakiyeHareketleri();
     }
   }, [siparisFilter, selectedSube, startDate, endDate, dateFilterMode, currentUser]);
+
+  // Scroll pozisyonu yönetimi - Modal açıldığında scroll kontrolü
+  useEffect(() => {
+    if (showModal || showDetailModal) {
+      // Mevcut scroll pozisyonunu kaydet
+      setScrollPosition(window.pageYOffset);
+      // Sayfayı üste kaydır
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Body scroll'unu engelle
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Body scroll'unu geri aç
+      document.body.style.overflow = '';
+      // Eski pozisyona geri dön
+      if (scrollPosition > 0) {
+        window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showModal, showDetailModal, scrollPosition]);
 
   const fetchInitialData = async () => {
     try {
@@ -790,6 +815,10 @@ const SubeBakiyeTakipPage = () => {
     setSelectedHareket(hareket);
     setShowDetailModal(true);
   };
+  
+  const handleHareketClick = (hareket) => {
+    handleDetayGoster(hareket);
+  };
 
   // Günlük borç/alacak hesaplama fonksiyonları
   const calculateDailyAmount = (type) => {
@@ -819,6 +848,42 @@ const SubeBakiyeTakipPage = () => {
     return calculateDailyAmount('alacak') - calculateDailyAmount('borc');
   };
 
+  // Seçili dönem borç/alacak hesaplama fonksiyonları
+  const calculatePeriodAmount = (type) => {
+    return bakiyeHareketleri
+      .filter(hareket => {
+        const hareketTarih = hareket.tarih?.toDate ? hareket.tarih.toDate() : new Date(hareket.tarih);
+        const matchesType = hareket.hareket_tipi === type;
+        
+        // Tarih filtresi kontrolü
+        let matchesDate = true;
+        if (startDate && endDate) {
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999); // Bitiş tarihinin sonuna kadar
+          matchesDate = hareketTarih >= start && hareketTarih <= end;
+        } else if (startDate) {
+          const start = new Date(startDate);
+          const end = new Date(startDate);
+          end.setHours(23, 59, 59, 999);
+          matchesDate = hareketTarih >= start && hareketTarih <= end;
+        }
+        
+        // Şube filtresi kontrolü
+        let matchesSube = true;
+        if (isCompanyManager && selectedSube !== 'all') {
+          matchesSube = hareket.sube_id === selectedSube;
+        }
+        
+        return matchesType && matchesDate && matchesSube;
+      })
+      .reduce((total, hareket) => total + (hareket.tutar || 0), 0);
+  };
+
+  const calculatePeriodNet = () => {
+    return calculatePeriodAmount('alacak') - calculatePeriodAmount('borc');
+  };
+
   const isCompanyManager = currentUser?.role === 'sirket_yoneticisi';
 
   // Eğer kullanıcı yoksa veya yetki yoksa erken çık
@@ -831,7 +896,7 @@ const SubeBakiyeTakipPage = () => {
   }
 
   return (
-    <div className="sube-bakiye-takip-container">
+    <div className="sube-bakiye-takip-container sube-bakiye-takip-page">
       <div className="page-header">
         <div className="header-content">
           <div className="title-section">
@@ -850,197 +915,99 @@ const SubeBakiyeTakipPage = () => {
       </div>
 
       <div className="content-area">
-        {/* Şube Seçim Filtresi */}
+        {/* Filtreleme Bölümü */}
         {isCompanyManager && (
-          <div className="sube-filter-section">
-            <div className="filter-group">
-              <label htmlFor="sube-filter">Şube Seçin:</label>
-              <select 
-                id="sube-filter"
-                value={selectedSube} 
-                onChange={(e) => setSelectedSube(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Tüm Şubeler</option>
-                {subeler.map((sube) => (
-                  <option key={sube.id} value={sube.id}>
-                    {sube.sube_adi || sube.subeAdi || `Şube ${sube.id}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Tarih Filtresi */}
-            <div className="filter-group">
-              <label htmlFor="date-filter-mode">Tarih Filtresi:</label>
-              <select 
-                id="date-filter-mode"
-                value={dateFilterMode} 
-                onChange={(e) => {
-                  setDateFilterMode(e.target.value);
-                  // Mod değiştiğinde tarihleri sıfırla
-                  setStartDate('');
-                  setEndDate('');
-                }}
-                className="filter-select"
-              >
-                <option value="range">Tarih Aralığı</option>
-                <option value="single">Tek Tarih</option>
-              </select>
-            </div>
-            
-            {dateFilterMode === 'single' ? (
+          <div className="filter-section">
+            <div className="filter-row">
               <div className="filter-group">
-                <label htmlFor="single-date">Tarih Seçin:</label>
-                <input
-                  type="date"
-                  id="single-date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="filter-date"
-                />
+                <label htmlFor="sube-filter">Şube Seçin:</label>
+                <select 
+                  id="sube-filter"
+                  value={selectedSube} 
+                  onChange={(e) => setSelectedSube(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">Tüm Şubeler</option>
+                  {subeler.map((sube) => (
+                    <option key={sube.id} value={sube.id}>
+                      {sube.sube_adi || sube.subeAdi || `Şube ${sube.id}`}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <div className="filter-group date-range-group">
-                <div className="date-input-group">
-                  <label htmlFor="start-date">Başlangıç:</label>
+              
+              <div className="filter-group">
+                <label htmlFor="date-filter-mode">Tarih Filtresi:</label>
+                <select 
+                  id="date-filter-mode"
+                  value={dateFilterMode} 
+                  onChange={(e) => {
+                    setDateFilterMode(e.target.value);
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  className="filter-select"
+                >
+                  <option value="range">Tarih Aralığı</option>
+                  <option value="single">Tek Tarih</option>
+                </select>
+              </div>
+              
+              {dateFilterMode === 'single' ? (
+                <div className="filter-group">
+                  <label htmlFor="single-date">Tarih:</label>
                   <input
                     type="date"
-                    id="start-date"
+                    id="single-date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     className="filter-date"
                   />
                 </div>
-                <div className="date-input-group">
-                  <label htmlFor="end-date">Bitiş:</label>
-                  <input
-                    type="date"
-                    id="end-date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="filter-date"
-                  />
+              ) : (
+                <>
+                  <div className="filter-group">
+                    <label htmlFor="start-date">Başlangıç:</label>
+                    <input
+                      type="date"
+                      id="start-date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="filter-date"
+                    />
+                  </div>
+                  <div className="filter-group">
+                    <label htmlFor="end-date">Bitiş:</label>
+                    <input
+                      type="date"
+                      id="end-date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="filter-date"
+                    />
+                  </div>
+                </>
+              )}
+              
+              {(startDate || endDate) && (
+                <div className="filter-group">
+                  <button 
+                    className="clear-date-filter-btn"
+                    onClick={() => {
+                      setStartDate('');
+                      setEndDate('');
+                    }}
+                  >
+                    <span className="material-icons">clear</span>
+                    Temizle
+                  </button>
                 </div>
-              </div>
-            )}
-            
-            {/* Tarih Filtresi Temizle Butonu */}
-            {(startDate || endDate) && (
-              <div className="filter-group">
-                <button 
-                  className="clear-date-filter-btn"
-                  onClick={() => {
-                    setStartDate('');
-                    setEndDate('');
-                  }}
-                >
-                  <span className="material-icons">clear</span>
-                  Tarih Filtresini Temizle
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
-        {/* Günlük Özet Widget'ları */}
-        <div className="gunluk-ozet-section">
-          <h3>
-            <span className="material-icons">today</span>
-            Günlük Özet
-          </h3>
-          <div className="gunluk-widgets">
-            <div className="gunluk-widget borc">
-              <div className="widget-icon">
-                <span className="material-icons">trending_down</span>
-              </div>
-              <div className="widget-content">
-                <h4>Günlük Borç</h4>
-                <p className="widget-amount">₺{calculateDailyAmount('borc').toFixed(2)}</p>
-                <span className="widget-subtitle">Bugün eklenen</span>
-              </div>
-            </div>
-            
-            <div className="gunluk-widget alacak">
-              <div className="widget-icon">
-                <span className="material-icons">trending_up</span>
-              </div>
-              <div className="widget-content">
-                <h4>Günlük Alacak</h4>
-                <p className="widget-amount">₺{calculateDailyAmount('alacak').toFixed(2)}</p>
-                <span className="widget-subtitle">Bugün eklenen</span>
-              </div>
-            </div>
-            
-            <div className="gunluk-widget net">
-              <div className="widget-icon">
-                <span className="material-icons">account_balance</span>
-              </div>
-              <div className="widget-content">
-                <h4>Net Hareket</h4>
-                <p className={`widget-amount ${calculateDailyNet() >= 0 ? 'positive' : 'negative'}`}>
-                  ₺{calculateDailyNet().toFixed(2)}
-                </p>
-                <span className="widget-subtitle">Bugünkü net</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Şube Bakiyeleri Özeti */}
-        <div className="bakiye-ozeti-section">
-          <h3>
-            <span className="material-icons">assessment</span>
-            Şube Bakiye Özeti
-          </h3>
-          
-          {loading ? (
-            <div className="loading-text">Bakiyeler hesaplanıyor...</div>
-          ) : subeBakiyeleri.length === 0 ? (
-            <div className="no-data">Henüz bakiye hareketi bulunmamaktadır.</div>
-          ) : (
-            <div className="bakiye-cards">
-              {subeBakiyeleri.map((bakiye) => (
-                <div key={bakiye.sube_id} className="bakiye-card">
-                  <div className="bakiye-header">
-                    <h4>{bakiye.sube_adi}</h4>
-                    <span className="sube-id">#{bakiye.sube_id.slice(-6)}</span>
-                  </div>
-                  
-                  <div className="bakiye-detaylar">
-                    <div className="bakiye-item borc">
-                      <span className="material-icons">trending_down</span>
-                      <div>
-                        <p>Toplam Borç</p>
-                        <h5>{formatCurrency(bakiye.toplam_borc)}</h5>
-                      </div>
-                    </div>
-                    
-                    <div className="bakiye-item alacak">
-                      <span className="material-icons">trending_up</span>
-                      <div>
-                        <p>Toplam Alacak</p>
-                        <h5>{formatCurrency(bakiye.toplam_alacak)}</h5>
-                      </div>
-                    </div>
-                    
-                    <div className={`bakiye-item kalan ${bakiye.kalan_bakiye >= 0 ? 'pozitif' : 'negatif'}`}>
-                      <span className="material-icons">
-                        {bakiye.kalan_bakiye >= 0 ? 'account_balance' : 'warning'}
-                      </span>
-                      <div>
-                        <p>Kalan Bakiye</p>
-                        <h5>{formatCurrency(bakiye.kalan_bakiye)}</h5>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Bakiye Hareketleri */}
+        {/* Bakiye Hareketleri Tablosu */}
         <div className="hareketler-section">
           <div className="section-header-with-button">
             <h3>
@@ -1056,7 +1023,6 @@ const SubeBakiyeTakipPage = () => {
                     className="filter-clear-button"
                     onClick={() => {
                       setSiparisFilter('');
-                      // URL'den sipariş parametresini temizle
                       window.history.replaceState({}, '', '/sube-bakiye-takip');
                     }}
                   >
@@ -1066,54 +1032,49 @@ const SubeBakiyeTakipPage = () => {
               )}
               
               {isCompanyManager && (
-                <button 
-                  className="export-button add-button"
-                  onClick={() => {
-                    // Modal açılırken şubeleri tekrar yükle ve formu sıfırla
-                    setShowModal(true);
-                    setFormData({
-                      sube_id: '',
-                      hareket_tipi: 'borc',
-                      tutar: 0,
-                      aciklama: ''
-                    });
-                    setSelectedSubeId('');
-                    setSelectedSubeInfo(null);
-                    fetchSubeler();
-                  }}
-                >
-                  <span className="material-icons">add</span>
-                  Yeni Hareket
-                </button>
+                <div className="button-group">
+                  <button 
+                    className="export-button"
+                    onClick={exportToExcel}
+                  >
+                    <span className="material-icons">file_download</span>
+                    Excel
+                  </button>
+                  <button 
+                    className="export-button"
+                    onClick={exportToPDF}
+                  >
+                    <span className="material-icons">picture_as_pdf</span>
+                    PDF
+                  </button>
+                  <button 
+                    className="add-button compact"
+                    onClick={() => {
+                      setShowModal(true);
+                      setFormData({
+                        sube_id: '',
+                        hareket_tipi: 'borc',
+                        tutar: 0,
+                        aciklama: ''
+                      });
+                      fetchSubeler();
+                    }}
+                  >
+                    <span className="material-icons">add</span>
+                    Yeni Hareket
+                  </button>
+                </div>
               )}
-              
-              {/* Export Butonları */}
-              <div className="export-buttons">
-                <button 
-                  className="export-button pdf-button"
-                  onClick={exportToPDF}
-                  title="PDF'e Aktar"
-                >
-                  <span className="material-icons">picture_as_pdf</span>
-                  PDF'e Aktar
-                </button>
-                
-                <button 
-                  className="export-button excel-button"
-                  onClick={exportToExcel}
-                  title="Excel'e Aktar"
-                >
-                  <span className="material-icons">table_chart</span>
-                  Excel'e Aktar
-                </button>
-              </div>
             </div>
           </div>
-          
+
           {loading ? (
-            <div className="loading-text">Hareketler yükleniyor...</div>
-          ) : bakiyeHareketleri.length === 0 ? (
-            <div className="no-data">Henüz hareket bulunmamaktadır.</div>
+            <div className="loading-text">Veriler yükleniyor...</div>
+          ) : getFilteredHareketler().length === 0 ? (
+            <div className="empty-table-message">
+              <span className="material-icons">search_off</span>
+              <p>Seçilen kriterlere uygun hareket bulunamadı.</p>
+            </div>
           ) : (
             <div className="hareketler-table-container">
               <table className="hareketler-table">
@@ -1125,12 +1086,12 @@ const SubeBakiyeTakipPage = () => {
                     <th>Tutar</th>
                     <th>Açıklama</th>
                     <th>Oluşturan</th>
-                    <th>İşlemler</th>
+                    <th>İşlem</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bakiyeHareketleri.map((hareket) => (
-                    <tr key={hareket.id}>
+                  {getFilteredHareketler().map((hareket) => (
+                    <tr key={hareket.id} onClick={() => handleHareketClick(hareket)}>
                       <td>{formatDate(hareket.tarih)}</td>
                       <td>
                         <div className="sube-info">
@@ -1152,20 +1113,122 @@ const SubeBakiyeTakipPage = () => {
                       <td>
                         <span className="aciklama">{hareket.aciklama}</span>
                       </td>
-                      <td>{hareket.olusturan}</td>
+                      <td>{hareket.olusturan || '-'}</td>
                       <td>
                         <button
-                          className="detail-button small"
-                          onClick={() => handleDetayGoster(hareket)}
+                          className="info-icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDetayGoster(hareket);
+                          }}
                           title="Detay"
                         >
-                          <span className="material-icons">visibility</span>
+                          <span className="material-icons">info</span>
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+
+        {/* Genel Özet */}
+        <div className="tarih-arasi-ozet-section">
+          <h3>
+            <span className="material-icons">assessment</span>
+            {startDate && endDate ? `${formatDate(startDate)} - ${formatDate(endDate)} Arası Özet` : 
+             startDate ? `${formatDate(startDate)} Tarihi Özeti` : 
+             'Genel Özet'}
+          </h3>
+          <div className="ozet-widgets">
+            <div className="ozet-widget borc">
+              <div className="widget-icon">
+                <span className="material-icons">trending_down</span>
+              </div>
+              <div className="widget-content">
+                <h4>Toplam Borç</h4>
+                <p className="widget-amount">₺{calculatePeriodAmount('borc').toFixed(2)}</p>
+                <span className="widget-subtitle">Seçili dönem</span>
+              </div>
+            </div>
+            
+            <div className="ozet-widget alacak">
+              <div className="widget-icon">
+                <span className="material-icons">trending_up</span>
+              </div>
+              <div className="widget-content">
+                <h4>Toplam Alacak</h4>
+                <p className="widget-amount">₺{calculatePeriodAmount('alacak').toFixed(2)}</p>
+                <span className="widget-subtitle">Seçili dönem</span>
+              </div>
+            </div>
+            
+            <div className="ozet-widget net">
+              <div className="widget-icon">
+                <span className="material-icons">account_balance</span>
+              </div>
+              <div className="widget-content">
+                <h4>Kalan Tutar</h4>
+                <p className={`widget-amount ${calculatePeriodNet() >= 0 ? 'positive' : 'negative'}`}>
+                  ₺{calculatePeriodNet().toFixed(2)}
+                </p>
+                <span className="widget-subtitle">Net bakiye</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Şube Bakiye Özetleri */}
+        <div className="sube-bakiye-ozeti-section">
+          <h3>
+            <span className="material-icons">business</span>
+            Şube Bakiye Özetleri
+          </h3>
+          
+          {loading ? (
+            <div className="loading-text">Bakiyeler hesaplanıyor...</div>
+          ) : subeBakiyeleri.length === 0 ? (
+            <div className="no-data">Henüz bakiye hareketi bulunmamaktadır.</div>
+          ) : (
+            <div className="bakiye-cards">
+              {subeBakiyeleri.map((bakiye) => (
+                <div key={bakiye.sube_id} className="bakiye-card">
+                  <div className="bakiye-header">
+                    <h4>{bakiye.sube_adi}</h4>
+                    <span className="sube-id">#{bakiye.sube_id.slice(-6)}</span>
+                  </div>
+                  
+                  <div className="bakiye-detaylar">
+                    <div className="bakiye-item borc">
+                      <span className="material-icons">trending_down</span>
+                      <div className="bakiye-item-content">
+                        <p>Toplam Borç</p>
+                        <h5>{formatCurrency(bakiye.toplam_borc)}</h5>
+                      </div>
+                    </div>
+                    
+                    <div className="bakiye-item alacak">
+                      <span className="material-icons">trending_up</span>
+                      <div className="bakiye-item-content">
+                        <p>Toplam Alacak</p>
+                        <h5>{formatCurrency(bakiye.toplam_alacak)}</h5>
+                      </div>
+                    </div>
+                    
+                    <div className={`bakiye-item kalan ${bakiye.kalan_bakiye >= 0 ? 'pozitif' : 'negatif'}`}>
+                      <span className="material-icons">
+                        {bakiye.kalan_bakiye >= 0 ? 'account_balance' : 'warning'}
+                      </span>
+                      <div className="bakiye-item-content">
+                        <p>Kalan Bakiye</p>
+                        <h5>{formatCurrency(bakiye.kalan_bakiye)}</h5>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

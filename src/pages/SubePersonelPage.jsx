@@ -4,6 +4,7 @@ import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase
 import { getFirestore, collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import './SubePersonelPage.css';
+import PageHeader from '../components/PageHeader';
 
 const SubePersonelPage = () => {
   const { subeId } = useParams();
@@ -355,35 +356,48 @@ const SubePersonelPage = () => {
   };
 
   return (
-    <div className="sube-personel-page">
-      <div className="sube-personel-header">
-        <div className="header-title">
-          <button 
-            className="back-button"
-            onClick={handleBack}
-          >
-            <span className="material-icons">arrow_back</span>
-          </button>
-          <h2>{subeAdi} - Personel Yönetimi</h2>
-        </div>
-        {availableRoles.length > 0 && (
-          <button 
-            className="add-user-button"
-            onClick={() => setFormVisible(!formVisible)}
-          >
-            <span className="material-icons">person_add</span>
-            Yeni Personel Ekle
-          </button>
+    <div className="sube-personel-container">
+      <PageHeader
+        icon="badge"
+        title={`${subeAdi || 'Şube'} Personel Yönetimi`}
+        description={`Bu sayfadan ${subeAdi || 'şube'} personelini görüntüleyebilir, yeni personel ekleyebilir ve düzenleyebilirsiniz.`}
+        actions={availableRoles.length > 0 && (
+          <>
+            <button 
+              className="back-outline-button"
+              onClick={handleBack}
+              title="Geri"
+            >
+              <span className="material-icons">arrow_back</span>
+              <span>Geri</span>
+            </button>
+            <button 
+              className="add-button modern"
+              onClick={() => setFormVisible(!formVisible)}
+            >
+              <span className="material-icons">person_add</span>
+              {formVisible ? 'Formu Kapat' : 'Yeni Personel Ekle'}
+            </button>
+          </>
         )}
-      </div>
-      
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      />
+      {error && (
+        <div className="error-message">
+          <span className="material-icons">error_outline</span>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="success-message">
+          <span className="material-icons">check_circle_outline</span>
+          {success}
+        </div>
+      )}
       
       {formVisible && (
-        <div className="user-form-container">
+        <div className="personel-form-container glass-panel">
           <h3>{editMode ? 'Personel Düzenle' : 'Yeni Personel Ekle'}</h3>
-          <form onSubmit={editMode ? handleUpdateUser : handleCreateUser} className="user-form">
+          <form onSubmit={editMode ? handleUpdateUser : handleCreateUser} className="personel-form">
             <div className="form-group">
               <label htmlFor="displayName">Ad Soyad</label>
               <input
@@ -394,7 +408,6 @@ const SubePersonelPage = () => {
                 required
               />
             </div>
-            
             <div className="form-group">
               <label htmlFor="email">E-posta</label>
               <input
@@ -403,10 +416,9 @@ const SubePersonelPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={editMode} // Düzenleme modunda e-posta değiştirilemesin
+                disabled={editMode}
               />
             </div>
-            
             {!editMode && (
               <div className="form-group">
                 <label htmlFor="password">Şifre</label>
@@ -420,7 +432,6 @@ const SubePersonelPage = () => {
                 />
               </div>
             )}
-            
             <div className="form-group">
               <label htmlFor="role">Rol</label>
               <select
@@ -436,7 +447,6 @@ const SubePersonelPage = () => {
                 ))}
               </select>
             </div>
-            
             <div className="form-actions">
               <button 
                 type="button" 
@@ -450,22 +460,20 @@ const SubePersonelPage = () => {
                 className="submit-button"
                 disabled={loading}
               >
-                {loading 
-                  ? (editMode ? 'Güncelleniyor...' : 'Ekleniyor...') 
-                  : (editMode ? 'Güncelle' : 'Personel Ekle')}
+                {loading ? (editMode ? 'Güncelleniyor...' : 'Ekleniyor...') : (editMode ? 'Güncelle' : 'Personel Ekle')}
               </button>
             </div>
           </form>
         </div>
       )}
       
-      <div className="users-table-container">
+      <div className="personel-table-container glass-panel">
         {loading && !formVisible ? (
           <p className="loading-text">Personel yükleniyor...</p>
         ) : users.length === 0 ? (
           <p className="no-data">Bu şubeye henüz personel eklenmemiştir.</p>
         ) : (
-          <table className="users-table">
+          <table className="personel-table">
             <thead>
               <tr>
                 <th>Ad Soyad</th>
@@ -481,9 +489,7 @@ const SubePersonelPage = () => {
                   <td>{user.displayName}</td>
                   <td>{user.email}</td>
                   <td>{getRoleName(user.role)}</td>
-                  <td>
-                    {user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : '-'}
-                  </td>
+                  <td>{user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : '-'}</td>
                   <td>
                     <div className="table-actions">
                       <button 

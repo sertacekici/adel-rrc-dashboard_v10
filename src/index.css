@@ -5,7 +5,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f0f2f5;
+  background-color: #1e3884 !important;
 }
 
 code {
@@ -15,4 +15,140 @@ code {
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  background-color: #1e3884 !important;
+}
+
+/* Global Modal Stilleri - Tüm Proje İçin Standart */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  min-height: 100vh;
+  min-height: 100dvh; /* Modern viewport units */
+  backdrop-filter: blur(4px);
+  animation: modalOverlayFadeIn 0.3s ease-out;
+}
+
+.modal-content,
+.modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  animation: modalContentSlideIn 0.3s ease-out;
+}
+
+/* Large modals için özel boyutlandırma */
+.modal-content.large-modal,
+.modal.large-modal {
+  max-width: 800px;
+}
+
+/* Extra large modals için özel boyutlandırma */
+.modal-content.xl-modal,
+.modal.xl-modal {
+  max-width: 1000px;
+}
+
+/* Modal Animasyonları */
+@keyframes modalOverlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalContentSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Responsive Modal Düzenlemeleri */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 16px;
+  }
+
+  .modal-content,
+  .modal {
+    max-width: 100%;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal-content,
+  .modal {
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .modal-overlay {
+    padding: 8px;
+  }
+  
+  .modal-content,
+  .modal {
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 8px;
+  }
+}
+
+/* Landscape orientation support */
+@media (max-height: 600px) and (orientation: landscape) {
+  .modal-overlay {
+    padding: 8px;
+  }
+  
+  .modal-content,
+  .modal {
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+}
+
+/* Very small height screens */
+@media (max-height: 480px) {
+  .modal-overlay {
+    padding: 4px;
+  }
+  
+  .modal-content,
+  .modal {
+    max-height: calc(100vh - 8px);
+    max-height: calc(100dvh - 8px);
+  }
 }

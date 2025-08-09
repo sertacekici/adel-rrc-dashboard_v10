@@ -332,7 +332,7 @@ const MasalarPage = () => {
 
       {error && (
         <div className="error-message">
-          <span className="material-icons">error</span>
+          <span className="material-icons">error_outline</span>
           {error}
         </div>
       )}

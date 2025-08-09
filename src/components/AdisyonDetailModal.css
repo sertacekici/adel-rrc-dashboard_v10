@@ -10,8 +10,10 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  padding: 20px;
   animation: fadeIn 0.2s ease-out;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 @keyframes fadeIn {
@@ -30,11 +32,13 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 100%;
   max-width: 900px;
-  max-height: 90vh;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: slideIn 0.3s ease-out;
+  margin: 0;
 }
 
 @keyframes slideIn {
@@ -808,11 +812,12 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .modal-backdrop {
-    padding: 0.5rem;
+    padding: 16px;
   }
   
   .modal-content {
-    max-height: 95vh;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
   }
   
   .modal-header {
@@ -986,11 +991,12 @@
 /* Mobile Minimalist Override */
 @media (max-width: 576px) {
   .modal-backdrop {
-    padding: 0.1rem;
+    padding: 8px;
   }
   
   .modal-content {
-    max-height: 99vh;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
     border-radius: 6px;
   }
   

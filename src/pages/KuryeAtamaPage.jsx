@@ -14,6 +14,7 @@ const KuryeAtamaPage = () => {
   const [selectedKurye, setSelectedKurye] = useState('');
   const [atanacakAdisyon, setAtanacakAdisyon] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
+  const [scrollPosition, setScrollPosition] = useState(0);
   const { currentUser } = useContext(AuthContext);
 
   // Kuryeleri getir
@@ -128,6 +129,30 @@ const KuryeAtamaPage = () => {
       };
     }
   }, [currentUser]);
+
+  // Scroll pozisyonu yönetimi - Modal açıldığında scroll kontrolü
+  useEffect(() => {
+    if (showDetailModal) {
+      // Mevcut scroll pozisyonunu kaydet
+      setScrollPosition(window.pageYOffset);
+      // Sayfayı üste kaydır
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Body scroll'unu engelle
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Body scroll'unu geri aç
+      document.body.style.overflow = '';
+      // Eski pozisyona geri dön
+      if (scrollPosition > 0) {
+        window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showDetailModal, scrollPosition]);
 
   // Kurye atama
   const handleKuryeAtama = async (adisyonId, kuryeAdi) => {
@@ -446,7 +471,7 @@ const KuryeAtamaPage = () => {
   }
 
   return (
-    <div className="kurye-atama-container">
+    <div className="kurye-atama-container kurye-atama-page">
       {/* Success Notification */}
       {notification.show && (
         <div className="notification-backdrop">

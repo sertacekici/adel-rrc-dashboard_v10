@@ -11,7 +11,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, #1E3A8A 0%, #1E40AF 100%);
   z-index: 1;
 }
 
@@ -53,6 +53,22 @@
   animation-delay: -14s;
 }
 
+/* Arka plan deseni eklendi */
+.login-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%),
+                    linear-gradient(225deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%),
+                    linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%),
+                    linear-gradient(315deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%);
+  background-size: 50px 50px;
+  z-index: -1;
+}
+
 @keyframes float {
   0%, 100% {
     transform: translateY(0) rotate(0deg);
@@ -89,9 +105,19 @@
   padding: 3rem;
   width: 100%;
   max-width: 450px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   position: relative;
+  animation: fadeInUp 0.8s ease forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .login-card::before {
@@ -101,7 +127,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #0e78f0, #459ef7);
   border-radius: 24px 24px 0 0;
 }
 
@@ -122,13 +148,13 @@
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #0e78f0, #459ef7);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-size: 2rem;
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 20px rgba(14, 120, 240, 0.3);
 }
 
 .login-header h1 {
@@ -136,7 +162,7 @@
   font-size: 2.2rem;
   font-weight: 700;
   margin: 0;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #0e78f0, #459ef7);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -176,7 +202,7 @@
 
 .form-group label .material-icons {
   font-size: 1.2rem;
-  color: #667eea;
+  color: #0e78f0;
 }
 
 .form-group input {
@@ -192,8 +218,8 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  border-color: #0e78f0;
+  box-shadow: 0 0 0 4px rgba(14, 120, 240, 0.1);
   background: white;
 }
 
@@ -227,7 +253,7 @@
 }
 
 .password-toggle:hover {
-  color: #667eea;
+  color: #0e78f0;
 }
 
 .password-toggle .material-icons {
@@ -237,7 +263,7 @@
 .login-button {
   width: 100%;
   padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #0e78f0, #459ef7);
   color: white;
   border: none;
   border-radius: 12px;
@@ -249,12 +275,12 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(14, 120, 240, 0.4);
 }
 
 .login-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  box-shadow: 0 8px 25px rgba(14, 120, 240, 0.6);
 }
 
 .login-button:active:not(:disabled) {
@@ -265,8 +291,8 @@
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
-  background: linear-gradient(135deg, #a8b5f0, #b5a8d6);
+  box-shadow: 0 4px 15px rgba(14, 120, 240, 0.2);
+  background: linear-gradient(135deg, #7eb3f7, #a8c9fa);
 }
 
 .login-button .material-icons {
@@ -283,7 +309,7 @@
 }
 
 .error-message {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  background: linear-gradient(135deg, #ef4444, #dc2626);
   color: white;
   padding: 1rem 1.25rem;
   border-radius: 12px;
@@ -292,7 +318,7 @@
   align-items: center;
   gap: 0.75rem;
   font-weight: 500;
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
 
 .error-message .material-icons {
@@ -303,6 +329,9 @@
   text-align: center;
   padding-top: 2rem;
   border-top: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .system-info {
@@ -317,7 +346,12 @@
 
 .system-info .material-icons {
   font-size: 1.1rem;
-  color: #667eea;
+  color: #0e78f0;
+}
+
+.copyright-info {
+  font-size: 0.8rem;
+  color: #8d98a3;
 }
 
 /* Responsive Design */

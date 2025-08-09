@@ -1,18 +1,22 @@
 .layout {
   display: flex;
   min-height: 100vh;
+  background-color: #1e3884 !important;
 }
 
 .content {
   flex: 1;
   margin-left: 0;
+  padding: 0;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #1e3884 !important;
 }
 
 .content.sidebar-open {
   margin-left: 280px;
+  margin-top: 0;
+  padding: 0;
 }
 
 @media (max-width: 991px) {
@@ -27,7 +31,8 @@
 
 .main-content {
   padding: 0;
-  background: transparent;
+  margin: 0;
+  min-height: 100vh;
 }
 
 /* Scrollbar styling */
@@ -37,14 +42,46 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(46, 91, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(46, 91, 255, 0.5);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(30, 58, 138, 0.8);
+}
+
+/* Floating menu button for mobile */
+.floating-menu-btn {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1000;
+  background: #1e3884;
+  border: none;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(46, 91, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: none;
+}
+
+.floating-menu-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 91, 255, 0.4);
+}
+
+.floating-menu-btn .material-icons {
+  font-size: 24px;
+}
+
+@media (max-width: 991px) {
+  .floating-menu-btn {
+    display: block;
+  }
 }

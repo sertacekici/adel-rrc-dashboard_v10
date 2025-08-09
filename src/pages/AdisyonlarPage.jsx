@@ -10,12 +10,21 @@ const AdisyonlarPage = () => {
   const [filteredAdisyonlar, setFilteredAdisyonlar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Seçilen şube (rrc_restaurant_id ile aynı olacak şekilde tutulur)
   const [selectedSube, setSelectedSube] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [orderTypeFilter, setOrderTypeFilter] = useState('all'); // 'all', 'masa', 'online'
   const [reportMode, setReportMode] = useState('daily'); // 'daily', 'range'
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  // Tarih aralığı varsayılanları: başlangıç = önceki ayın son günü, bitiş = sonraki ayın ilk günü
+  const todayRef = new Date();
+  const defaultRangeStart = new Date(todayRef.getFullYear(), todayRef.getMonth(), 0)
+    .toISOString()
+    .split('T')[0];
+  const defaultRangeEnd = new Date(todayRef.getFullYear(), todayRef.getMonth() + 1, 1)
+    .toISOString()
+    .split('T')[0];
+  const [startDate, setStartDate] = useState(defaultRangeStart);
+  const [endDate, setEndDate] = useState(defaultRangeEnd);
   const [subeler, setSubeler] = useState([]);
   const [success, setSuccess] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,8 +71,9 @@ const AdisyonlarPage = () => {
             
             // Eğer kullanıcı şirket yöneticisi değilse, otomatik olarak kendi şubesini seç
             if (currentUser?.role !== 'sirket_yoneticisi' && subeList.length > 0) {
-              console.log('Otomatik şube seçimi yapılıyor:', subeList[0].id);
-              setSelectedSube(subeList[0].id);
+              const autoId = subeList[0].rrc_restaurant_id || subeList[0].id;
+              console.log('Otomatik şube (rrc_restaurant_id) seçimi yapılıyor:', autoId);
+              setSelectedSube(autoId);
             }
           }, (error) => {
             console.error('Şubeler alınırken hata:', error);
@@ -411,11 +421,14 @@ const AdisyonlarPage = () => {
             disabled={currentUser?.role !== 'sirket_yoneticisi'}
           >
             <option value="">Şube seçin...</option>
-            {subeler.map((sube) => (
-              <option key={sube.id} value={sube.id}>
-                {sube.subeAdi} (ID: {sube.id})
-              </option>
-            ))}
+            {subeler.map((sube) => {
+              const rrcId = sube.rrc_restaurant_id || sube.id; // rrc_restaurant_id yoksa doc id fallback
+              return (
+                <option key={sube.id} value={rrcId}>
+                  {sube.subeAdi} (RRC ID: {rrcId})
+                </option>
+              );
+            })}
           </select>
         </div>
 

@@ -1,7 +1,8 @@
 /* Kurye Atama Sayfası Stilleri */
 .kurye-atama-container {
-  padding: 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  margin: 0;
+  background: #1e3884 !important;
   min-height: 100vh;
   position: relative;
 }
@@ -134,10 +135,12 @@
 
 .content-area {
   background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Modern Card Grid - Her zaman görünür */
@@ -167,7 +170,7 @@
 .mobile-card.clickable-card:hover {
   transform: translateY(-6px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  border-color: rgba(102, 126, 234, 0.4);
+  border-color: rgba(46, 91, 255, 0.4);
 }
 
 .mobile-card.clickable-card::after {
@@ -176,7 +179,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(102, 126, 234, 0.95);
+  background: rgba(46, 91, 255, 0.95);
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 20px;
@@ -196,7 +199,7 @@
 .mobile-card:hover {
   transform: translateY(-6px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  border-color: rgba(102, 126, 234, 0.4);
+  border-color: rgba(46, 91, 255, 0.4);
 }
 
 .mobile-card::before {
@@ -206,7 +209,7 @@
   left: 0;
   right: 0;
   height: 5px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
   border-radius: 20px 20px 0 0;
 }
 
@@ -243,10 +246,10 @@
 .card-header .siparis-info .material-icons {
   color: white;
   font-size: 1.6rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
   padding: 0.75rem;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(46, 91, 255, 0.3);
 }
 
 .siparis-no {
@@ -301,7 +304,7 @@
   content: '';
   width: 8px;
   height: 8px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
   border-radius: 50%;
 }
 
@@ -438,45 +441,50 @@
   }
 }
 
+/* Sayfa Başlığı */
 .page-header {
-  display: none;
+  margin-bottom: 1.5rem;
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  padding: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(25px);
+  padding: 1.75rem;
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
 }
 
 .title-section h1 {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  color: white;
   font-size: 2.5rem;
   font-weight: 700;
-  color: white;
-  margin: 0 0 0.5rem 0;
+  margin: 0;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .title-section h1 .material-icons {
   font-size: 2.5rem;
-  margin-right: 1rem;
-  background: linear-gradient(135deg, #fff, #f0f0f0);
+  background: linear-gradient(135deg, #60A5FA, #3B82F6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .title-section p {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
   font-size: 1.1rem;
-  margin: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  margin: 0.5rem 0 0 0;
+  font-weight: 400;
+  line-height: 1.6;
 }
 
 .content-area {
@@ -529,11 +537,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  padding: 1.75rem;
+  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
   border-radius: 16px;
   margin-bottom: 2rem;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
 }
 
 .table-header h3 {
@@ -604,7 +612,7 @@
 }
 
 .siparis-info .material-icons {
-  color: #667eea;
+  color: #2E5BFF;
   font-size: 1.25rem;
 }
 
@@ -673,7 +681,7 @@
 }
 
 .tip-badge.primary {
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background: linear-gradient(135deg, #3182ce, #4299e1);
   color: white;
 }
 
@@ -763,7 +771,7 @@
 }
 
 .action-button.detail {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
   color: white;
   font-weight: 800;
   text-transform: uppercase;
@@ -774,8 +782,8 @@
 
 .action-button.detail:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
-  background: linear-gradient(135deg, #5a67d8, #667eea);
+  box-shadow: 0 12px 35px rgba(46, 91, 255, 0.5);
+  background: linear-gradient(135deg, #3B82F6, #2E5BFF);
 }
 
 .action-button.assign {
@@ -825,28 +833,15 @@
   color: white;
 }
 
-/* Modal Stilleri */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Sayfa spesifik modal stilleri */
+.kurye-atama-page .modal-overlay {
+  /* Global stil yeterli, sadece gerekli overrideler */
   z-index: 1000;
   backdrop-filter: blur(4px);
 }
 
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
+.kurye-atama-page .modal-content {
+  /* Kurye atama sayfası için özel stil */
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
@@ -855,8 +850,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e9ecef;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
   color: white;
   border-radius: 16px 16px 0 0;
 }
@@ -934,8 +929,8 @@
 
 .kurye-secim select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #2E5BFF;
+  box-shadow: 0 0 0 3px rgba(46, 91, 255, 0.1);
 }
 
 .modal-footer {
@@ -943,7 +938,7 @@
   gap: 1rem;
   justify-content: flex-end;
   padding: 1.5rem 2rem;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   background: #f8f9fa;
   border-radius: 0 0 16px 16px;
 }
@@ -971,13 +966,14 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
   color: white;
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(46, 91, 255, 0.3);
+  background: linear-gradient(135deg, #3B82F6, #2E5BFF);
 }
 
 .btn-primary:disabled {
@@ -1072,10 +1068,7 @@
     font-size: 1.4rem;
   }
 
-  .modal-content {
-    width: 95%;
-    margin: 1rem;
-  }
+  /* Global responsive modal stilleri otomatik olarak uygulanacak */
 
   .modal-body {
     padding: 1.5rem;
@@ -1177,10 +1170,7 @@
     font-size: 1.3rem;
   }
 
-  .modal-content {
-    width: 98%;
-    margin: 0.5rem;
-  }
+  /* Global responsive modal stilleri otomatik olarak uygulanacak */
 
   /* Smaller tip badges on mobile */
   .tip-badge {

@@ -107,6 +107,32 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     },
   ];
 
+  const giderMenuItems = [
+    {
+      title: 'Gider Kalemi Kaydı',
+      path: '/gider-kalemi-kaydi',
+      icon: 'category',
+    },
+    {
+      title: 'Gider Kaydı',
+      path: '/gider-kaydi',
+      icon: 'receipt',
+    },
+  ];
+
+  const raporMenuItems = [
+    {
+      title: 'Genel Rapor',
+      path: '/genel-rapor',
+      icon: 'analytics',
+    },
+    {
+      title: 'İptal Raporları',
+      path: '/iptal-raporlari',
+      icon: 'block',
+    },
+  ];
+
   return (
     <>
       <div className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
@@ -217,6 +243,46 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               })}
             </ul>
           </div>
+
+          {/* Gider İşlemleri - Sadece şirket yöneticisi ve şube müdürü görebilir */}
+          {(currentUser?.role === 'sirket_yoneticisi' || currentUser?.role === 'sube_yoneticisi') && (
+            <div className="menu-section">
+              <p className="menu-label">Gider İşlemleri</p>
+              <ul className="menu-items">
+                {giderMenuItems.map((item) => (
+                  <li 
+                    key={item.path} 
+                    className={location.pathname === item.path ? 'active' : ''}
+                  >
+                    <Link to={item.path} data-title={item.title}>
+                      <span className="material-icons">{item.icon}</span>
+                      <span className="menu-title">{item.title}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Genel Rapor - Sadece şirket yöneticisi ve şube müdürü görebilir */}
+          {(currentUser?.role === 'sirket_yoneticisi' || currentUser?.role === 'sube_yoneticisi') && (
+            <div className="menu-section">
+              <p className="menu-label">Raporlar</p>
+              <ul className="menu-items">
+                {raporMenuItems.map((item) => (
+                  <li 
+                    key={item.path} 
+                    className={location.pathname === item.path ? 'active' : ''}
+                  >
+                    <Link to={item.path} data-title={item.title}>
+                      <span className="material-icons">{item.icon}</span>
+                      <span className="menu-title">{item.title}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         
         <div className="sidebar-footer">

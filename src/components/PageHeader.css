@@ -1,0 +1,14 @@
+.page-header { margin-bottom: 1.5rem; }
+.page-header .header-content { display:flex; justify-content:space-between; align-items:stretch; flex-wrap:wrap; gap:1.5rem; background:rgba(255,255,255,0.15); backdrop-filter:blur(25px); padding:1.75rem; border-radius:16px; border:1px solid rgba(255,255,255,0.2); box-shadow:0 8px 32px rgba(46,91,255,0.15); }
+.page-header .title-section h1 { display:flex; align-items:center; gap:.75rem; color:#fff; font-size:2.2rem; font-weight:700; margin:0; text-shadow:0 2px 4px rgba(0,0,0,.3); }
+.page-header .title-section h1 .material-icons { font-size:2.2rem; background:linear-gradient(135deg,#60A5FA,#3B82F6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.page-header .title-section p { color:rgba(255,255,255,0.92); font-size:1rem; margin:.6rem 0 0 0; font-weight:400; line-height:1.5; max-width:760px; }
+.page-header .header-actions { margin-left:auto; display:flex; gap:1rem; align-items:center; }
+.page-header .header-buttons { display:flex; gap:.75rem; }
+.page-header .add-button.modern { display:flex; align-items:center; gap:.5rem; background:linear-gradient(135deg,#2E5BFF,#1E3A8A); color:#fff; border:none; padding:.75rem 1.5rem; border-radius:12px; font-weight:600; cursor:pointer; transition:all .3s cubic-bezier(.4,0,.2,1); box-shadow:0 4px 12px rgba(46,91,255,.3); min-height:44px; }
+.page-header .add-button.modern:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(46,91,255,0.4); }
+.page-header .user-info-badge { display:flex; align-items:center; gap:1rem; background:rgba(255,255,255,0.2); padding:1rem 1.25rem; border-radius:15px; backdrop-filter:blur(10px); min-width:240px; }
+.page-header .user-avatar-circle { width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg,#2E5BFF,#1E3A8A); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.5rem; }
+.page-header .user-badge-details h3 { margin:0; color:#fff; font-size:1.05rem; font-weight:600; }
+.page-header .user-badge-details p { margin:.25rem 0 0 0; color:rgba(255,255,255,0.8); font-size:.85rem; }
+@media (max-width:768px){ .page-header .header-content{flex-direction:column; text-align:center; padding:1.25rem; border-radius:14px;} .page-header .title-section h1{font-size:1.7rem;} .page-header .title-section h1 .material-icons{font-size:1.7rem;} .page-header .header-actions{flex-direction:column; width:100%;} .page-header .header-buttons,.page-header .header-right-extra{width:100%; display:flex; justify-content:center;} .page-header .user-info-badge{justify-content:center;} }

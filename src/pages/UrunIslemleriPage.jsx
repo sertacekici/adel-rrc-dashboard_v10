@@ -8,6 +8,7 @@ const UrunIslemleriPage = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUrun, setEditingUrun] = useState(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
   const [formData, setFormData] = useState({
     urun_adi: '',
     birim_olcusu: 'KG',
@@ -37,6 +38,49 @@ const UrunIslemleriPage = () => {
   useEffect(() => {
     fetchUrunler();
   }, []);
+  
+  // Modal açıkken ESC tuşu ile kapatılabilmesi için
+  useEffect(() => {
+    if (showModal) {
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          setShowModal(false);
+        }
+      };
+      
+      document.addEventListener('keydown', handleKeyDown);
+      //document.body.style.overflow = 'hidden';
+      
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        //document.body.style.overflow = 'auto';
+      };
+    }
+  }, [showModal]);
+
+  // Scroll pozisyonu yönetimi
+  useEffect(() => {
+    if (showModal) {
+      // Mevcut scroll pozisyonunu kaydet
+      setScrollPosition(window.pageYOffset);
+      // Sayfayı üste kaydır
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Body scroll'unu engelle
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Body scroll'unu geri aç
+      document.body.style.overflow = '';
+      // Eski pozisyona geri dön
+      if (scrollPosition > 0) {
+        window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showModal, scrollPosition]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -123,7 +167,7 @@ const UrunIslemleriPage = () => {
   const birimOlcusuOptions = ['KG', 'Litre', 'Adet', 'Paket', 'Kutu'];
 
   return (
-    <div className="urun-islemleri-container">
+    <div className="urun-islemleri-container urun-islemleri-page">
       <div className="page-header">
         <div className="header-content">
           <div className="title-section">
@@ -151,64 +195,116 @@ const UrunIslemleriPage = () => {
           </button>
         </div>
         {loading ? (
-          <div className="loading-text">Ürünler yükleniyor...</div>
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Ürünler yükleniyor...</p>
+          </div>
         ) : urunler.length === 0 ? (
-          <div className="no-data">Henüz ürün bulunmamaktadır.</div>
+          <div className="empty-state">
+            <span className="material-icons">inventory_2</span>
+            <h3>Henüz Ürün Bulunmuyor</h3>
+            <p>Ürün eklemek için "Yeni Ürün Ekle" butonunu kullanın.</p>
+          </div>
         ) : (
-          <div className="urunler-table-container">
-            <table className="urunler-table">
-              <thead>
-                <tr>
-                  <th>Ürün Adı</th>
-                  <th>Birim Ölçüsü</th>
-                  <th>Fiyat (₺)</th>
-                  <th>Oluşturulma Tarihi</th>
-                  <th>İşlemler</th>
-                </tr>
-              </thead>
-              <tbody>
-                {urunler.map((urun) => (
-                  <tr key={urun.id}>
-                    <td>
-                      <div className="urun-info">
-                        <span className="material-icons">inventory_2</span>
-                        {urun.urun_adi}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="birim-badge">{urun.birim_olcusu}</span>
-                    </td>
-                    <td>
-                      <span className="fiyat-text">
+          <>
+            {/* Ürün İstatistikleri */}
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon primary">
+                  <span className="material-icons">inventory_2</span>
+                </div>
+                <div className="stat-info">
+                  <div className="stat-number">{urunler.length}</div>
+                  <div className="stat-label">Toplam Ürün</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon success">
+                  <span className="material-icons">paid</span>
+                </div>
+                <div className="stat-info">
+                  <div className="stat-number">
+                    {urunler.filter(urun => urun.fiyat > 0).length}
+                  </div>
+                  <div className="stat-label">Ücretli Ürünler</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon warning">
+                  <span className="material-icons">price_change</span>
+                </div>
+                <div className="stat-info">
+                  <div className="stat-number">
+                    {urunler.filter(urun => urun.fiyat === 0).length}
+                  </div>
+                  <div className="stat-label">Ücretsiz Ürünler</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon danger">
+                  <span className="material-icons">attach_money</span>
+                </div>
+                <div className="stat-info">
+                  <div className="stat-number">
+                    {`₺${urunler.reduce((total, urun) => total + urun.fiyat, 0).toFixed(2)}`}
+                  </div>
+                  <div className="stat-label">Toplam Değer</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Ürün Kartları */}
+            <div className="urunler-grid">
+              {urunler.map((urun) => (
+                <div key={urun.id} className="urun-card">
+                  <div className="urun-header">
+                    <div className="urun-title">
+                      <span className="material-icons">inventory_2</span>
+                      {urun.urun_adi}
+                    </div>
+                    <div className="urun-badge">
+                      {urun.birim_olcusu}
+                    </div>
+                  </div>
+                  
+                  <div className="urun-details">
+                    <div className="detail-row">
+                      <span className="detail-label">Fiyat:</span>
+                      <span className={`detail-value ${urun.fiyat === 0 ? 'free' : 'price'}`}>
                         {urun.fiyat === 0 ? 'Ücretsiz' : `₺${urun.fiyat.toFixed(2)}`}
                       </span>
-                    </td>
-                    <td>
-                      {urun.olusturulma_tarihi?.toDate?.()?.toLocaleDateString('tr-TR') || 'Bilinmiyor'}
-                    </td>
-                    <td>
-                      <div className="table-actions">
-                        <button
-                          className="action-button edit"
-                          onClick={() => handleEdit(urun)}
-                          title="Düzenle"
-                        >
-                          <span className="material-icons">edit</span>
-                        </button>
-                        <button
-                          className="action-button delete"
-                          onClick={() => handleDelete(urun.id)}
-                          title="Sil"
-                        >
-                          <span className="material-icons">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Eklenme:</span>
+                      <span className="detail-value">
+                        {urun.olusturulma_tarihi?.toDate?.()?.toLocaleDateString('tr-TR') || 'Bilinmiyor'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="urun-actions">
+                    <button 
+                      className="edit-btn"
+                      onClick={() => handleEdit(urun)}
+                    >
+                      <span className="material-icons">edit</span>
+                      Düzenle
+                    </button>
+                    <button 
+                      className="delete-btn"
+                      onClick={() => handleDelete(urun.id)}
+                    >
+                      <span className="material-icons">delete</span>
+                      Sil
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

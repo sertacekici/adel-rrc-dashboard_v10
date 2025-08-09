@@ -111,7 +111,7 @@ const Login = () => {
           <div className="login-header">
             <div className="logo-section">
               <div className="logo-icon">
-                <span className="material-icons">business</span>
+                <span className="material-icons">restaurant</span>
               </div>
               <h1>Adel RRC</h1>
             </div>
@@ -209,6 +209,9 @@ const Login = () => {
             <div className="system-info">
               <span className="material-icons">info</span>
               <span>Adel RRC Yönetim Sistemi v1.0</span>
+            </div>
+            <div className="copyright-info">
+              © {new Date().getFullYear()} Adel Restaurant RRC
             </div>
           </div>
         </div>

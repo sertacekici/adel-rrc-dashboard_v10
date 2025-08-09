@@ -15,6 +15,7 @@ const SubeSiparisTakipPage = () => {
   const [filterDurum, setFilterDurum] = useState('beklemede'); // Varsayılan olarak beklemede olanları göster
   const [selectedSube, setSelectedSube] = useState('all'); // Şube filtresi
   const [subeler, setSubeler] = useState([]); // Şube listesi
+  const [scrollPosition, setScrollPosition] = useState(0);
   const { currentUser, loading: authLoading } = useContext(AuthContext);
 
   const db = getFirestore();
@@ -34,6 +35,43 @@ const SubeSiparisTakipPage = () => {
       }
     };
   }, [currentUser, filterDurum, selectedSube]);
+  
+  // Modal açıkken ESC tuşuyla kapatma ve scroll yönetimi
+  useEffect(() => {
+    if (showDetailModal) {
+      // Mevcut scroll pozisyonunu kaydet
+      setScrollPosition(window.pageYOffset);
+      
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          setShowDetailModal(false);
+        }
+      };
+      
+      document.addEventListener('keydown', handleKeyDown);
+      
+      // Sayfayı üste kaydır ve scroll'u engelle
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        // Sayfa scroll'u geri aç
+        document.body.style.overflow = 'auto';
+        // Eski pozisyona geri dön
+        if (scrollPosition > 0) {
+          window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+        }
+      };
+    } else {
+      // Modal kapalıyken body overflow'u serbest bırak
+      document.body.style.overflow = 'auto';
+      // Eski pozisyona geri dön
+      if (scrollPosition > 0) {
+        window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+      }
+    }
+  }, [showDetailModal, scrollPosition]);
 
   const fetchSubeler = async () => {
     try {
@@ -656,6 +694,8 @@ const SubeSiparisTakipPage = () => {
   const handleSiparisDetay = (siparis) => {
     setSelectedSiparis(siparis);
     setShowDetailModal(true);
+    // Modal açıldığında sayfayı en üste scroll et
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const formatDate = (date) => {
@@ -692,7 +732,7 @@ const SubeSiparisTakipPage = () => {
   }
 
   return (
-    <div className="sube-siparis-takip-container">
+    <div className="sube-siparis-takip-container sube-siparis-takip-page">
       <div className="page-header">
         <div className="header-content">
           <div className="title-section">
@@ -727,51 +767,51 @@ const SubeSiparisTakipPage = () => {
             </button>
           </div>
         </div>
+      </div>
+      
+      <div className="filter-section">
+        <div className="filter-group">
+          <label htmlFor="durum-filter">Durum:</label>
+          <select 
+            id="durum-filter"
+            value={filterDurum} 
+            onChange={(e) => setFilterDurum(e.target.value)}
+            className="filter-select"
+          >
+            <option value="beklemede">Beklemede</option>
+            <option value="onaylandi">Onaylandı</option>
+            <option value="teslim_edildi">Teslim Edildi</option>
+            <option value="iptal">İptal</option>
+          </select>
+        </div>
         
-        <div className="filter-section">
+        {isCompanyManager && (
           <div className="filter-group">
-            <label htmlFor="durum-filter">Durum:</label>
+            <label htmlFor="sube-filter">Şube:</label>
             <select 
-              id="durum-filter"
-              value={filterDurum} 
-              onChange={(e) => setFilterDurum(e.target.value)}
+              id="sube-filter"
+              value={selectedSube} 
+              onChange={(e) => setSelectedSube(e.target.value)}
               className="filter-select"
             >
-              <option value="beklemede">Beklemede</option>
-              <option value="onaylandi">Onaylandı</option>
-              <option value="teslim_edildi">Teslim Edildi</option>
-              <option value="iptal">İptal</option>
+              <option value="all">Tüm Şubeler</option>
+              {subeler.map((sube) => (
+                <option key={sube.id} value={sube.id}>
+                  {sube.sube_adi || sube.subeAdi || `Şube ${sube.id}`}
+                </option>
+              ))}
             </select>
           </div>
-          
-          {isCompanyManager && (
-            <div className="filter-group">
-              <label htmlFor="sube-filter">Şube:</label>
-              <select 
-                id="sube-filter"
-                value={selectedSube} 
-                onChange={(e) => setSelectedSube(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Tüm Şubeler</option>
-                {subeler.map((sube) => (
-                  <option key={sube.id} value={sube.id}>
-                    {sube.sube_adi || sube.subeAdi || `Şube ${sube.id}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          <div className="filter-info">
-            <span className="material-icons">info</span>
-            <span>
-              {filterDurum === 'beklemede' ? 'Beklemedeki siparişler öncelikli gösterilir' : 
-               filterDurum === 'onaylandi' ? 'Onaylanmış siparişler gösteriliyor' :
-               filterDurum === 'teslim_edildi' ? 'Teslim edilmiş siparişler gösteriliyor' :
-               'İptal edilmiş siparişler gösteriliyor'}
-            </span>
-          </div>
+        )}
+        
+        <div className="filter-info">
+          <span className="material-icons">info</span>
+          <span>
+            {filterDurum === 'beklemede' ? 'Beklemedeki siparişler öncelikli gösterilir' : 
+             filterDurum === 'onaylandi' ? 'Onaylanmış siparişler gösteriliyor' :
+             filterDurum === 'teslim_edildi' ? 'Teslim edilmiş siparişler gösteriliyor' :
+             'İptal edilmiş siparişler gösteriliyor'}
+          </span>
         </div>
       </div>
 
@@ -808,7 +848,7 @@ const SubeSiparisTakipPage = () => {
                   <div className="card-header">
                     <div className="siparis-info">
                       <h3>{siparis.sube_adi}</h3>
-                      <p className="siparis-kodu">#{siparis.id.slice(-8)}</p>
+                    
                     </div>
                     <div className={`durum-badge ${durumInfo.class}`}>
                       <span className="material-icons">{durumInfo.icon}</span>

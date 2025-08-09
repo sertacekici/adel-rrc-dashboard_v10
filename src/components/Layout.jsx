@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import TopBar from './TopBar';
 import './Layout.css';
 
 const Layout = () => {
@@ -16,7 +15,13 @@ const Layout = () => {
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div className={`content ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        <TopBar toggleSidebar={toggleSidebar} />
+        {/* Floating menu button for mobile */}
+        {!sidebarOpen && (
+          <button className="floating-menu-btn" onClick={toggleSidebar}>
+            <span className="material-icons">menu</span>
+          </button>
+        )}
+        
         <main className="main-content">
           <Outlet />
         </main>

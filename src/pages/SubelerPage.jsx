@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, getDoc, query, where } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import './SubelerPage.css';
+import PageHeader from '../components/PageHeader';
 
 const SubelerPage = () => {
   const [subeler, setSubeler] = useState([]);
@@ -222,29 +223,33 @@ const SubelerPage = () => {
 
   return (
     <div className="subeler-container">
-      <div className="page-header">
-        <div className="header-content">
-          <div className="title-section">
-            <h1>
-              <span className="material-icons">business</span>
-              Şube Yönetimi
-            </h1>
-            <p>Şubelerinizi yönetin ve yeni şubeler ekleyin</p>
-          </div>
-          {canManageBranches && (
-            <button 
-              className="add-button modern"
-              onClick={() => setFormVisible(!formVisible)}
-            >
-              <span className="material-icons">add</span>
-              Yeni Şube Ekle
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        icon="business"
+        title="Şube Yönetimi"
+        description="Şubelerinizi yönetin ve yeni şubeler ekleyin"
+        actions={canManageBranches && (
+          <button 
+            className="add-button modern"
+            onClick={() => setFormVisible(!formVisible)}
+          >
+            <span className="material-icons">add</span>
+            {formVisible ? 'Formu Kapat' : 'Yeni Şube Ekle'}
+          </button>
+        )}
+      />
       
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      {error && (
+        <div className="error-message">
+          <span className="material-icons">error_outline</span>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="success-message">
+          <span className="material-icons">check_circle_outline</span>
+          {success}
+        </div>
+      )}
       
       {formVisible && (
         <div className="sube-form-container">

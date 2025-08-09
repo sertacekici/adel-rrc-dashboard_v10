@@ -16,6 +16,7 @@ const SubeSiparisOlusturmaPage = () => {
   const [selectedSubeId, setSelectedSubeId] = useState('');
   const [selectedSubeInfo, setSelectedSubeInfo] = useState(null);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
   const { currentUser } = useContext(AuthContext);
 
   const db = getFirestore();
@@ -59,6 +60,30 @@ const SubeSiparisOlusturmaPage = () => {
       localStorage.removeItem(SEPET_KEY);
     }
   }, [siparisListesi]);
+
+  // Scroll pozisyonu yönetimi - Modal açıldığında scroll kontrolü
+  useEffect(() => {
+    if (showMiktarModal || showSepetModal) {
+      // Mevcut scroll pozisyonunu kaydet
+      setScrollPosition(window.pageYOffset);
+      // Sayfayı üste kaydır
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Body scroll'unu engelle
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Body scroll'unu geri aç
+      document.body.style.overflow = '';
+      // Eski pozisyona geri dön
+      if (scrollPosition > 0) {
+        window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showMiktarModal, showSepetModal, scrollPosition]);
 
   const loadSepetiFromStorage = () => {
     try {
@@ -182,7 +207,17 @@ const SubeSiparisOlusturmaPage = () => {
 
   const handleUrunClick = (urun) => {
     setSelectedUrun(urun);
-    setMiktar(1);
+    
+    // Check if item is already in cart
+    const existingItem = siparisListesi.find(item => item.urun.id === urun.id);
+    
+    // Set initial quantity based on existing cart item or default to 1
+    if (existingItem) {
+      setMiktar(existingItem.miktar);
+    } else {
+      setMiktar(1);
+    }
+    
     setShowMiktarModal(true);
   };
 
@@ -370,7 +405,7 @@ const SubeSiparisOlusturmaPage = () => {
         </div>
       </div>
 
-      {/* Şube Seçimi - Yeni tasarım, SatisAdetleriPage'deki gibi */}
+      {/* Şube Seçimi - Adisyonlar sayfasındaki gibi tasarım */}
       <div className="filters-section">
         <div className="filter-group">
           <label htmlFor="sube-select">Şube Seçin:</label>
@@ -401,6 +436,53 @@ const SubeSiparisOlusturmaPage = () => {
         )}
       </div>
 
+      {/* İstatistik Kartları */}
+      {siparisListesi.length > 0 && (
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon primary">
+              <span className="material-icons">shopping_cart</span>
+            </div>
+            <div className="stat-info">
+              <div className="stat-number">{siparisListesi.length}</div>
+              <div className="stat-label">Sepetteki Ürün</div>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon success">
+              <span className="material-icons">inventory_2</span>
+            </div>
+            <div className="stat-info">
+              <div className="stat-number">
+                {siparisListesi.reduce((total, item) => total + item.miktar, 0)}
+              </div>
+              <div className="stat-label">Toplam Miktar</div>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon danger">
+              <span className="material-icons">payments</span>
+            </div>
+            <div className="stat-info">
+              <div className="stat-number">₺{getTotalAmount().toFixed(2)}</div>
+              <div className="stat-label">Toplam Tutar</div>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon warning">
+              <span className="material-icons">calculate</span>
+            </div>
+            <div className="stat-info">
+              <div className="stat-number">₺{siparisListesi.length > 0 ? (getTotalAmount() / siparisListesi.reduce((total, item) => total + item.miktar, 0)).toFixed(2) : '0.00'}</div>
+              <div className="stat-label">Ortalama Birim Fiyat</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="content-area">
         <div className="urunler-section">
           <h3>
@@ -409,35 +491,53 @@ const SubeSiparisOlusturmaPage = () => {
           </h3>
           
           {loading ? (
-            <div className="loading-grid">
-              <div className="loading-text">Ürünler yükleniyor...</div>
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Ürünler yükleniyor...</p>
             </div>
           ) : urunler.length === 0 ? (
-            <div className="no-data">
+            <div className="empty-state">
               <span className="material-icons">inventory_2</span>
-              <p>Henüz ürün bulunmamaktadır.</p>
+              <h3>Ürün Bulunamadı</h3>
+              <p>Henüz sisteme ürün eklenmemiş.</p>
             </div>
           ) : (
             <div className="urunler-grid">
-              {urunler.map((urun) => (
-                <div 
-                  key={urun.id} 
-                  className="urun-card"
-                  onClick={() => handleUrunClick(urun)}
-                >
-                  <div className="urun-icon">
-                    <span className="material-icons">inventory_2</span>
+              {urunler.map((urun) => {
+                // Check if this product is already in cart
+                const inCart = siparisListesi.find(item => item.urun.id === urun.id);
+                
+                return (
+                  <div 
+                    key={urun.id} 
+                    className={`urun-card ${inCart ? 'in-cart' : ''}`}
+                    onClick={() => handleUrunClick(urun)}
+                  >
+                    {inCart && (
+                      <div className="cart-badge">
+                        <span>{inCart.miktar}</span>
+                      </div>
+                    )}
+                    <div className="urun-icon">
+                      <span className="material-icons">inventory_2</span>
+                    </div>
+                    <div className="urun-info">
+                      <h4>{urun.urun_adi}</h4>
+                      <p className="urun-birim">{urun.birim_olcusu}</p>
+                      <p className="urun-fiyat">₺{urun.fiyat.toFixed(2)}</p>
+                    </div>
+                    <div className="add-to-cart-container">
+                      <button className="add-to-cart-button" onClick={(e) => {
+                        e.stopPropagation();
+                        handleUrunClick(urun);
+                      }}>
+                        <span className="material-icons">add_shopping_cart</span>
+                        <span>{inCart ? 'Güncelle' : 'Sepete Ekle'}</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="urun-info">
-                    <h4>{urun.urun_adi}</h4>
-                    <p className="urun-birim">{urun.birim_olcusu}</p>
-                    <p className="urun-fiyat">₺{urun.fiyat.toFixed(2)}</p>
-                  </div>
-                  <div className="add-to-cart-icon">
-                    <span className="material-icons">add_shopping_cart</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -477,7 +577,7 @@ const SubeSiparisOlusturmaPage = () => {
               </div>
               
               <div className="miktar-secimi">
-                <label htmlFor="miktar">Miktar:</label>
+                <label htmlFor="miktar">Miktar Seçiniz:</label>
                 <div className="miktar-input-group">
                   <button 
                     type="button"
@@ -510,6 +610,7 @@ const SubeSiparisOlusturmaPage = () => {
             
             <div className="modal-footer">
               <button onClick={() => setShowMiktarModal(false)} className="cancel-button">
+                <span className="material-icons">close</span>
                 İptal
               </button>
               <button onClick={handleUrunEkle} className="add-button">
@@ -526,10 +627,13 @@ const SubeSiparisOlusturmaPage = () => {
         <div className="modal-overlay" onClick={() => setShowSepetModal(false)}>
           <div className="modal-content sepet-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>
+              <div className="cart-header-content">
                 <span className="material-icons">shopping_cart</span>
-                Sepet ({siparisListesi.length})
-              </h2>
+                <h2>Alışveriş Sepeti</h2>
+                {siparisListesi.length > 0 && (
+                  <div className="cart-item-count">{siparisListesi.length}</div>
+                )}
+              </div>
               <button onClick={() => setShowSepetModal(false)} className="close-button">
                 <span className="material-icons">close</span>
               </button>
@@ -548,22 +652,29 @@ const SubeSiparisOlusturmaPage = () => {
                     {siparisListesi.map((item) => (
                       <div key={item.urun.id} className="sepet-item">
                         <div className="item-info">
-                          <h5>{item.urun.urun_adi}</h5>
-                          <p className="item-details">
-                            {item.miktar} {item.urun.birim_olcusu} × ₺{item.urun.fiyat.toFixed(2)}
-                          </p>
+                          <div className="item-icon">
+                            <span className="material-icons">inventory_2</span>
+                          </div>
+                          <div>
+                            <h5>{item.urun.urun_adi}</h5>
+                            <p className="item-details">
+                              <span className="price-tag">₺{item.urun.fiyat.toFixed(2)} / {item.urun.birim_olcusu}</span>
+                            </p>
+                          </div>
                         </div>
                         <div className="item-controls">
                           <div className="miktar-controls">
                             <button 
                               onClick={() => handleMiktarGuncelle(item.urun.id, item.miktar - 1)}
                               disabled={item.miktar <= 1}
+                              title="Azalt"
                             >
                               <span className="material-icons">remove</span>
                             </button>
                             <span className="miktar">{item.miktar}</span>
                             <button 
                               onClick={() => handleMiktarGuncelle(item.urun.id, item.miktar + 1)}
+                              title="Artır"
                             >
                               <span className="material-icons">add</span>
                             </button>
@@ -572,6 +683,7 @@ const SubeSiparisOlusturmaPage = () => {
                           <button 
                             className="remove-item"
                             onClick={() => handleUrunCikar(item.urun.id)}
+                            title="Sepetten Çıkar"
                           >
                             <span className="material-icons">delete</span>
                           </button>
@@ -581,9 +693,20 @@ const SubeSiparisOlusturmaPage = () => {
                   </div>
 
                   <div className="sepet-ozet">
-                    <div className="total-row">
-                      <span>Toplam:</span>
-                      <span className="total-amount">₺{getTotalAmount().toFixed(2)}</span>
+                    <div className="summary-rows">
+                      <div className="summary-row">
+                        <span>Ürün sayısı:</span>
+                        <span>{siparisListesi.length} ürün</span>
+                      </div>
+                      <div className="summary-row">
+                        <span>Toplam miktar:</span>
+                        <span>{siparisListesi.reduce((total, item) => total + item.miktar, 0)} birim</span>
+                      </div>
+                      <div className="summary-divider"></div>
+                      <div className="total-row">
+                        <span>Toplam Tutar:</span>
+                        <span className="total-amount">₺{getTotalAmount().toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 </>

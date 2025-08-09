@@ -10,10 +10,17 @@ const KuryeRaporuPage = () => {
   const [selectedSube, setSelectedSube] = useState('');
   const [selectedKurye, setSelectedKurye] = useState('');
   const [raporData, setRaporData] = useState([]);
+  const [filteredRaporData, setFilteredRaporData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState('');
+  const [reportMode, setReportMode] = useState('daily'); // 'daily', 'range'
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   
   // Bugünün tarihini varsayılan olarak ayarla (günlük rapor)
   const today = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(today);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   
@@ -36,25 +43,32 @@ const KuryeRaporuPage = () => {
       case 'today':
         newStartDate = today.toISOString().split('T')[0];
         newEndDate = today.toISOString().split('T')[0];
+        setReportMode('daily');
+        setSelectedDate(newStartDate);
         break;
       case 'yesterday':
         newStartDate = yesterday.toISOString().split('T')[0];
         newEndDate = yesterday.toISOString().split('T')[0];
+        setReportMode('daily');
+        setSelectedDate(newStartDate);
         break;
       case 'thisWeek':
         newStartDate = weekStart.toISOString().split('T')[0];
         newEndDate = today.toISOString().split('T')[0];
+        setReportMode('range');
+        setStartDate(newStartDate);
+        setEndDate(newEndDate);
         break;
       case 'thisMonth':
         newStartDate = monthStart.toISOString().split('T')[0];
         newEndDate = today.toISOString().split('T')[0];
+        setReportMode('range');
+        setStartDate(newStartDate);
+        setEndDate(newEndDate);
         break;
       default:
         return;
     }
-    
-    setStartDate(newStartDate);
-    setEndDate(newEndDate);
     
     // Tarih değiştikten sonra otomatik rapor getir (kurye için)
     if (currentUser?.role === 'kurye') {
@@ -112,11 +126,23 @@ const KuryeRaporuPage = () => {
   // Kurye raporunu getir
   const fetchKuryeRaporu = async () => {
     if (!selectedKurye && currentUser?.role !== 'kurye') {
-      alert('Lütfen kurye seçin');
+      setError('Lütfen kurye seçin');
+      return;
+    }
+
+    // Tarih kontrolü
+    if (reportMode === 'daily' && !selectedDate) {
+      setError('Lütfen tarih seçin');
+      return;
+    }
+
+    if (reportMode === 'range' && (!startDate || !endDate)) {
+      setError('Lütfen başlangıç ve bitiş tarihlerini seçin');
       return;
     }
 
     setLoading(true);
+    setError(null);
     try {
       let kuryeAdi;
       
@@ -160,31 +186,82 @@ const KuryeRaporuPage = () => {
       console.log('Masa siparişleri filtrelendikten sonra:', adisyonList.length);
 
       // Tarih filtreleme
-      if (startDate || endDate) {
-        adisyonList = adisyonList.filter(adisyon => {
-          if (!adisyon.tarih) return false;
+      adisyonList = adisyonList.filter(adisyon => {
+        if (!adisyon.tarih) return false;
+        
+        try {
+          // Tarih formatını kontrol et - ISO formatında: "2025-08-04T10:45:47"
+          const adisyonTarihStr = String(adisyon.tarih);
+          let adisyonTarih;
           
-          const adisyonDate = new Date(adisyon.tarih);
-          const start = startDate ? new Date(startDate) : new Date('1900-01-01');
-          const end = endDate ? new Date(endDate + 'T23:59:59') : new Date('2100-12-31');
+          if (adisyonTarihStr.includes('T')) {
+            // ISO format: "2025-08-04T10:45:47" -> "2025-08-04"
+            adisyonTarih = adisyonTarihStr.split('T')[0];
+          } else if (adisyonTarihStr.includes(' ')) {
+            // SQL format: "2025-08-04 10:45:47" -> "2025-08-04"
+            adisyonTarih = adisyonTarihStr.split(' ')[0];
+          } else {
+            // Sadece tarih: "2025-08-04"
+            adisyonTarih = adisyonTarihStr;
+          }
           
-          return adisyonDate >= start && adisyonDate <= end;
-        });
-      }
+          if (reportMode === 'daily') {
+            console.log('Günlük filtre - Adisyon tarihi:', adisyonTarih, 'Hedef tarih:', selectedDate);
+            return adisyonTarih === selectedDate;
+          } else if (reportMode === 'range') {
+            console.log('Aralık filtre - Adisyon tarihi:', adisyonTarih, 'Başlangıç:', startDate, 'Bitiş:', endDate);
+            return adisyonTarih >= startDate && adisyonTarih <= endDate;
+          }
+          
+          return false;
+        } catch (err) {
+          console.error('Tarih karşılaştırma hatası:', err, 'Adisyon tarihi:', adisyon.tarih);
+          return false;
+        }
+      });
 
       console.log('Tarih filtrelendikten sonra:', adisyonList.length);
 
-      // Tarihe göre sırala
+      // Tarihe göre sırala (eskiden yeniye)
       adisyonList.sort((a, b) => {
-        const dateA = a.tarih ? new Date(a.tarih) : new Date(0);
-        const dateB = b.tarih ? new Date(b.tarih) : new Date(0);
-        return dateB - dateA;
+        try {
+          let dateA, dateB;
+          
+          // ISO formatını Date objesine çevir
+          if (a.tarih && a.tarih.includes('T')) {
+            dateA = new Date(a.tarih);
+          } else if (a.tarih && a.tarih.includes(' ')) {
+            dateA = new Date(a.tarih.replace(' ', 'T'));
+          } else {
+            dateA = new Date(a.tarih || 0);
+          }
+          
+          if (b.tarih && b.tarih.includes('T')) {
+            dateB = new Date(b.tarih);
+          } else if (b.tarih && b.tarih.includes(' ')) {
+            dateB = new Date(b.tarih.replace(' ', 'T'));
+          } else {
+            dateB = new Date(b.tarih || 0);
+          }
+          
+          // Tarih karşılaştırması - eskiden yeniye (A - B)
+          if (dateA - dateB !== 0) return dateA - dateB;
+        } catch (err) {
+          console.error('Tarih sıralama hatası:', err);
+        }
+        
+        // Sonra adisyon numarasına göre (küçükten büyüğe)
+        const numA = parseInt(a.padsgnum) || 0;
+        const numB = parseInt(b.padsgnum) || 0;
+        return numA - numB;
       });
 
       setRaporData(adisyonList);
+      setSuccess(`${adisyonList.length} teslimat raporu başarıyla yüklendi!`);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Kurye raporu getirilirken hata:', error);
-      alert('Rapor getirilirken bir hata oluştu.');
+      setError('Rapor getirilirken bir hata oluştu: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -208,6 +285,12 @@ const KuryeRaporuPage = () => {
       setSelectedKurye('');
     }
   }, [selectedSube]);
+
+  // Filtreleme işlemi
+  useEffect(() => {
+    setFilteredRaporData(raporData);
+    setCurrentPage(1); // Filtre değiştiğinde ilk sayfaya dön
+  }, [raporData]);
 
   // Tarih formatla
   const formatDate = (dateString) => {
@@ -237,12 +320,30 @@ const KuryeRaporuPage = () => {
 
   // Toplam hesapla
   const calculateTotals = () => {
-    const totalOrders = raporData.length;
-    const totalAmount = raporData.reduce((sum, adisyon) => {
+    const totalOrders = filteredRaporData.length;
+    const totalAmount = filteredRaporData.reduce((sum, adisyon) => {
       return sum + (Number(adisyon.atop) || 0);
     }, 0);
     
     return { totalOrders, totalAmount };
+  };
+
+  // Pagination hesaplamaları
+  const totalPages = Math.ceil(filteredRaporData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRaporData = filteredRaporData.slice(startIndex, endIndex);
+
+  // Sayfa değişimi
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Sayfa başına öğe sayısı değişimi
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // İlk sayfaya dön
   };
 
   // Ödeme tipini belirle
@@ -313,7 +414,7 @@ const KuryeRaporuPage = () => {
   const calculatePaymentTypeTotals = () => {
     const paymentSummary = {};
     
-    raporData.forEach(adisyon => {
+    filteredRaporData.forEach(adisyon => {
       // Farklı alan isimlerini kontrol et
       const odemetipi = adisyon.odemetipi || 
                        adisyon.odemeTipi || 
@@ -378,13 +479,27 @@ const KuryeRaporuPage = () => {
   const totals = calculateTotals();
   const paymentTypeTotals = calculatePaymentTypeTotals();
 
+  if (loading && (!selectedKurye && !isCourier)) {
+    return (
+      <div className="kurye-raporu-container">
+        <div className="page-header">
+          <h1>Kurye Raporu</h1>
+        </div>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Veriler yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="kurye-raporu-container">
       <div className="page-header">
         <div className="header-content">
           <div className="title-section">
             <h1>
-              <span className="material-icons">assessment</span>
+              <span className="material-icons">delivery_dining</span>
               Kurye Raporu
             </h1>
             <p>
@@ -397,53 +512,81 @@ const KuryeRaporuPage = () => {
         </div>
       </div>
 
-      <div className="content-area">
+      {/* Filtre Bölümü */}
+      <div className="filters-section">
         {!isCourier && (
-          <div className="filter-section">
-            <h3>
-              <span className="material-icons">filter_list</span>
-              Filtreler
-            </h3>
-            
-            <div className="filter-row">
-              {isCompanyManager && (
-                <div className="filter-group">
-                  <label htmlFor="sube-select">Şube Seçin:</label>
-                  <select
-                    id="sube-select"
-                    value={selectedSube}
-                    onChange={(e) => setSelectedSube(e.target.value)}
-                  >
-                    <option value="">Tüm Şubeler</option>
-                    {subeler.map((sube) => (
-                      <option key={sube.id} value={sube.id}>
-                        {sube.sube_adi}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              
+          <>
+            {isCompanyManager && (
               <div className="filter-group">
-                <label htmlFor="kurye-select">Kurye Seçin:</label>
+                <label htmlFor="sube-select">Şube Seçin:</label>
                 <select
-                  id="kurye-select"
-                  value={selectedKurye}
-                  onChange={(e) => setSelectedKurye(e.target.value)}
+                  id="sube-select"
+                  value={selectedSube}
+                  onChange={(e) => setSelectedSube(e.target.value)}
                 >
-                  <option value="">Kurye seçin...</option>
-                  {kuryeler.map((kurye) => (
-                    <option key={kurye.id} value={kurye.id}>
-                      {kurye.displayName || kurye.email}
+                  <option value="">Tüm Şubeler</option>
+                  {subeler.map((sube) => (
+                    <option key={sube.id} value={sube.id}>
+                      {sube.subeAdi || sube.sube_adi} (ID: {sube.id})
                     </option>
                   ))}
                 </select>
               </div>
-            </div>
+            )}
             
-            <div className="filter-row">
-              <div className="filter-group">
-                <label htmlFor="start-date">Başlangıç Tarihi:</label>
+            <div className="filter-group">
+              <label htmlFor="kurye-select">Kurye Seçin:</label>
+              <select
+                id="kurye-select"
+                value={selectedKurye}
+                onChange={(e) => setSelectedKurye(e.target.value)}
+              >
+                <option value="">Kurye seçin...</option>
+                {kuryeler.map((kurye) => (
+                  <option key={kurye.id} value={kurye.id}>
+                    {kurye.displayName || kurye.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        <div className="filter-group">
+          <label>Rapor Tipi:</label>
+          <div className="report-mode-buttons">
+            <button
+              className={`filter-btn ${reportMode === 'daily' ? 'active' : ''}`}
+              onClick={() => setReportMode('daily')}
+            >
+              <span className="material-icons">today</span>
+              Günlük
+            </button>
+            <button
+              className={`filter-btn ${reportMode === 'range' ? 'active' : ''}`}
+              onClick={() => setReportMode('range')}
+            >
+              <span className="material-icons">date_range</span>
+              Tarih Aralığı
+            </button>
+          </div>
+        </div>
+
+        {reportMode === 'daily' ? (
+          <div className="filter-group">
+            <label htmlFor="date-select">Tarih Seçin:</label>
+            <input
+              type="date"
+              id="date-select"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+        ) : (
+          <div className="filter-group date-range-group">
+            <div className="date-range-inputs">
+              <div className="date-input-wrapper">
+                <label htmlFor="start-date">Başlangıç:</label>
                 <input
                   type="date"
                   id="start-date"
@@ -451,9 +594,8 @@ const KuryeRaporuPage = () => {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-              
-              <div className="filter-group">
-                <label htmlFor="end-date">Bitiş Tarihi:</label>
+              <div className="date-input-wrapper">
+                <label htmlFor="end-date">Bitiş:</label>
                 <input
                   type="date"
                   id="end-date"
@@ -461,234 +603,390 @@ const KuryeRaporuPage = () => {
                   onChange={(e) => setEndDate(e.target.value)}
                 />
               </div>
-              
-              <div className="filter-group">
-                <button 
-                  className="rapor-button"
-                  onClick={fetchKuryeRaporu}
-                  disabled={loading}
-                >
-                  <span className="material-icons">search</span>
-                  {loading ? 'Yükleniyor...' : 'Rapor Getir'}
-                </button>
-              </div>
             </div>
           </div>
         )}
 
         {isCourier && (
-          <div className="courier-section">
-            <div className="courier-header">
-              <h3>Teslimat Raporunuz</h3>
-              
-              {/* Hızlı Tarih Seçimi */}
-              <div className="quick-date-selection">
-                <div className="quick-buttons">
-                  <button 
-                    className={`quick-btn ${startDate === today && endDate === today ? 'active' : ''}`}
-                    onClick={() => setDateRange('today')}
-                  >
-                    <span className="material-icons">today</span>
-                    Bugün
-                  </button>
-                  <button 
-                    className="quick-btn"
-                    onClick={() => setDateRange('yesterday')}
-                  >
-                    <span className="material-icons">yesterday</span>
-                    Dün
-                  </button>
-                  <button 
-                    className="quick-btn"
-                    onClick={() => setDateRange('thisWeek')}
-                  >
-                    <span className="material-icons">date_range</span>
-                    Bu Hafta
-                  </button>
-                  <button 
-                    className="quick-btn"
-                    onClick={() => setDateRange('thisMonth')}
-                  >
-                    <span className="material-icons">calendar_month</span>
-                    Bu Ay
-                  </button>
-                </div>
-              </div>
-              
-              <div className="date-filters">
-                <div className="filter-group">
-                  <label htmlFor="start-date">Başlangıç:</label>
-                  <input
-                    type="date"
-                    id="start-date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                <div className="filter-group">
-                  <label htmlFor="end-date">Bitiş:</label>
-                  <input
-                    type="date"
-                    id="end-date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-                <button 
-                  className="rapor-button"
-                  onClick={fetchKuryeRaporu}
-                  disabled={loading}
-                >
-                  <span className="material-icons">search</span>
-                  {loading ? 'Yükleniyor...' : 'Rapor Getir'}
-                </button>
-              </div>
+          <div className="filter-group">
+            <label>Hızlı Seçim:</label>
+            <div className="quick-date-buttons">
+              <button 
+                className={`filter-btn ${reportMode === 'daily' && selectedDate === today ? 'active' : ''}`}
+                onClick={() => setDateRange('today')}
+              >
+                <span className="material-icons">today</span>
+                Bugün
+              </button>
+              <button 
+                className="filter-btn"
+                onClick={() => setDateRange('yesterday')}
+              >
+                <span className="material-icons">yesterday</span>
+                Dün
+              </button>
+              <button 
+                className="filter-btn"
+                onClick={() => setDateRange('thisWeek')}
+              >
+                <span className="material-icons">date_range</span>
+                Bu Hafta
+              </button>
+              <button 
+                className="filter-btn"
+                onClick={() => setDateRange('thisMonth')}
+              >
+                <span className="material-icons">calendar_month</span>
+                Bu Ay
+              </button>
             </div>
           </div>
         )}
 
-        {raporData.length > 0 && (
-          <div className="summary-section">
-            <h3>
-              <span className="material-icons">summarize</span>
-              Özet
-            </h3>
-            <div className="summary-cards">
-              <div className="summary-card">
-                <div className="card-icon">
+        <div className="filter-group">
+          <label>&nbsp;</label>
+          <button 
+            className="rapor-button"
+            onClick={fetchKuryeRaporu}
+            disabled={loading}
+          >
+            <span className="material-icons">search</span>
+            {loading ? 'Yükleniyor...' : 'Rapor Getir'}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="error-message">
+          <span className="material-icons">error</span>
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="success-message">
+          <span className="material-icons">check_circle</span>
+          {success}
+        </div>
+      )}
+
+      {(!selectedKurye && !isCourier) && !loading && (
+        <div className="empty-state">
+          <span className="material-icons">delivery_dining</span>
+          <h3>Kurye Seçin</h3>
+          <p>Teslimat raporunu görüntülemek için yukarıdan kurye seçin.</p>
+        </div>
+      )}
+
+      {((selectedKurye || isCourier) && ((reportMode === 'daily' && !selectedDate) || (reportMode === 'range' && (!startDate || !endDate)))) && !loading && (
+        <div className="empty-state">
+          <span className="material-icons">date_range</span>
+          <h3>Tarih Seçin</h3>
+          <p>Raporu görüntülemek için tarih seçin ve "Rapor Getir" butonuna tıklayın.</p>
+        </div>
+      )}
+
+      {((selectedKurye || isCourier) && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate))) && loading && (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Kurye raporu yükleniyor...</p>
+        </div>
+      )}
+
+      {((selectedKurye || isCourier) && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate))) && !loading && raporData.length === 0 && !error && (
+        <div className="empty-state">
+          <span className="material-icons">delivery_dining</span>
+          <h3>Teslimat Bulunamadı</h3>
+          <p>Seçilen {reportMode === 'daily' ? 'tarih' : 'tarih aralığı'} ve kurye için teslimat bulunmuyor.</p>
+        </div>
+      )}
+
+      {((selectedKurye || isCourier) && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate))) && !loading && raporData.length > 0 && (
+        <>
+          {/* İstatistikler */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-icon primary">
+                <span className="material-icons">delivery_dining</span>
+              </div>
+              <div className="stat-info">
+                <div className="stat-number">{totals.totalOrders}</div>
+                <div className="stat-label">Toplam Teslimat</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon success">
+                <span className="material-icons">payments</span>
+              </div>
+              <div className="stat-info">
+                <div className="stat-number">{formatAmount(totals.totalAmount)}</div>
+                <div className="stat-label">Toplam Tutar</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon warning">
+                <span className="material-icons">trending_up</span>
+              </div>
+              <div className="stat-info">
+                <div className="stat-number">{formatAmount(totals.totalAmount / totals.totalOrders)}</div>
+                <div className="stat-label">Ortalama Sipariş</div>
+              </div>
+            </div>
+
+            {/* Platform Bazlı İstatistikler */}
+            {filteredRaporData.some(adisyon => adisyon.siparisnerden === 0) && (
+              <div className="stat-card">
+                <div className="stat-icon info">
+                  <span className="material-icons">phone</span>
+                </div>
+                <div className="stat-info">
+                  <div className="stat-number">
+                    {filteredRaporData.filter(adisyon => adisyon.siparisnerden === 0).length}
+                  </div>
+                  <div className="stat-label">Telefon</div>
+                  <div className="stat-sublabel">
+                    {formatAmount(filteredRaporData
+                      .filter(adisyon => adisyon.siparisnerden === 0)
+                      .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {filteredRaporData.some(adisyon => adisyon.siparisnerden === 1) && (
+              <div className="stat-card">
+                <div className="stat-icon warning">
                   <span className="material-icons">delivery_dining</span>
                 </div>
-                <div className="card-content">
-                  <h4>Toplam Teslimat</h4>
-                  <p>{totals.totalOrders}</p>
-                </div>
-              </div>
-              <div className="summary-card">
-                <div className="card-icon">
-                  <span className="material-icons">payments</span>
-                </div>
-                <div className="card-content">
-                  <h4>Toplam Tutar</h4>
-                  <p>{formatAmount(totals.totalAmount)}</p>
-                </div>
-              </div>
-              <div className="summary-card">
-                <div className="card-icon">
-                  <span className="material-icons">trending_up</span>
-                </div>
-                <div className="card-content">
-                  <h4>Ortalama Sipariş</h4>
-                  <p>{formatAmount(totals.totalAmount / totals.totalOrders)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {raporData.length > 0 && Object.keys(paymentTypeTotals).length > 0 && (
-          <div className="payment-summary-section">
-            <h3>
-              <span className="material-icons">payment</span>
-              Ödeme Tipi Detayları
-            </h3>
-            <div className="payment-summary-cards">
-              {Object.entries(paymentTypeTotals).map(([paymentType, data]) => (
-                <div key={paymentType} className="payment-summary-card">
-                  <div className="payment-card-header">
-                    <div className="payment-card-icon">
-                      <span className="material-icons">{data.icon}</span>
-                    </div>
-                    <h4>{paymentType}</h4>
+                <div className="stat-info">
+                  <div className="stat-number">
+                    {filteredRaporData.filter(adisyon => adisyon.siparisnerden === 1).length}
                   </div>
-                  <div className="payment-card-content">
-                    <div className="payment-stat">
-                      <span className="payment-label">Sipariş Sayısı:</span>
-                      <span className="payment-value">{data.count}</span>
-                    </div>
-                    <div className="payment-stat">
-                      <span className="payment-label">Toplam Tutar:</span>
-                      <span className="payment-value amount">{formatAmount(data.total)}</span>
-                    </div>
-                    <div className="payment-stat">
-                      <span className="payment-label">Ortalama:</span>
-                      <span className="payment-value">{formatAmount(data.total / data.count)}</span>
-                    </div>
+                  <div className="stat-label">Yemek Sepeti</div>
+                  <div className="stat-sublabel">
+                    {formatAmount(filteredRaporData
+                      .filter(adisyon => adisyon.siparisnerden === 1)
+                      .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
 
-        {loading ? (
-          <div className="loading-text">Rapor yükleniyor...</div>
-        ) : raporData.length === 0 ? (
-          <div className="no-data">
-            {(isCourier || selectedKurye) 
-              ? 'Seçilen kriterlere uygun teslimat bulunamadı.'
-              : 'Lütfen kurye seçin ve rapor getir butonuna tıklayın.'
-            }
+            {filteredRaporData.some(adisyon => adisyon.siparisnerden === 2) && (
+              <div className="stat-card">
+                <div className="stat-icon success">
+                  <span className="material-icons">motorcycle</span>
+                </div>
+                <div className="stat-info">
+                  <div className="stat-number">
+                    {filteredRaporData.filter(adisyon => adisyon.siparisnerden === 2).length}
+                  </div>
+                  <div className="stat-label">Getir</div>
+                  <div className="stat-sublabel">
+                    {formatAmount(filteredRaporData
+                      .filter(adisyon => adisyon.siparisnerden === 2)
+                      .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {filteredRaporData.some(adisyon => adisyon.siparisnerden === 5) && (
+              <div className="stat-card">
+                <div className="stat-icon danger">
+                  <span className="material-icons">shopping_bag</span>
+                </div>
+                <div className="stat-info">
+                  <div className="stat-number">
+                    {filteredRaporData.filter(adisyon => adisyon.siparisnerden === 5).length}
+                  </div>
+                  <div className="stat-label">Trendyol</div>
+                  <div className="stat-sublabel">
+                    {formatAmount(filteredRaporData
+                      .filter(adisyon => adisyon.siparisnerden === 5)
+                      .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="rapor-table-container">
-            <div className="table-header">
+
+          {/* Ödeme Tipi Detayları */}
+          {Object.keys(paymentTypeTotals).length > 0 && (
+            <div className="payment-summary-section">
               <h3>
-                <span className="material-icons">list</span>
-                Teslimat Detayları
+                <span className="material-icons">payment</span>
+                Ödeme Tipi Detayları
               </h3>
-              <div className="table-info">
-                {totals.totalOrders} teslimat - {formatAmount(totals.totalAmount)}
+              <div className="payment-summary-cards">
+                {Object.entries(paymentTypeTotals).map(([paymentType, data]) => (
+                  <div key={paymentType} className="payment-summary-card">
+                    <div className="payment-card-header">
+                      <div className="payment-card-icon">
+                        <span className="material-icons">{data.icon}</span>
+                      </div>
+                      <h4>{paymentType}</h4>
+                    </div>
+                    <div className="payment-card-content">
+                      <div className="payment-stat">
+                        <span className="payment-label">Sipariş Sayısı:</span>
+                        <span className="payment-value">{data.count}</span>
+                      </div>
+                      <div className="payment-stat">
+                        <span className="payment-label">Toplam Tutar:</span>
+                        <span className="payment-value amount">{formatAmount(data.total)}</span>
+                      </div>
+                      <div className="payment-stat">
+                        <span className="payment-label">Ortalama:</span>
+                        <span className="payment-value">{formatAmount(data.total / data.count)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            
-            <table className="rapor-table">
-              <thead>
-                <tr>
-                  <th>Sipariş No</th>
-                  <th>Tarih</th>
-                  <th>Tip</th>
-                  <th>Tutar</th>
-                  <th>Durum</th>
-                </tr>
-              </thead>
-              <tbody>
-                {raporData.map((adisyon) => {
-                  const tip = getSiparisTipi(adisyon.siparisnerden);
+          )}
+
+          {/* Teslimat Listesi */}
+          {/* Pagination Kontrolleri */}
+          {filteredRaporData.length > 0 && (
+            <div className="pagination-controls">
+              <div className="pagination-info">
+                <span>
+                  {startIndex + 1}-{Math.min(endIndex, filteredRaporData.length)} arası, 
+                  toplam {filteredRaporData.length} teslimat gösteriliyor
+                </span>
+              </div>
+              
+              <div className="pagination-settings">
+                <div className="items-per-page">
+                  <label>Sayfa başına:</label>
+                  <select 
+                    value={itemsPerPage} 
+                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={30}>30</option>
+                    <option value={40}>40</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="pagination-buttons">
+                    <button 
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                      className="pagination-btn"
+                    >
+                      <span className="material-icons">first_page</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="pagination-btn"
+                    >
+                      <span className="material-icons">chevron_left</span>
+                    </button>
+
+                    <div className="page-numbers">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button 
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="pagination-btn"
+                    >
+                      <span className="material-icons">chevron_right</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="pagination-btn"
+                    >
+                      <span className="material-icons">last_page</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="teslimat-grid">
+            {paginatedRaporData.map((adisyon) => {
+              const tip = getSiparisTipi(adisyon.siparisnerden);
+              return (
+                <div 
+                  key={adisyon.id} 
+                  className={`teslimat-card ${tip.color}`}
+                >
+                  <div className="teslimat-header">
+                    <div className="teslimat-code">
+                      <span className="material-icons">receipt</span>
+                      Sipariş No: {adisyon.padsgnum || 'Numara Yok'}
+                    </div>
+                    <div className="teslimat-badges">
+                      <div className={`teslimat-type ${tip.color}`}>
+                        <span className="material-icons">{tip.icon}</span>
+                        {tip.text}
+                      </div>
+                      <div className="teslimat-status success">
+                        <span className="material-icons">check_circle</span>
+                        Teslim Edildi
+                      </div>
+                    </div>
+                  </div>
                   
-                  return (
-                    <tr key={adisyon.id}>
-                      <td>
-                        <div className="siparis-info">
-                          <span className="material-icons">receipt</span>
-                          {adisyon.padsgnum || 'Numara Yok'}
-                        </div>
-                      </td>
-                      <td>{formatDate(adisyon.tarih)}</td>
-                      <td>
-                        <span className={`tip-badge ${tip.color}`}>
-                          <span className="material-icons">{tip.icon}</span>
-                          {tip.text}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="amount-text">
-                          {formatAmount(adisyon.atop)}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="durum-badge success">
-                          <span className="material-icons">check_circle</span>
-                          Teslim Edildi
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  <div className="teslimat-details">
+                    <div className="detail-row">
+                      <span className="detail-label">Tutar:</span>
+                      <span className="detail-value amount">{formatAmount(adisyon.atop)}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Tarih:</span>
+                      <span className="detail-value">{formatDate(adisyon.tarih)}</span>
+                    </div>
+                    {adisyon.motorcu && (
+                      <div className="detail-row">
+                        <span className="detail-label">Kurye:</span>
+                        <span className="detail-value">{adisyon.motorcu}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 };

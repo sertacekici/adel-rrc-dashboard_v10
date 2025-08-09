@@ -379,52 +379,39 @@ const SatisAdetleriPage = () => {
 
           {/* Satış Adetleri Tablosu */}
           <div className="table-container">
-            <div className="table-header">
+            <div className="table-header compact">
               <h3>
                 <span className="material-icons">list_alt</span>
                 Ürün Satış Detayları
               </h3>
             </div>
-            
-            <div className="table-wrapper">
-              <table className="satis-table">
-                <thead>
-                  <tr>
-                    <th>Sıra</th>
-                    <th>Ürün Adı</th>
-                    <th>Boyut</th>
-                    <th>Satış Adedi</th>
-                    <th>Birim Fiyat</th>
-                    <th>Toplam Tutar</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {satisAdetleri.map((item, index) => (
-                    <tr key={item.anahtar}>
-                      <td className="sira-col">
-                        <span className="sira-badge">{index + 1}</span>
-                      </td>
-                      <td className="urun-col">
-                        <div className="urun-info">
-                          <span className="urun-adi">{item.urunAdi}</span>
-                        </div>
-                      </td>
-                      <td className="boyut-col">
-                        <span className="boyut-badge">{item.boyut}</span>
-                      </td>
-                      <td className="miktar-col">
-                        <span className="miktar-badge">{item.miktar}</span>
-                      </td>
-                      <td className="fiyat-col">
-                        {formatAmount(item.birimFiyat)}
-                      </td>
-                      <td className="tutar-col">
-                        <span className="tutar-value">{formatAmount(item.toplamTutar)}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mobile-cards">
+              {satisAdetleri.map((item, index) => (
+                <div key={item.anahtar} className="sale-card">
+                  <div className="sale-card-header">
+                    <span className="rank">#{index + 1}</span>
+                    <span className="urun">{item.urunAdi}</span>
+                  </div>
+                  <div className="sale-card-body">
+                    <div className="row">
+                      <span className="label">Boyut</span>
+                      <span className="value size">{item.boyut}</span>
+                    </div>
+                    <div className="row">
+                      <span className="label">Adet</span>
+                      <span className="value adet">{item.miktar}</span>
+                    </div>
+                    <div className="row">
+                      <span className="label">Birim</span>
+                      <span className="value">{formatAmount(item.birimFiyat)}</span>
+                    </div>
+                    <div className="row total">
+                      <span className="label">Toplam</span>
+                      <span className="value tutar">{formatAmount(item.toplamTutar)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </>
