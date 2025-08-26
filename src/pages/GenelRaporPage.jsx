@@ -25,6 +25,8 @@ const GenelRaporPage = () => {
 
   // Filter state
   const [filter, setFilter] = useState({
+    mode: 'range', // 'daily' | 'range'
+    date: new Date().toISOString().split('T')[0],
     startDate: prevMonthLastDay,
     endDate: nextMonthFirstDay,
     subeId: currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : ''
@@ -65,8 +67,12 @@ const GenelRaporPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const startDate = new Date(filter.startDate + 'T00:00:00');
-      const endDate = new Date(filter.endDate + 'T23:59:59');
+      const startDate = filter.mode === 'daily'
+        ? new Date(filter.date + 'T00:00:00')
+        : new Date(filter.startDate + 'T00:00:00');
+      const endDate = filter.mode === 'daily'
+        ? new Date(filter.date + 'T23:59:59')
+        : new Date(filter.endDate + 'T23:59:59');
 
       // Gider kayıtlarını getir
       let giderQuery;
@@ -246,7 +252,21 @@ const GenelRaporPage = () => {
     }
   };
 
+  // İptal kontrolü (AdisyonlarPage ile aynı mantık)
+  const isCanceled = (adisyon) => {
+    if (!adisyon || !adisyon.durum) return false;
+    try {
+      const s = String(adisyon.durum).toUpperCase();
+      return s.includes('İPTAL') || s.includes('IPTAL');
+    } catch {
+      return false;
+    }
+  };
+
   // Hesaplamalar
+  const nonCanceledAdisyonlar = data.adisyonlar.filter(a => !isCanceled(a));
+  const canceledAdisyonlar = data.adisyonlar.filter(a => isCanceled(a));
+
   const calculations = {
     // Toplam Gider
     toplamGider: data.giderler.reduce((total, item) => total + item.tutar, 0),
@@ -259,14 +279,14 @@ const GenelRaporPage = () => {
       .filter(item => item.odemeKaynagi === 'merkez_kasa')
       .reduce((total, item) => total + item.tutar, 0),
     
-  // Toplam Satış (atop alanı öncelikli; yoksa fallback toplamTutar)
-  toplamSatis: data.adisyonlar.reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0),
+  // Toplam Satış (iptaller hariç, atop alanı öncelikli; yoksa fallback toplamTutar)
+  toplamSatis: nonCanceledAdisyonlar.reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0),
     
     // Ödeme Tipine Göre Satışlar
-    nakit: data.adisyonlar
+    nakit: nonCanceledAdisyonlar
       .filter(item => (item.odemeTipi === 'Nakit' || item.odemeTipi === 1))
       .reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0),
-    kartKredi: data.adisyonlar
+    kartKredi: nonCanceledAdisyonlar
       .filter(item => (item.odemeTipi === 'Kart/Kredi' || item.odemeTipi === 2))
       .reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0),
     
@@ -300,7 +320,7 @@ const GenelRaporPage = () => {
     return 'Diğer';
   };
 
-  const odemeTipiToplamlariObj = data.adisyonlar.reduce((acc, item) => {
+  const odemeTipiToplamlariObj = nonCanceledAdisyonlar.reduce((acc, item) => {
     const raw = item.odemetipi !== undefined ? item.odemetipi : item.odemeTipi; // tercih 'odemetipi'
     const key = normalizeOdemeTipi(raw);
     const tutar = Number(item.atop) || Number(item.toplamTutar) || 0;
@@ -368,25 +388,60 @@ const GenelRaporPage = () => {
 
       {/* Filtreler */}
       <div className="filters-section">
-        <div className="filter-row">
+        <div className="filter-row" style={{ gap: '16px', flexWrap: 'wrap' }}>
           <div className="filter-group">
-            <label htmlFor="start-date">Başlangıç Tarihi:</label>
-            <input
-              id="start-date"
-              type="date"
-              value={filter.startDate}
-              onChange={(e) => setFilter({ ...filter, startDate: e.target.value })}
-            />
+            <label>Rapor Tipi:</label>
+            <div className="report-mode-buttons">
+              <button
+                className={`filter-btn ${filter.mode === 'daily' ? 'active' : ''}`}
+                onClick={() => setFilter({ ...filter, mode: 'daily' })}
+              >
+                <span className="material-icons">today</span>
+                Günlük
+              </button>
+              <button
+                className={`filter-btn ${filter.mode === 'range' ? 'active' : ''}`}
+                onClick={() => setFilter({ ...filter, mode: 'range' })}
+              >
+                <span className="material-icons">date_range</span>
+                Tarih Aralığı
+              </button>
+            </div>
           </div>
-          <div className="filter-group">
-            <label htmlFor="end-date">Bitiş Tarihi:</label>
-            <input
-              id="end-date"
-              type="date"
-              value={filter.endDate}
-              onChange={(e) => setFilter({ ...filter, endDate: e.target.value })}
-            />
-          </div>
+
+          {filter.mode === 'daily' ? (
+            <div className="filter-group">
+              <label htmlFor="date">Tarih:</label>
+              <input
+                id="date"
+                type="date"
+                value={filter.date}
+                onChange={(e) => setFilter({ ...filter, date: e.target.value })}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="filter-group">
+                <label htmlFor="start-date">Başlangıç Tarihi:</label>
+                <input
+                  id="start-date"
+                  type="date"
+                  value={filter.startDate}
+                  onChange={(e) => setFilter({ ...filter, startDate: e.target.value })}
+                />
+              </div>
+              <div className="filter-group">
+                <label htmlFor="end-date">Bitiş Tarihi:</label>
+                <input
+                  id="end-date"
+                  type="date"
+                  value={filter.endDate}
+                  onChange={(e) => setFilter({ ...filter, endDate: e.target.value })}
+                />
+              </div>
+            </>
+          )}
+
           {currentUser?.role === 'sirket_yoneticisi' && (
             <div className="filter-group">
               <label htmlFor="sube-select">Şube:</label>
@@ -469,18 +524,27 @@ const GenelRaporPage = () => {
                 <span className="value">₺{item.tutar.toFixed(2)} ({item.yuzde.toFixed(1)}%)</span>
               </div>
             ))}
-            {data.adisyonlar.length > 0 && (
+            {nonCanceledAdisyonlar.length > 0 && (
               <div className="metric">
                 <span className="label">Toplam Adisyon:</span>
-                <span className="value">{data.adisyonlar.length}</span>
+                <span className="value">{nonCanceledAdisyonlar.length}</span>
               </div>
             )}
-            {data.adisyonlar.length > 0 && (
+            {nonCanceledAdisyonlar.length > 0 && (
               <div className="metric">
                 <span className="label">Ortalama Adisyon:</span>
-                <span className="value">₺{(calculations.toplamSatis / data.adisyonlar.length).toFixed(2)}</span>
+                <span className="value">₺{(calculations.toplamSatis / nonCanceledAdisyonlar.length).toFixed(2)}</span>
               </div>
             )}
+            {/* İptal metrikleri */}
+            <div className="metric">
+              <span className="label">İptal Adedi:</span>
+              <span className="value">{canceledAdisyonlar.length}</span>
+            </div>
+            <div className="metric">
+              <span className="label">İptal Tutarı:</span>
+              <span className="value">₺{canceledAdisyonlar.reduce((t, a) => t + (Number(a.atop) || Number(a.toplamTutar) || 0), 0).toFixed(2)}</span>
+            </div>
           </div>
         </div>
 

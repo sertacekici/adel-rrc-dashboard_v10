@@ -13,7 +13,7 @@ const AdisyonlarPage = () => {
   // Seçilen şube (rrc_restaurant_id ile aynı olacak şekilde tutulur)
   const [selectedSube, setSelectedSube] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [orderTypeFilter, setOrderTypeFilter] = useState('all'); // 'all', 'masa', 'online'
+  const [orderTypeFilter, setOrderTypeFilter] = useState('all'); // 'all', 'masa', 'online', 'canceled'
   const [reportMode, setReportMode] = useState('daily'); // 'daily', 'range'
   // Tarih aralığı varsayılanları: başlangıç = önceki ayın son günü, bitiş = sonraki ayın ilk günü
   const todayRef = new Date();
@@ -236,6 +236,8 @@ const AdisyonlarPage = () => {
       filtered = adisyonlar.filter(adisyon => adisyon.siparisnerden === 88);
     } else if (orderTypeFilter === 'online') {
       filtered = adisyonlar.filter(adisyon => adisyon.siparisnerden !== 88);
+    } else if (orderTypeFilter === 'canceled') {
+      filtered = adisyonlar.filter(adisyon => isCanceled(adisyon));
     }
     // 'all' durumunda tüm adisyonları göster
     
@@ -294,6 +296,18 @@ const AdisyonlarPage = () => {
         return { text: 'Ödemesi Alınmış', icon: 'paid', color: 'success', bgColor: 'success' };
       default:
         return { text: 'Bilinmiyor', icon: 'help', color: 'secondary', bgColor: 'secondary' };
+    }
+  };
+
+  // İptal kontrolü (paket siparişler için string durum üzerinden)
+  const isCanceled = (adisyon) => {
+    if (!adisyon || !adisyon.durum) return false;
+    try {
+      const s = String(adisyon.durum).toUpperCase();
+      // Türkçe büyük İ harfi ve ASCII I ile olası yazımlar
+      return s.includes('İPTAL') || s.includes('IPTAL');
+    } catch (e) {
+      return false;
     }
   };
 
@@ -511,6 +525,14 @@ const AdisyonlarPage = () => {
               <span className="material-icons">takeout_dining</span>
               Paket
             </button>
+            <button
+              className={`filter-btn ${orderTypeFilter === 'canceled' ? 'active' : ''}`}
+              onClick={() => setOrderTypeFilter('canceled')}
+              title="İptal edilen adisyonları göster"
+            >
+              <span className="material-icons">cancel</span>
+              İptal Edilenler
+            </button>
           </div>
         </div>
       </div>
@@ -556,169 +578,150 @@ const AdisyonlarPage = () => {
         <>
           {/* İstatistikler */}
           <div className="stats-grid">
-            {/* Genel İstatistikler */}
-            <div className="stat-card">
-              <div className="stat-icon primary">
-                <span className="material-icons">receipt</span>
-              </div>
-              <div className="stat-info">
-                <div className="stat-number">{filteredAdisyonlar.length}</div>
-                <div className="stat-label">Toplam Adisyon</div>
-              </div>
-            </div>
+            {(() => {
+              const canceledAdisyonlar = filteredAdisyonlar.filter(isCanceled);
+              const nonCanceledAdisyonlar = filteredAdisyonlar.filter(a => !isCanceled(a));
+              const toplamNonCanceledTutar = nonCanceledAdisyonlar.reduce((t, a) => t + (Number(a.atop) || 0), 0);
+              const toplamCanceledTutar = canceledAdisyonlar.reduce((t, a) => t + (Number(a.atop) || 0), 0);
+              const masaNonCanceled = nonCanceledAdisyonlar.filter(a => a.siparisnerden === 88);
+              const paketNonCanceled = nonCanceledAdisyonlar.filter(a => a.siparisnerden !== 88);
 
-            <div className="stat-card">
-              <div className="stat-icon danger">
-                <span className="material-icons">payments</span>
-              </div>
-              <div className="stat-info">
-                <div className="stat-number">
-                  {formatAmount(filteredAdisyonlar.reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
-                </div>
-                <div className="stat-label">Genel Toplam</div>
-              </div>
-            </div>
-
-            {/* Masa Siparişleri İstatistikleri */}
-            <div className="stat-card">
-              <div className="stat-icon success">
-                <span className="material-icons">table_restaurant</span>
-              </div>
-              <div className="stat-info">
-                <div className="stat-number">
-                  {filteredAdisyonlar.filter(adisyon => adisyon.siparisnerden === 88).length}
-                </div>
-                <div className="stat-label">Masa Siparişi</div>
-                <div className="stat-sublabel">
-                  {formatAmount(filteredAdisyonlar
-                    .filter(adisyon => adisyon.siparisnerden === 88)
-                    .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
-                </div>
-              </div>
-            </div>
-
-            {/* Paket Siparişleri İstatistikleri */}
-            <div className="stat-card">
-              <div className="stat-icon warning">
-                <span className="material-icons">takeout_dining</span>
-              </div>
-              <div className="stat-info">
-                <div className="stat-number">
-                  {filteredAdisyonlar.filter(adisyon => adisyon.siparisnerden !== 88).length}
-                </div>
-                <div className="stat-label">Paket Sipariş</div>
-                <div className="stat-sublabel">
-                  {formatAmount(filteredAdisyonlar
-                    .filter(adisyon => adisyon.siparisnerden !== 88)
-                    .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
-                </div>
-              </div>
-            </div>
-
-            {/* Platform Bazlı İstatistikler - Sadece paket siparişleri varsa göster */}
-            {filteredAdisyonlar.some(adisyon => adisyon.siparisnerden !== 88) && (
-              <>
-                {/* Telefon Siparişleri */}
-                {filteredAdisyonlar.some(adisyon => adisyon.siparisnerden === 0) && (
+              return (
+                <>
+                  {/* Genel İstatistikler - İptaller hariç */}
                   <div className="stat-card">
-                    <div className="stat-icon info">
-                      <span className="material-icons">phone</span>
+                    <div className="stat-icon primary">
+                      <span className="material-icons">receipt</span>
                     </div>
                     <div className="stat-info">
-                      <div className="stat-number">
-                        {filteredAdisyonlar.filter(adisyon => adisyon.siparisnerden === 0).length}
-                      </div>
-                      <div className="stat-label">Telefon</div>
-                      <div className="stat-sublabel">
-                        {formatAmount(filteredAdisyonlar
-                          .filter(adisyon => adisyon.siparisnerden === 0)
-                          .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
-                      </div>
+                      <div className="stat-number">{nonCanceledAdisyonlar.length}</div>
+                      <div className="stat-label">Toplam Adisyon</div>
                     </div>
                   </div>
-                )}
 
-                {/* Yemek Sepeti */}
-                {filteredAdisyonlar.some(adisyon => adisyon.siparisnerden === 1) && (
-                  <div className="stat-card">
-                    <div className="stat-icon warning">
-                      <span className="material-icons">delivery_dining</span>
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">
-                        {filteredAdisyonlar.filter(adisyon => adisyon.siparisnerden === 1).length}
-                      </div>
-                      <div className="stat-label">Yemek Sepeti</div>
-                      <div className="stat-sublabel">
-                        {formatAmount(filteredAdisyonlar
-                          .filter(adisyon => adisyon.siparisnerden === 1)
-                          .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Getir */}
-                {filteredAdisyonlar.some(adisyon => adisyon.siparisnerden === 2) && (
-                  <div className="stat-card">
-                    <div className="stat-icon success">
-                      <span className="material-icons">motorcycle</span>
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">
-                        {filteredAdisyonlar.filter(adisyon => adisyon.siparisnerden === 2).length}
-                      </div>
-                      <div className="stat-label">Getir</div>
-                      <div className="stat-sublabel">
-                        {formatAmount(filteredAdisyonlar
-                          .filter(adisyon => adisyon.siparisnerden === 2)
-                          .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Trendyol */}
-                {filteredAdisyonlar.some(adisyon => adisyon.siparisnerden === 5) && (
                   <div className="stat-card">
                     <div className="stat-icon danger">
-                      <span className="material-icons">shopping_bag</span>
+                      <span className="material-icons">payments</span>
                     </div>
                     <div className="stat-info">
-                      <div className="stat-number">
-                        {filteredAdisyonlar.filter(adisyon => adisyon.siparisnerden === 5).length}
-                      </div>
-                      <div className="stat-label">Trendyol</div>
-                      <div className="stat-sublabel">
-                        {formatAmount(filteredAdisyonlar
-                          .filter(adisyon => adisyon.siparisnerden === 5)
-                          .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
-                      </div>
+                      <div className="stat-number">{formatAmount(toplamNonCanceledTutar)}</div>
+                      <div className="stat-label">Genel Toplam</div>
                     </div>
                   </div>
-                )}
 
-                {/* Migros */}
-                {filteredAdisyonlar.some(adisyon => adisyon.siparisnerden === 8) && (
+                  {/* İptal İstatistiği (ayrı göster) */}
                   <div className="stat-card">
                     <div className="stat-icon secondary">
-                      <span className="material-icons">store</span>
+                      <span className="material-icons">cancel</span>
                     </div>
                     <div className="stat-info">
-                      <div className="stat-number">
-                        {filteredAdisyonlar.filter(adisyon => adisyon.siparisnerden === 8).length}
-                      </div>
-                      <div className="stat-label">Migros</div>
-                      <div className="stat-sublabel">
-                        {formatAmount(filteredAdisyonlar
-                          .filter(adisyon => adisyon.siparisnerden === 8)
-                          .reduce((total, adisyon) => total + (Number(adisyon.atop) || 0), 0))}
-                      </div>
+                      <div className="stat-number">{canceledAdisyonlar.length}</div>
+                      <div className="stat-label">İptal Adedi</div>
+                      <div className="stat-sublabel">{formatAmount(toplamCanceledTutar)}</div>
                     </div>
                   </div>
-                )}
-              </>
-            )}
+
+                  {/* Masa Siparişleri İstatistikleri - İptalsiz */}
+                  <div className="stat-card">
+                    <div className="stat-icon success">
+                      <span className="material-icons">table_restaurant</span>
+                    </div>
+                    <div className="stat-info">
+                      <div className="stat-number">{masaNonCanceled.length}</div>
+                      <div className="stat-label">Masa Siparişi</div>
+                      <div className="stat-sublabel">{formatAmount(masaNonCanceled.reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                    </div>
+                  </div>
+
+                  {/* Paket Siparişleri İstatistikleri - İptalsiz */}
+                  <div className="stat-card">
+                    <div className="stat-icon warning">
+                      <span className="material-icons">takeout_dining</span>
+                    </div>
+                    <div className="stat-info">
+                      <div className="stat-number">{paketNonCanceled.length}</div>
+                      <div className="stat-label">Paket Sipariş</div>
+                      <div className="stat-sublabel">{formatAmount(paketNonCanceled.reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                    </div>
+                  </div>
+
+                  {/* Platform Bazlı İstatistikler - Yalnızca iptalsiz paket varsa göster */}
+                  {paketNonCanceled.length > 0 && (
+                    <>
+                      {/* Telefon Siparişleri */}
+                      {paketNonCanceled.some(a => a.siparisnerden === 0) && (
+                        <div className="stat-card">
+                          <div className="stat-icon info">
+                            <span className="material-icons">phone</span>
+                          </div>
+                          <div className="stat-info">
+                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 0).length}</div>
+                            <div className="stat-label">Telefon</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 0).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Yemek Sepeti */}
+                      {paketNonCanceled.some(a => a.siparisnerden === 1) && (
+                        <div className="stat-card">
+                          <div className="stat-icon warning">
+                            <span className="material-icons">delivery_dining</span>
+                          </div>
+                          <div className="stat-info">
+                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 1).length}</div>
+                            <div className="stat-label">Yemek Sepeti</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 1).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Getir */}
+                      {paketNonCanceled.some(a => a.siparisnerden === 2) && (
+                        <div className="stat-card">
+                          <div className="stat-icon success">
+                            <span className="material-icons">motorcycle</span>
+                          </div>
+                          <div className="stat-info">
+                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 2).length}</div>
+                            <div className="stat-label">Getir</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 2).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Trendyol */}
+                      {paketNonCanceled.some(a => a.siparisnerden === 5) && (
+                        <div className="stat-card">
+                          <div className="stat-icon danger">
+                            <span className="material-icons">shopping_bag</span>
+                          </div>
+                          <div className="stat-info">
+                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 5).length}</div>
+                            <div className="stat-label">Trendyol</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 5).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Migros */}
+                      {paketNonCanceled.some(a => a.siparisnerden === 8) && (
+                        <div className="stat-card">
+                          <div className="stat-icon secondary">
+                            <span className="material-icons">store</span>
+                          </div>
+                          <div className="stat-info">
+                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 8).length}</div>
+                            <div className="stat-label">Migros</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 8).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Adisyon Listesi */}

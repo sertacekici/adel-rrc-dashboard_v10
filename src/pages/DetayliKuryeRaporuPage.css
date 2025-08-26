@@ -1,0 +1,195 @@
+/* Container */
+.detayli-kurye-raporu-container {
+  padding: 20px;
+  margin: 0;
+  background: #f5f7fb;
+  min-height: 100vh;
+}
+
+.white-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+}
+
+/* Filters */
+.filters-section {
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 200px;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #1e3a8a;
+  font-size: 0.95rem;
+}
+
+.filter-group select,
+.filter-group input[type="date"] {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid rgba(30,58,138,0.15);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+  transition: all 0.2s ease;
+  color: #1e3a8a;
+}
+
+.filter-group select:focus,
+.filter-group input[type="date"]:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+
+.report-mode-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.6rem 0.9rem;
+  background: #fff;
+  border: 1px solid rgba(30,58,138,0.15);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e3a8a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.rapor-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.2rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.stat-icon.primary { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.stat-icon.success { background: linear-gradient(135deg, #10b981, #059669); }
+.stat-icon.warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+.stat-number { font-size: 1.6rem; font-weight: 800; color: #111827; }
+.stat-label { font-size: 0.9rem; color: #6b7280; }
+
+/* List */
+.list-container { padding: 1rem; }
+
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.list-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: #1f2937;
+}
+
+.mobile-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.delivery-card {
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: #fff;
+}
+
+.card-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; }
+.card-row.between { justify-content: space-between; }
+.card-row .left { display: inline-flex; align-items: center; gap: 0.5rem; color: #111827; }
+.card-row .right.amount { font-weight: 800; color: #059669; }
+
+.label { color: #6b7280; font-size: 0.85rem; min-width: 84px; }
+.value { color: #111827; font-weight: 600; }
+
+/* Empty & errors */
+.empty-state, .error-message {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin: 1rem 0;
+}
+
+.empty-state { text-align: center; }
+.error-message { display: flex; align-items: center; gap: 0.5rem; color: #dc2626; }
+
+/* Responsive tweaks */
+@media (max-width: 560px) {
+  .filters-section { gap: 0.75rem; padding: 1rem; }
+  .filter-group { min-width: 46%; }
+  .mobile-cards { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+
+@media (max-width: 400px) {
+  .filter-group { min-width: 100%; }
+  .mobile-cards { grid-template-columns: 1fr; }
+}

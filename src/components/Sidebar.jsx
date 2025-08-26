@@ -105,6 +105,11 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       path: '/kurye-raporu',
       icon: 'assessment',
     },
+    {
+      title: 'Detaylı Kurye Raporu',
+      path: '/detayli-kurye-raporu',
+      icon: 'insights',
+    },
   ];
 
   const giderMenuItems = [
