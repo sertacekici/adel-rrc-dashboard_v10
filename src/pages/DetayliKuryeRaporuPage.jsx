@@ -9,35 +9,32 @@ import './DetayliKuryeRaporuPage.css';
 // Basit util: sayısal/karışık tarih alanlarını ISO 'YYYY-MM-DD' stringe indirger
 const normalizeDateStr = (val) => {
   if (!val) return '';
-  try {
-    // Firestore Timestamp
-    if (val?.toDate) {
-      const d = val.toDate();
-      return d.toISOString().split('T')[0];
-    }
-    const s = String(val);
-    if (s.includes('T')) return s.split('T')[0];
-    if (s.includes(' ')) return s.split(' ')[0];
-    // Yalnız tarih geldiyse
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-    // Son çare: Date parse
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-  } catch (_) {}
-  return '';
+  // Firestore Timestamp
+  if (val && typeof val === 'object' && typeof val.toDate === 'function') {
+    const d = val.toDate();
+    return isNaN(d?.getTime?.()) ? '' : d.toISOString().split('T')[0];
+  }
+  const s = String(val);
+  if (s.includes('T')) return s.split('T')[0];
+  if (s.includes(' ')) return s.split(' ')[0];
+  // Yalnız tarih geldiyse
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Son çare: Date parse
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
 };
 
 // Karışık tarih değerini Date objesine çevir (Timestamp/string)
 const toDate = (val) => {
   if (!val) return null;
-  try {
-    if (val?.toDate) return val.toDate();
-    const s = String(val);
-    const iso = s.includes('T') ? s : s.includes(' ') ? s.replace(' ', 'T') : s;
-    const d = new Date(iso);
-    if (!isNaN(d.getTime())) return d;
-  } catch (_) {}
-  return null;
+  if (val && typeof val === 'object' && typeof val.toDate === 'function') {
+    const d = val.toDate();
+    return isNaN(d?.getTime?.()) ? null : d;
+  }
+  const s = String(val);
+  const iso = s.includes('T') ? s : s.includes(' ') ? s.replace(' ', 'T') : s;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
 };
 
 const formatDateTime = (val) => {
