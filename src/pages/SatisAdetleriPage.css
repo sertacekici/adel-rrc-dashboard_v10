@@ -291,6 +291,11 @@
   color: #2E5BFF;
 }
 
+/* Stronger specificity to avoid accidental white-on-white in section header */
+.table-container .table-header { background: #eef2f7; border-bottom: 1px solid rgba(30,58,138,0.1); }
+.table-container .table-header h3 { color: #0f172a !important; }
+.table-container .table-header h3 .material-icons { color: #2E5BFF !important; }
+
 /* Removed scroll wrapper */
 
 /* Legacy table hidden */
