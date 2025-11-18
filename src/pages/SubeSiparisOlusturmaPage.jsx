@@ -450,34 +450,12 @@ const SubeSiparisOlusturmaPage = () => {
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon success">
-              <span className="material-icons">inventory_2</span>
-            </div>
-            <div className="stat-info">
-              <div className="stat-number">
-                {siparisListesi.reduce((total, item) => total + item.miktar, 0)}
-              </div>
-              <div className="stat-label">Toplam Miktar</div>
-            </div>
-          </div>
-
-          <div className="stat-card">
             <div className="stat-icon danger">
               <span className="material-icons">payments</span>
             </div>
             <div className="stat-info">
               <div className="stat-number">₺{getTotalAmount().toFixed(2)}</div>
               <div className="stat-label">Toplam Tutar</div>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon warning">
-              <span className="material-icons">calculate</span>
-            </div>
-            <div className="stat-info">
-              <div className="stat-number">₺{siparisListesi.length > 0 ? (getTotalAmount() / siparisListesi.reduce((total, item) => total + item.miktar, 0)).toFixed(2) : '0.00'}</div>
-              <div className="stat-label">Ortalama Birim Fiyat</div>
             </div>
           </div>
         </div>
@@ -652,15 +630,19 @@ const SubeSiparisOlusturmaPage = () => {
                     {siparisListesi.map((item) => (
                       <div key={item.urun.id} className="sepet-item">
                         <div className="item-info">
-                          <div className="item-icon">
-                            <span className="material-icons">inventory_2</span>
-                          </div>
-                          <div>
+                          <div className="item-main">
                             <h5>{item.urun.urun_adi}</h5>
                             <p className="item-details">
                               <span className="price-tag">₺{item.urun.fiyat.toFixed(2)} / {item.urun.birim_olcusu}</span>
                             </p>
                           </div>
+                          <button 
+                            className="remove-item"
+                            onClick={() => handleUrunCikar(item.urun.id)}
+                            title="Sepetten Çıkar"
+                          >
+                            <span className="material-icons">delete</span>
+                          </button>
                         </div>
                         <div className="item-controls">
                           <div className="miktar-controls">
@@ -680,13 +662,6 @@ const SubeSiparisOlusturmaPage = () => {
                             </button>
                           </div>
                           <div className="item-total">₺{item.toplam_fiyat.toFixed(2)}</div>
-                          <button 
-                            className="remove-item"
-                            onClick={() => handleUrunCikar(item.urun.id)}
-                            title="Sepetten Çıkar"
-                          >
-                            <span className="material-icons">delete</span>
-                          </button>
                         </div>
                       </div>
                     ))}
@@ -694,15 +669,6 @@ const SubeSiparisOlusturmaPage = () => {
 
                   <div className="sepet-ozet">
                     <div className="summary-rows">
-                      <div className="summary-row">
-                        <span>Ürün sayısı:</span>
-                        <span>{siparisListesi.length} ürün</span>
-                      </div>
-                      <div className="summary-row">
-                        <span>Toplam miktar:</span>
-                        <span>{siparisListesi.reduce((total, item) => total + item.miktar, 0)} birim</span>
-                      </div>
-                      <div className="summary-divider"></div>
                       <div className="total-row">
                         <span>Toplam Tutar:</span>
                         <span className="total-amount">₺{getTotalAmount().toFixed(2)}</span>

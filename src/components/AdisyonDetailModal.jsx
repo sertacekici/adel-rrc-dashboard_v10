@@ -15,6 +15,29 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
     }
   }, [isOpen, adisyon]);
 
+  // Modal açıldığında sayfayı en üste kaydır ve arka plan kaydırmayı kilitle
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+      } catch (_) {
+        // ignore
+      }
+    } else {
+      // modal kapandığında geri aç
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    }
+
+    // güvenli temizlik (component unmount)
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   const fetchAdisyonIcerik = async () => {
     setLoading(true);
     setError(null);
@@ -170,7 +193,7 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
         return { text: 'Online Ödeme', icon: 'online_prediction', color: 'primary' };
       default:
         console.log('Bilinmeyen ödeme tipi:', odemetipi);
-        return { text: `Ödeme Tipi: ${odemetipi}`, icon: 'payment', color: 'secondary' };
+        return { text: (odemetipi ?? '').toString() || 'Diğer', icon: 'payment', color: 'secondary' };
     }
   };
 
@@ -332,7 +355,7 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
                   const birimFiyat = Number(item.birimfiyat) || Number(item.fiyat) || 0;
                   const hesaplananToplam = miktar * birimFiyat;
                   const mevcutToplam = Number(item.toplam) || Number(item.tutar) || hesaplananToplam;
-                  
+
                   return (
                     <div key={item.id || index} className="content-item">
                       <div className="item-header">
@@ -340,62 +363,27 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
                           <span className="material-icons">restaurant</span>
                           {item.urunadi || 'Ürün adı bulunamadı'}
                         </div>
-                        <div className="item-total">
-                          {formatAmount(mevcutToplam)}
+                        <div className="item-right">
+                          <span className="item-qty">x {miktar}</span>
+                          <span className="item-total">{formatAmount(mevcutToplam)}</span>
                         </div>
                       </div>
-                    <div className="item-details">
-                      <div className="detail-grid">
-                        <div className="detail-item side-by-side">
-                          <div className="quantity-info">
-                            <span className="detail-label">Miktar:</span>
-                            <span className="detail-value">{miktar}</span>
-                          </div>
-                          <div className="price-info">
-                            <span className="detail-label">Birim Fiyat:</span>
-                            <span className="detail-value">{formatAmount(birimFiyat)}</span>
+
+                      {item.aciklama && (
+                        <div className="item-details">
+                          <div className="detail-grid">
+                            <div className="detail-item full-width">
+                              <span className="detail-label">Açıklama:</span>
+                              <span className="detail-value">{item.aciklama}</span>
+                            </div>
                           </div>
                         </div>
-                        {item.aciklama && (
-                          <div className="detail-item full-width">
-                            <span className="detail-label">Açıklama:</span>
-                            <span className="detail-value">{item.aciklama}</span>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  </div>
                   );
                 })}
-                
-                {/* Toplam Özet */}
-                <div className="content-summary">
-                  <div className="summary-row">
-                    <span className="summary-label">Toplam Ürün Sayısı:</span>
-                    <span className="summary-value">{adisyonIcerik.length}</span>
-                  </div>
-                  <div className="summary-row">
-                    <span className="summary-label">Toplam Miktar:</span>
-                    <span className="summary-value">
-                      {adisyonIcerik.reduce((total, item) => {
-                        const miktar = Number(item.miktar) || Number(item.adet) || 0;
-                        return total + miktar;
-                      }, 0)}
-                    </span>
-                  </div>
-                  <div className="summary-row total">
-                    <span className="summary-label">Genel Toplam:</span>
-                    <span className="summary-value">
-                      {formatAmount(adisyonIcerik.reduce((total, item) => {
-                        const miktar = Number(item.miktar) || Number(item.adet) || 0;
-                        const birimFiyat = Number(item.birimfiyat) || Number(item.fiyat) || 0;
-                        const hesaplananToplam = miktar * birimFiyat;
-                        const mevcutToplam = Number(item.toplam) || Number(item.tutar) || hesaplananToplam;
-                        return total + mevcutToplam;
-                      }, 0))}
-                    </span>
-                  </div>
-                </div>
+
+                {/* Genel toplam bölümü kaldırıldı */}
               </div>
             )}
           </div>

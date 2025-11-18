@@ -641,37 +641,28 @@
 }
 
 .sepet-item {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s ease;
+  background: transparent;
+  border-radius: 0;
+  padding: 12px 0;
+  margin-bottom: 8px;
+  border: none;
+  transition: none;
   display: flex;
   flex-direction: column;
-  position: relative;
-  overflow: hidden;
+  position: static;
+  overflow: visible;
 }
 
 .sepet-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: #3b82f6;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  content: none;
 }
 
 .sepet-item:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: transparent;
 }
 
 .sepet-item:hover::before {
-  opacity: 1;
+  content: none;
 }
 
 .sepet-item:last-child {
@@ -680,9 +671,17 @@
 
 .sepet-item .item-info {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
+}
+
+.sepet-item .item-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .sepet-item .item-icon {
@@ -825,14 +824,7 @@
 }
 
 .sepet-ozet::before {
-  content: "Sipariş Özeti";
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #64748b;
-  margin-bottom: 16px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  content: none;
 }
 
 .summary-rows {
@@ -1278,15 +1270,36 @@
 }
 
 .onayla-button {
-  background: #10b981;
-  color: white;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  background: #059669;
+  color: #ffffff;
+  border: 1px solid #059669;
+  box-shadow:
+    0 8px 18px -6px rgba(16, 185, 129, 0.55),
+    0 2px 6px -2px rgba(0, 0, 0, 0.08);
 }
 
 .onayla-button:hover:not(:disabled) {
   background: #059669;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.4);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    0 14px 24px -8px rgba(16, 185, 129, 0.6),
+    0 6px 10px -4px rgba(0, 0, 0, 0.12);
+}
+
+.onayla-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+  background: #059669;
+  box-shadow:
+    0 6px 12px -6px rgba(16, 185, 129, 0.45),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.onayla-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.35),
+    0 8px 18px -6px rgba(16, 185, 129, 0.55),
+    0 2px 6px -2px rgba(0, 0, 0, 0.08);
 }
 
 .add-button:disabled,
@@ -1495,10 +1508,11 @@
   
   .sepet-item .item-info {
     width: 100%;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    text-align: center;
+    text-align: left;
     gap: 8px;
+    justify-content: space-between;
   }
   
   .sepet-item .item-icon {
@@ -1506,9 +1520,11 @@
   }
 
   .sepet-item .item-controls {
-    flex-direction: column;
+    flex-direction: row;
     gap: 12px;
-    align-items: stretch;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
     width: 100%;
   }
 
@@ -1519,12 +1535,12 @@
   }
 
   .sepet-item .item-total {
-    text-align: center;
+    text-align: left;
     font-size: 1.1rem;
-    margin-top: 8px;
-    width: 100%;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 12px;
+    margin-top: 0;
+    width: auto;
+    border-top: 0;
+    padding-top: 0;
   }
 
   .sepet-item .remove-item {

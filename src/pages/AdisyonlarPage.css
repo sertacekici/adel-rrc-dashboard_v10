@@ -1,8 +1,18 @@
 .adisyonlar-container {
   padding: 20px;
-  margin: 0;
+  margin: 0; /* left aligned by default on wide screens */
   background: #1e3884 !important;
   min-height: 100vh;
+  max-width: 1180px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Center container on viewports narrower than the max width plus comfortable gutters */
+@media (max-width: 1300px) {
+  .adisyonlar-container {
+    margin: 0 auto;
+  }
 }
 
 /* Sayfa Başlığı */
@@ -205,9 +215,18 @@
 /* Adisyon Kartları */
 .adisyonlar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.75rem;
   margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .adisyonlar-grid {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 .adisyon-card {
@@ -451,6 +470,13 @@
   font-size: 1.1rem;
   color: #38a169;
   font-weight: 700;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.detail-value {
+  max-width: 100%;
+  word-break: break-word;
 }
 
 .adisyon-actions {
@@ -625,16 +651,12 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .adisyonlar-page {
-    padding: 1rem;
+  .adisyonlar-container {
+    padding: 12px 12px 20px;
   }
-  
+
   .page-header h1 {
     font-size: 2rem;
-  }
-  
-  .filters-section {
-    grid-template-columns: 1fr;
   }
   
   .stats-grid {

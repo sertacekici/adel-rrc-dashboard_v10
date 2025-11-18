@@ -377,41 +377,47 @@ const SatisAdetleriPage = () => {
             </div>
           </div>
 
-          {/* Satış Adetleri Tablosu */}
-          <div className="table-container">
-            <div className="table-header compact">
-              <h3>
+          {/* Ürün Satış Detayları - Kart Tasarım */}
+          <div className="product-sales-card">
+            <div className="product-sales-header">
+              <div className="header-icon">
                 <span className="material-icons">list_alt</span>
-                Ürün Satış Detayları
-              </h3>
+              </div>
+              <div>
+                <h3>Ürün Satış Detayları</h3>
+                <p>En çok satan ürünler, adetler ve toplam tutarlar</p>
+              </div>
             </div>
-            <div className="mobile-cards">
-              {satisAdetleri.map((item, index) => (
-                <div key={item.anahtar} className="sale-card">
-                  <div className="sale-card-header">
-                    <span className="rank">#{index + 1}</span>
-                    <span className="urun">{item.urunAdi}</span>
+
+            <div className="product-sales-body">
+              <div className="product-sales-grid">
+                {satisAdetleri.map((item, index) => (
+                  <div key={item.anahtar} className="sale-card">
+                    <div className="sale-card-header">
+                      <div className="rank">#{index + 1}</div>
+                      <div className="urun">{item.urunAdi}</div>
+                    </div>
+                    <div className="sale-card-body">
+                      <div className="row">
+                        <span className="label">Boyut</span>
+                        <span className="value size">{item.boyut}</span>
+                      </div>
+                      <div className="row quantity">
+                        <span className="label">Adet</span>
+                        <span className="value adet">{item.miktar}</span>
+                      </div>
+                      <div className="row">
+                        <span className="label">Birim</span>
+                        <span className="value">{formatAmount(item.birimFiyat)}</span>
+                      </div>
+                      <div className="row total">
+                        <span className="label">Toplam</span>
+                        <span className="value tutar">{formatAmount(item.toplamTutar)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="sale-card-body">
-                    <div className="row">
-                      <span className="label">Boyut</span>
-                      <span className="value size">{item.boyut}</span>
-                    </div>
-                    <div className="row">
-                      <span className="label">Adet</span>
-                      <span className="value adet">{item.miktar}</span>
-                    </div>
-                    <div className="row">
-                      <span className="label">Birim</span>
-                      <span className="value">{formatAmount(item.birimFiyat)}</span>
-                    </div>
-                    <div className="row total">
-                      <span className="label">Toplam</span>
-                      <span className="value tutar">{formatAmount(item.toplamTutar)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </>

@@ -771,18 +771,36 @@ const SubeSiparisTakipPage = () => {
       
       <div className="filter-section">
         <div className="filter-group">
-          <label htmlFor="durum-filter">Durum:</label>
-          <select 
-            id="durum-filter"
-            value={filterDurum} 
-            onChange={(e) => setFilterDurum(e.target.value)}
-            className="filter-select"
-          >
-            <option value="beklemede">Beklemede</option>
-            <option value="onaylandi">Onaylandı</option>
-            <option value="teslim_edildi">Teslim Edildi</option>
-            <option value="iptal">İptal</option>
-          </select>
+          <div className="durum-buttons" role="tablist" aria-label="Durum Filtresi">
+            <button
+              type="button"
+              className={`durum-button warning ${filterDurum === 'beklemede' ? 'active' : ''}`}
+              onClick={() => setFilterDurum('beklemede')}
+            >
+              Beklemede
+            </button>
+            <button
+              type="button"
+              className={`durum-button info ${filterDurum === 'onaylandi' ? 'active' : ''}`}
+              onClick={() => setFilterDurum('onaylandi')}
+            >
+              Onaylandı
+            </button>
+            <button
+              type="button"
+              className={`durum-button success ${filterDurum === 'teslim_edildi' ? 'active' : ''}`}
+              onClick={() => setFilterDurum('teslim_edildi')}
+            >
+              Teslim Edildi
+            </button>
+            <button
+              type="button"
+              className={`durum-button danger ${filterDurum === 'iptal' ? 'active' : ''}`}
+              onClick={() => setFilterDurum('iptal')}
+            >
+              İptal
+            </button>
+          </div>
         </div>
         
         {isCompanyManager && (
@@ -804,15 +822,7 @@ const SubeSiparisTakipPage = () => {
           </div>
         )}
         
-        <div className="filter-info">
-          <span className="material-icons">info</span>
-          <span>
-            {filterDurum === 'beklemede' ? 'Beklemedeki siparişler öncelikli gösterilir' : 
-             filterDurum === 'onaylandi' ? 'Onaylanmış siparişler gösteriliyor' :
-             filterDurum === 'teslim_edildi' ? 'Teslim edilmiş siparişler gösteriliyor' :
-             'İptal edilmiş siparişler gösteriliyor'}
-          </span>
-        </div>
+        {/* filter-info kaldırıldı */}
       </div>
 
       <div className="content-area">

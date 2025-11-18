@@ -305,72 +305,142 @@ const SubelerPage = () => {
         ) : subeler.length === 0 ? (
           <p className="no-data">Henüz şube bulunmamaktadır.</p>
         ) : (
-          <table className="subeler-table">
-            <thead>
-              <tr>
-                <th>Şube Adı ve ID</th>
-                <th>Şube Adresi</th>
-                <th>Oluşturulma Tarihi</th>
-                <th>İşlemler</th>
-              </tr>
-            </thead>
-            <tbody>
-              {subeler.map((sube) => (
-                <tr key={sube.id}>
-                  <td>
-                    {sube.subeAdi}
-                    <div className="sube-id">
-                      <span className="id-label">ID: {sube.id}</span>
-                      <button 
-                        className="action-button copy"
-                        title="ID'yi Kopyala"
-                        onClick={() => {
-                          navigator.clipboard.writeText(sube.id);
-                          setSuccess('Şube ID başarıyla kopyalandı!');
-                          setTimeout(() => setSuccess(''), 2000);
-                        }}
-                      >
-                        <span className="material-icons">content_copy</span>
-                      </button>
-                    </div>
-                  </td>
-                  <td>{sube.subeAdresi}</td>
-                  <td>
-                    {sube.createdAt ? new Date(sube.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : '-'}
-                  </td>
-                  <td>
-                    <div className="table-actions">
-                      <button 
-                        className="action-button view"
-                        title="Şube Personeli"
-                        onClick={() => handleViewSubePersonel(sube.id, sube.subeAdi)}
-                      >
-                        <span className="material-icons">people</span>
-                      </button>
-                      {canManageBranches && (
-                        <>
-                          <button 
-                            className="action-button edit"
-                            title="Düzenle"
-                            onClick={() => handleEditSube(sube.id)}
-                          >
-                            <span className="material-icons">edit</span>
-                          </button>
-                          <button 
-                            className="action-button delete"
-                            title="Sil"
-                            onClick={() => handleDeleteSube(sube.id)}
-                          >
-                            <span className="material-icons">delete</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+          <>
+            {/* Masaüstü için tablo görünümü */}
+            <table className="subeler-table subeler-table-desktop">
+              <thead>
+                <tr>
+                  <th>Şube Adı ve ID</th>
+                  <th>Şube Adresi</th>
+                  <th>Oluşturulma Tarihi</th>
+                  <th>İşlemler</th>
                 </tr>
+              </thead>
+              <tbody>
+                {subeler.map((sube) => (
+                  <tr key={sube.id}>
+                    <td>
+                      {sube.subeAdi}
+                      <div className="sube-id">
+                        <span className="id-label">ID: {sube.id}</span>
+                        <button 
+                          className="action-button copy"
+                          title="ID'yi Kopyala"
+                          onClick={() => {
+                            navigator.clipboard.writeText(sube.id);
+                            setSuccess('Şube ID başarıyla kopyalandı!');
+                            setTimeout(() => setSuccess(''), 2000);
+                          }}
+                        >
+                          <span className="material-icons">content_copy</span>
+                        </button>
+                      </div>
+                    </td>
+                    <td>{sube.subeAdresi}</td>
+                    <td>
+                      {sube.createdAt ? new Date(sube.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : '-'}
+                    </td>
+                    <td>
+                      <div className="table-actions">
+                        <button 
+                          className="action-button view"
+                          title="Şube Personeli"
+                          onClick={() => handleViewSubePersonel(sube.id, sube.subeAdi)}
+                        >
+                          <span className="material-icons">people</span>
+                        </button>
+                        {canManageBranches && (
+                          <>
+                            <button 
+                              className="action-button edit"
+                              title="Düzenle"
+                              onClick={() => handleEditSube(sube.id)}
+                            >
+                              <span className="material-icons">edit</span>
+                            </button>
+                            <button 
+                              className="action-button delete"
+                              title="Sil"
+                              onClick={() => handleDeleteSube(sube.id)}
+                            >
+                              <span className="material-icons">delete</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Mobil için kart görünümü */}
+            <div className="subeler-cards-mobile">
+              {subeler.map((sube) => (
+                <div key={sube.id} className="sube-card">
+                  <div className="sube-card-header">
+                    <div className="sube-icon-circle">
+                      <span className="material-icons">business</span>
+                    </div>
+                    <div className="sube-card-main">
+                      <div className="sube-name">{sube.subeAdi}</div>
+                      <div className="sube-id-inline">ID: {sube.id}</div>
+                    </div>
+                    <button 
+                      className="action-button copy"
+                      title="ID'yi Kopyala"
+                      onClick={() => {
+                        navigator.clipboard.writeText(sube.id);
+                        setSuccess('Şube ID başarıyla kopyalandı!');
+                        setTimeout(() => setSuccess(''), 2000);
+                      }}
+                    >
+                      <span className="material-icons">content_copy</span>
+                    </button>
+                  </div>
+                  <div className="sube-card-body">
+                    <div className="sube-row">
+                      <span className="label">Adres</span>
+                      <span className="value address">{sube.subeAdresi}</span>
+                    </div>
+                    <div className="sube-row">
+                      <span className="label">Oluşturulma</span>
+                      <span className="value">
+                        {sube.createdAt ? new Date(sube.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : '-'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="sube-card-footer">
+                    <button 
+                      className="card-action-button view"
+                      onClick={() => handleViewSubePersonel(sube.id, sube.subeAdi)}
+                    >
+                      <span className="material-icons">people</span>
+                      Personel
+                    </button>
+                    {canManageBranches && (
+                      <>
+                        <button 
+                          className="card-action-button edit"
+                          onClick={() => handleEditSube(sube.id)}
+                        >
+                          <span className="material-icons">edit</span>
+                          Düzenle
+                        </button>
+                        <button 
+                          className="card-action-button delete"
+                          onClick={() => handleDeleteSube(sube.id)}
+                        >
+                          <span className="material-icons">delete</span>
+                          Sil
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -182,10 +182,6 @@ const UrunIslemleriPage = () => {
 
       <div className="content-area">
         <div className="content-header">
-          <h2>
-            <span className="material-icons">list</span>
-            Ürün Listesi
-          </h2>
           <button 
             className="add-button modern"
             onClick={() => setShowModal(true)}
@@ -207,55 +203,6 @@ const UrunIslemleriPage = () => {
           </div>
         ) : (
           <>
-            {/* Ürün İstatistikleri */}
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-icon primary">
-                  <span className="material-icons">inventory_2</span>
-                </div>
-                <div className="stat-info">
-                  <div className="stat-number">{urunler.length}</div>
-                  <div className="stat-label">Toplam Ürün</div>
-                </div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-icon success">
-                  <span className="material-icons">paid</span>
-                </div>
-                <div className="stat-info">
-                  <div className="stat-number">
-                    {urunler.filter(urun => urun.fiyat > 0).length}
-                  </div>
-                  <div className="stat-label">Ücretli Ürünler</div>
-                </div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-icon warning">
-                  <span className="material-icons">price_change</span>
-                </div>
-                <div className="stat-info">
-                  <div className="stat-number">
-                    {urunler.filter(urun => urun.fiyat === 0).length}
-                  </div>
-                  <div className="stat-label">Ücretsiz Ürünler</div>
-                </div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-icon danger">
-                  <span className="material-icons">attach_money</span>
-                </div>
-                <div className="stat-info">
-                  <div className="stat-number">
-                    {`₺${urunler.reduce((total, urun) => total + urun.fiyat, 0).toFixed(2)}`}
-                  </div>
-                  <div className="stat-label">Toplam Değer</div>
-                </div>
-              </div>
-            </div>
-            
             {/* Ürün Kartları */}
             <div className="urunler-grid">
               {urunler.map((urun) => (

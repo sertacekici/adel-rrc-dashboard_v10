@@ -22,6 +22,7 @@ const UsersPage = () => {
   const [subeler, setSubeler] = useState([]);
   const [selectedSube, setSelectedSube] = useState('');
   const [selectedSubeAdi, setSelectedSubeAdi] = useState('');
+  const [filterSubeId, setFilterSubeId] = useState('');
   
   const auth = getAuth();
   const db = getFirestore();
@@ -41,7 +42,7 @@ const UsersPage = () => {
   const [roleOptions, setRoleOptions] = useState(allRoleOptions);
 
   // Kullanıcıları Firebase'den getir
-  const fetchUsers = async () => {
+  const fetchUsers = async (subeFilterId = '') => {
     try {
       setLoading(true);
       let usersList = [];
@@ -76,15 +77,29 @@ const UsersPage = () => {
           }));
           console.log('Şube personeli yüklendi:', usersList.length);
         } else if (currentUser.role === 'sirket_yoneticisi') {
-          // Şirket yöneticisi tüm kullanıcıları görebilir
-          console.log('Şirket yöneticisi için tüm kullanıcılar yükleniyor');
-          const usersCollection = collection(db, 'users');
-          const userSnapshot = await getDocs(usersCollection);
-          usersList = userSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          console.log('Tüm kullanıcılar yüklendi:', usersList.length);
+          // Şirket yöneticisi seçilen şubeye göre filtreli veya tüm kullanıcıları görebilir
+          if (subeFilterId) {
+            console.log('Şirket yöneticisi için filtreli kullanıcılar yükleniyor, şube ID:', subeFilterId);
+            const q = query(
+              collection(db, 'users'),
+              where('subeId', '==', subeFilterId)
+            );
+            const userSnapshot = await getDocs(q);
+            usersList = userSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            console.log('Filtreli kullanıcılar yüklendi:', usersList.length);
+          } else {
+            console.log('Şirket yöneticisi için tüm kullanıcılar yükleniyor');
+            const usersCollection = collection(db, 'users');
+            const userSnapshot = await getDocs(usersCollection);
+            usersList = userSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            console.log('Tüm kullanıcılar yüklendi:', usersList.length);
+          }
         } else {
           // Diğer roller için sınırlı görünüm
           console.log('Diğer roller için sınırlı kullanıcı listesi yükleniyor');
@@ -127,15 +142,29 @@ const UsersPage = () => {
             }));
             console.log('Şube personeli yüklendi:', usersList.length);
           } else if (userData.role === 'sirket_yoneticisi') {
-            // Şirket yöneticisi tüm kullanıcıları görebilir
-            console.log('Şirket yöneticisi için tüm kullanıcılar yükleniyor');
-            const usersCollection = collection(db, 'users');
-            const userSnapshot = await getDocs(usersCollection);
-            usersList = userSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            }));
-            console.log('Tüm kullanıcılar yüklendi:', usersList.length);
+            // Şirket yöneticisi seçilen şubeye göre filtreli veya tüm kullanıcıları görebilir
+            if (subeFilterId) {
+              console.log('Şirket yöneticisi için filtreli kullanıcılar yükleniyor, şube ID:', subeFilterId);
+              const q2 = query(
+                collection(db, 'users'),
+                where('subeId', '==', subeFilterId)
+              );
+              const userSnapshot2 = await getDocs(q2);
+              usersList = userSnapshot2.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+              }));
+              console.log('Filtreli kullanıcılar yüklendi:', usersList.length);
+            } else {
+              console.log('Şirket yöneticisi için tüm kullanıcılar yükleniyor');
+              const usersCollection = collection(db, 'users');
+              const userSnapshot = await getDocs(usersCollection);
+              usersList = userSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+              }));
+              console.log('Tüm kullanıcılar yüklendi:', usersList.length);
+            }
           } else {
             // Diğer roller için sınırlı görünüm
             console.log('Diğer roller için sınırlı kullanıcı listesi yükleniyor');
@@ -258,10 +287,17 @@ const UsersPage = () => {
   };
   
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(filterSubeId);
     fetchSubeler();
     checkUserPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Şube filtresi değiştiğinde kullanıcıları yeniden yükle
+  useEffect(() => {
+    fetchUsers(filterSubeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterSubeId]);
 
   // Kullanıcı düzenleme formunu aç
   const handleEditUser = async (userId) => {
@@ -605,55 +641,132 @@ const UsersPage = () => {
         </div>
       )}
       
+      {/* Şube filtreleme alanı - sadece şirket yöneticisi için */}
+      {currentUser?.role === 'sirket_yoneticisi' && (
+        <div className="filter-bar">
+          <div className="form-group inline">
+            <label htmlFor="filterSube">Şube Filtresi</label>
+            <select
+              id="filterSube"
+              value={filterSubeId}
+              onChange={(e) => setFilterSubeId(e.target.value)}
+            >
+              <option value="">Tüm Şubeler</option>
+              {subeler.map((sube) => (
+                <option key={sube.id} value={sube.id}>
+                  {sube.subeAdi}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
       <div className="users-table-container">
         {loading && !formVisible ? (
           <p className="loading-text">Kullanıcılar yükleniyor...</p>
         ) : users.length === 0 ? (
           <p className="no-data">Henüz kullanıcı bulunmamaktadır.</p>
         ) : (
-          <table className="users-table">
-            <thead>
-              <tr>
-                <th>Ad Soyad</th>
-                <th>E-posta</th>
-                <th>Rol</th>
-                <th>Şube</th>
-                <th>Oluşturulma Tarihi</th>
-                <th>İşlemler</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.displayName}</td>
-                  <td>{user.email}</td>
-                  <td>{getRoleName(user.role)}</td>
-                  <td>{user.subeAdi || '-'}</td>
-                  <td>
-                    {user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('tr-TR') : '-'}
-                  </td>
-                  <td>
-                    <div className="table-actions">
-                      <button 
-                        className="action-button edit"
-                        title="Düzenle"
-                        onClick={() => handleEditUser(user.id)}
-                      >
-                        <span className="material-icons">edit</span>
-                      </button>
-                      <button 
-                        className="action-button delete"
-                        title="Sil"
-                        onClick={() => handleDeleteUser(user.id)}
-                      >
-                        <span className="material-icons">delete</span>
-                      </button>
-                    </div>
-                  </td>
+          <>
+            {/* Masaüstü için tablo görünümü */}
+            <table className="users-table users-table-desktop">
+              <thead>
+                <tr>
+                  <th>Ad Soyad</th>
+                  <th>E-posta</th>
+                  <th>Rol</th>
+                  <th>Şube</th>
+                  <th>Oluşturulma Tarihi</th>
+                  <th>İşlemler</th>
                 </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td>{user.displayName}</td>
+                    <td>{user.email}</td>
+                    <td>{getRoleName(user.role)}</td>
+                    <td>{user.subeAdi || '-'}</td>
+                    <td>
+                      {user.createdAt
+                        ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('tr-TR')
+                        : '-'}
+                    </td>
+                    <td>
+                      <div className="table-actions">
+                        <button
+                          className="action-button edit"
+                          title="Düzenle"
+                          onClick={() => handleEditUser(user.id)}
+                        >
+                          <span className="material-icons">edit</span>
+                        </button>
+                        <button
+                          className="action-button delete"
+                          title="Sil"
+                          onClick={() => handleDeleteUser(user.id)}
+                        >
+                          <span className="material-icons">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Mobil için kart görünümü */}
+            <div className="users-cards-mobile">
+              {users.map((user) => (
+                <div key={user.id} className="user-card">
+                  <div className="user-card-header">
+                    <div className="user-avatar-circle">
+                      <span className="material-icons">person</span>
+                    </div>
+                    <div className="user-card-main">
+                      <div className="user-name">{user.displayName}</div>
+                      <div className="user-role">{getRoleName(user.role)}</div>
+                    </div>
+                  </div>
+                  <div className="user-card-body">
+                    <div className="user-row">
+                      <span className="label">E-posta</span>
+                      <span className="value email">{user.email}</span>
+                    </div>
+                    <div className="user-row">
+                      <span className="label">Şube</span>
+                      <span className="value">{user.subeAdi || '-'}</span>
+                    </div>
+                    <div className="user-row">
+                      <span className="label">Oluşturulma</span>
+                      <span className="value">
+                        {user.createdAt
+                          ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('tr-TR')
+                          : '-'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="user-card-footer">
+                    <button
+                      className="card-action-button edit"
+                      onClick={() => handleEditUser(user.id)}
+                    >
+                      <span className="material-icons">edit</span>
+                      Düzenle
+                    </button>
+                    <button
+                      className="card-action-button delete"
+                      onClick={() => handleDeleteUser(user.id)}
+                    >
+                      <span className="material-icons">delete</span>
+                      Sil
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </div>

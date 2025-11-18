@@ -116,6 +116,43 @@
   align-items: flex-end;
 }
 
+/* Durum filter buttons */
+.durum-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.durum-button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.durum-button:hover {
+  background: #eef2f7;
+}
+
+.durum-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.durum-button.active {
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.durum-button.warning.active { background: #f59e0b; }
+.durum-button.info.active { background: #3b82f6; }
+.durum-button.success.active { background: #10b981; }
+.durum-button.danger.active { background: #ef4444; }
+
 .filter-group {
   display: flex;
   flex-direction: column;
@@ -874,6 +911,17 @@
     width: 100%;
   }
 
+  /* Durum butonlarını tablette iki sütun yap */
+  .durum-buttons {
+    width: 100%;
+  }
+
+  .durum-button {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 150px;
+    text-align: center;
+  }
+
   .filter-select {
     min-width: auto;
     width: 100%;
@@ -963,6 +1011,21 @@
     flex-direction: column;
     gap: 0.5rem;
     text-align: center;
+  }
+}
+
+/* Küçük ekranlar için: butonları tek sütun tam genişlik yap */
+@media (max-width: 480px) {
+  .durum-buttons {
+    width: 100%;
+  }
+
+  .durum-button {
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+    font-size: 0.95rem;
+    padding: 10px 12px;
   }
 }
 

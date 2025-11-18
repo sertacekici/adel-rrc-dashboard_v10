@@ -28,6 +28,8 @@ const SubeBakiyeTakipPage = () => {
   const [startDate, setStartDate] = useState(''); // Başlangıç tarihi
   const [endDate, setEndDate] = useState(''); // Bitiş tarihi
   const [dateFilterMode, setDateFilterMode] = useState('range'); // 'single' veya 'range'
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
   const { currentUser } = useContext(AuthContext);
 
   const db = getFirestore();
@@ -51,6 +53,21 @@ const SubeBakiyeTakipPage = () => {
       console.log('useEffect - currentUser henüz yok');
     }
   }, [currentUser]);
+
+  // Varsayılan görünümü ekran genişliğine göre ayarla
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        if (window.innerWidth <= 768) {
+          setViewMode('cards');
+        } else {
+          setViewMode('table');
+        }
+      }
+    } catch (e) {
+      // no-op
+    }
+  }, []);
 
   // siparisFilter, selectedSube ve tarih filtreleri değiştiğinde bakiye hareketlerini yeniden yükle
   useEffect(() => {
@@ -342,6 +359,11 @@ const SubeBakiyeTakipPage = () => {
         return;
       }
 
+      // Seçili şubeyi rapor için belirle (yönetici değilse kendi şubesi)
+      const selectedSubeIdForReport = selectedSube !== 'all' ? selectedSube : (isCompanyManager ? null : currentUser?.subeId);
+      const selectedSubeObj = selectedSubeIdForReport ? subeler.find((s) => s.id === selectedSubeIdForReport) : null;
+      const selectedSubeName = selectedSubeObj?.sube_adi || selectedSubeObj?.subeAdi;
+
       // Yeni pencere aç - Landscape için özel CSS
       const printWindow = window.open('', '_blank');
       printWindow.document.write(`
@@ -440,7 +462,7 @@ const SubeBakiyeTakipPage = () => {
             <h1>Bakiye Hareketleri Raporu</h1>
             <div class="info">Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</div>
             <div class="info">Toplam Hareket Sayısı: ${filteredHareketler.length}</div>
-            ${selectedSube !== 'all' ? `<div class="info">Seçili Şube: ${selectedSubeInfo?.adi || 'Bilinmiyor'}</div>` : '<div class="info">Tüm Şubeler</div>'}
+            ${selectedSubeIdForReport ? `<div class="info">Seçili Şube: ${selectedSubeName || 'Bilinmiyor'}</div>` : '<div class="info">Tüm Şubeler</div>'}
             ${getDateRangeInfo()}
             
             <table>
@@ -541,14 +563,19 @@ const SubeBakiyeTakipPage = () => {
         return;
       }
 
+      // Seçili şubeyi rapor için belirle (yönetici değilse kendi şubesi)
+      const selectedSubeIdForReport = selectedSube !== 'all' ? selectedSube : (isCompanyManager ? null : currentUser?.subeId);
+      const selectedSubeObj = selectedSubeIdForReport ? subeler.find((s) => s.id === selectedSubeIdForReport) : null;
+      const selectedSubeName = selectedSubeObj?.sube_adi || selectedSubeObj?.subeAdi;
+
       const worksheetData = [];
       
       // Başlık satırları
       worksheetData.push(['Bakiye Hareketleri Raporu']);
       worksheetData.push(['Rapor Tarihi: ' + new Date().toLocaleDateString('tr-TR') + ' ' + new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })]);
       worksheetData.push(['Toplam Hareket Sayısı: ' + filteredHareketler.length]);
-      if (selectedSube !== 'all') {
-        worksheetData.push(['Seçili Şube: ' + (selectedSubeInfo?.adi || 'Bilinmiyor')]);
+      if (selectedSubeIdForReport) {
+        worksheetData.push(['Seçili Şube: ' + (selectedSubeName || 'Bilinmiyor')]);
       } else {
         worksheetData.push(['Kapsam: Tüm Şubeler']);
       }
@@ -917,8 +944,20 @@ const SubeBakiyeTakipPage = () => {
       <div className="content-area">
         {/* Filtreleme Bölümü */}
         {isCompanyManager && (
-          <div className="filter-section">
-            <div className="filter-row">
+          <>
+            <div className="mobile-filter-toggle">
+              <button
+                type="button"
+                className="filter-toggle-button"
+                onClick={() => setShowMobileFilters((p) => !p)}
+              >
+                <span className="material-icons">{showMobileFilters ? 'filter_alt_off' : 'filter_alt'}</span>
+                Filtreler
+              </button>
+            </div>
+
+            <div className={`filter-section ${showMobileFilters ? 'open' : 'collapsed'}`}>
+              <div className="filter-row">
               <div className="filter-group">
                 <label htmlFor="sube-filter">Şube Seçin:</label>
                 <select 
@@ -1003,8 +1042,9 @@ const SubeBakiyeTakipPage = () => {
                   </button>
                 </div>
               )}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Bakiye Hareketleri Tablosu */}
@@ -1016,6 +1056,26 @@ const SubeBakiyeTakipPage = () => {
             </h3>
             
             <div className="header-actions">
+              <div className="view-toggle">
+                <button
+                  type="button"
+                  className={`view-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                  title="Tablo Görünüm"
+                >
+                  <span className="material-icons">table_chart</span>
+                  Tablo
+                </button>
+                <button
+                  type="button"
+                  className={`view-btn ${viewMode === 'cards' ? 'active' : ''}`}
+                  onClick={() => setViewMode('cards')}
+                  title="Kart Görünüm"
+                >
+                  <span className="material-icons">view_agenda</span>
+                  Kartlar
+                </button>
+              </div>
               {siparisFilter && (
                 <div className="filter-badge">
                   <span>Sipariş ID: #{siparisFilter.slice(-8)}</span>
@@ -1076,61 +1136,131 @@ const SubeBakiyeTakipPage = () => {
               <p>Seçilen kriterlere uygun hareket bulunamadı.</p>
             </div>
           ) : (
-            <div className="hareketler-table-container">
-              <table className="hareketler-table">
-                <thead>
-                  <tr>
-                    <th>Tarih</th>
-                    <th>Şube</th>
-                    <th>Hareket Tipi</th>
-                    <th>Tutar</th>
-                    <th>Açıklama</th>
-                    <th>Oluşturan</th>
-                    <th>İşlem</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getFilteredHareketler().map((hareket) => (
-                    <tr key={hareket.id} onClick={() => handleHareketClick(hareket)}>
-                      <td>{formatDate(hareket.tarih)}</td>
-                      <td>
+            <>
+              <div className={`hareketler-table-container desktop-only ${viewMode === 'table' ? 'force-show' : 'hide-force'}`}>
+                <table className="hareketler-table">
+                  <thead>
+                    <tr>
+                      <th>Tarih</th>
+                      <th>Şube</th>
+                      <th>Hareket Tipi</th>
+                      <th>Tutar</th>
+                      <th>Açıklama</th>
+                      <th>Oluşturan</th>
+                      <th>İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getFilteredHareketler().map((hareket) => (
+                      <tr key={hareket.id} onClick={() => handleHareketClick(hareket)}>
+                        <td>{formatDate(hareket.tarih)}</td>
+                        <td>
+                          <div className="sube-info">
+                            <span className="material-icons">business</span>
+                            {hareket.sube_adi}
+                          </div>
+                        </td>
+                        <td>
+                          <div className={`hareket-tipi ${getHareketTipiClass(hareket.hareket_tipi)}`}>
+                            <span className="material-icons">{getHareketTipiIcon(hareket.hareket_tipi)}</span>
+                            {hareket.hareket_tipi === 'borc' ? 'Borç' : 'Alacak'}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`tutar ${getHareketTipiClass(hareket.hareket_tipi)}`}>
+                            {formatCurrency(hareket.tutar)}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="aciklama">{hareket.aciklama}</span>
+                        </td>
+                        <td>{hareket.olusturan || '-'}</td>
+                        <td>
+                          <button
+                            className="info-icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDetayGoster(hareket);
+                            }}
+                            title="Detay"
+                          >
+                            <span className="material-icons">info</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className={`hareketler-cards mobile-only ${viewMode === 'cards' ? 'force-show' : ''}`}>
+                {getFilteredHareketler().map((hareket) => (
+                  <div
+                    key={hareket.id}
+                    className={`hareket-card ${getHareketTipiClass(hareket.hareket_tipi)}`}
+                    onClick={() => handleHareketClick(hareket)}
+                  >
+                    <div className="hareket-card-header">
+                      <div className="hareket-card-main">
+                        <span className="hareket-card-date">{formatDate(hareket.tarih)}</span>
                         <div className="sube-info">
                           <span className="material-icons">business</span>
-                          {hareket.sube_adi}
+                          <span className="sube-name">{hareket.sube_adi}</span>
                         </div>
-                      </td>
-                      <td>
-                        <div className={`hareket-tipi ${getHareketTipiClass(hareket.hareket_tipi)}`}>
-                          <span className="material-icons">{getHareketTipiIcon(hareket.hareket_tipi)}</span>
-                          {hareket.hareket_tipi === 'borc' ? 'Borç' : 'Alacak'}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`tutar ${getHareketTipiClass(hareket.hareket_tipi)}`}>
+                      </div>
+                      <div
+                        className={`hareket-tipi-chip ${getHareketTipiClass(
+                          hareket.hareket_tipi
+                        )}`}
+                      >
+                        <span className="material-icons">
+                          {getHareketTipiIcon(hareket.hareket_tipi)}
+                        </span>
+                        <span>{hareket.hareket_tipi === 'borc' ? 'Borç' : 'Alacak'}</span>
+                      </div>
+                    </div>
+
+                    <div className="hareket-card-body">
+                      <div className="hareket-card-row">
+                        <span className="label">Tutar</span>
+                        <span
+                          className={`value tutar ${getHareketTipiClass(
+                            hareket.hareket_tipi
+                          )}`}
+                        >
                           {formatCurrency(hareket.tutar)}
                         </span>
-                      </td>
-                      <td>
-                        <span className="aciklama">{hareket.aciklama}</span>
-                      </td>
-                      <td>{hareket.olusturan || '-'}</td>
-                      <td>
-                        <button
-                          className="info-icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDetayGoster(hareket);
-                          }}
-                          title="Detay"
-                        >
-                          <span className="material-icons">info</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <div className="hareket-card-row">
+                        <span className="label">Açıklama</span>
+                        <span className="value aciklama">
+                          {hareket.aciklama}
+                        </span>
+                      </div>
+                      <div className="hareket-card-row">
+                        <span className="label">Oluşturan</span>
+                        <span className="value">
+                          {hareket.olusturan || '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="hareket-card-footer">
+                      <button
+                        className="detail-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDetayGoster(hareket);
+                        }}
+                      >
+                        <span className="material-icons">info</span>
+                        Detay
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 

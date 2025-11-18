@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -35,6 +35,22 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       navigate('/login');
     } catch (error) {
       console.error('Çıkış yapılırken bir hata oluştu:', error);
+    }
+  };
+
+  // Mobilde rota değişince yan menüyü otomatik kapat
+  useEffect(() => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 1024;
+    if (isOpen && isMobile) {
+      toggleSidebar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  const handleItemClick = () => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 1024;
+    if (isOpen && isMobile) {
+      toggleSidebar();
     }
   };
   
@@ -168,7 +184,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     key={item.path} 
                     className={location.pathname === item.path ? 'active' : ''}
                   >
-                    <Link to={item.path} data-title={item.title}>
+                    <Link to={item.path} data-title={item.title} onClick={handleItemClick}>
                       <span className="material-icons">{item.icon}</span>
                       <span className="menu-title">{item.title}</span>
                     </Link>
@@ -203,7 +219,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                       key={item.path} 
                       className={location.pathname === item.path ? 'active' : ''}
                     >
-                      <Link to={item.path} data-title={item.title}>
+                      <Link to={item.path} data-title={item.title} onClick={handleItemClick}>
                         <span className="material-icons">{item.icon}</span>
                         <span className="menu-title">{item.title}</span>
                       </Link>
@@ -239,7 +255,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     key={item.path} 
                     className={location.pathname === item.path ? 'active' : ''}
                   >
-                    <Link to={item.path} data-title={item.title}>
+                    <Link to={item.path} data-title={item.title} onClick={handleItemClick}>
                       <span className="material-icons">{item.icon}</span>
                       <span className="menu-title">{item.title}</span>
                     </Link>
@@ -259,7 +275,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     key={item.path} 
                     className={location.pathname === item.path ? 'active' : ''}
                   >
-                    <Link to={item.path} data-title={item.title}>
+                    <Link to={item.path} data-title={item.title} onClick={handleItemClick}>
                       <span className="material-icons">{item.icon}</span>
                       <span className="menu-title">{item.title}</span>
                     </Link>

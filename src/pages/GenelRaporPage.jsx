@@ -13,6 +13,8 @@ const GenelRaporPage = () => {
     adisyonlar: [],
     kuryeRaporlari: []
   });
+  const [isMobile, setIsMobile] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
 
   // Tarih aralığı varsayılanları: başlangıç = önceki ayın son günü, bitiş = sonraki ayın ilk günü
   const today = new Date();
@@ -62,6 +64,18 @@ const GenelRaporPage = () => {
   useEffect(() => {
     fetchReportData();
   }, [filter, currentUser]);
+
+  // Detect mobile and set default filters visibility (hidden on mobile by default)
+  useEffect(() => {
+    const onResize = () => {
+      const m = window.innerWidth <= 768;
+      setIsMobile(m);
+      setShowFilters(!m); // show on desktop, hide on mobile by default
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const fetchReportData = async () => {
     setLoading(true);
@@ -388,6 +402,23 @@ const GenelRaporPage = () => {
 
       {/* Filtreler */}
       <div className="filters-section">
+        <div className="filters-toggle-row">
+          <h4 className="filters-title">
+            <span className="material-icons">filter_list</span>
+            Filtreler
+          </h4>
+          <button
+            type="button"
+            className="filters-toggle-button"
+            onClick={() => setShowFilters(v => !v)}
+            aria-expanded={showFilters}
+          >
+            <span className="material-icons" aria-hidden="true">{showFilters ? 'expand_less' : 'expand_more'}</span>
+            {showFilters ? 'Gizle' : 'Göster'}
+          </button>
+        </div>
+
+        {(showFilters || !isMobile) && (
         <div className="filter-row" style={{ gap: '16px', flexWrap: 'wrap' }}>
           <div className="filter-group">
             <label>Rapor Tipi:</label>
@@ -458,6 +489,7 @@ const GenelRaporPage = () => {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {error && (
@@ -575,79 +607,7 @@ const GenelRaporPage = () => {
         </div>
       </div>
 
-      {/* Gider Kalemleri Detayı */}
-      {giderKalemleriArray.length > 0 ? (
-        <div className="detail-section">
-          <h3>
-            <span className="material-icons">category</span>
-            Gider Kalemleri Detayı
-          </h3>
-          <div className="detail-table">
-            <div className="table-header">
-              <div className="header-cell">Gider Kalemi</div>
-              <div className="header-cell">Toplam Tutar</div>
-              <div className="header-cell">İşlem Sayısı</div>
-              <div className="header-cell">Ortalama</div>
-            </div>
-            {giderKalemleriArray.map((item, index) => (
-              <div key={index} className="table-row">
-                <div className="table-cell">
-                  <strong>{item.ad}</strong>
-                </div>
-                <div className="table-cell amount">
-                  ₺{item.tutar.toFixed(2)}
-                </div>
-                <div className="table-cell">
-                  {item.adet}
-                </div>
-                <div className="table-cell amount">
-                  ₺{(item.tutar / item.adet).toFixed(2)}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Ayrıntılı gider kayıtları tablosu */}
-          <h3 style={{ marginTop: '32px' }}>
-            <span className="material-icons">list</span>
-            Gider Kayıtları
-          </h3>
-          <div className="detail-table">
-            <div className="table-header">
-              <div className="header-cell">Tarih</div>
-              <div className="header-cell">Gider Kalemi</div>
-              <div className="header-cell">Tutar</div>
-              <div className="header-cell">Ödeme Kaynağı</div>
-              <div className="header-cell">Açıklama</div>
-            </div>
-            {data.giderler.length === 0 && (
-              <div className="table-row">
-                <div className="table-cell" colSpan={5}>Kayıt yok</div>
-              </div>
-            )}
-            {data.giderler.map((g) => {
-              const tarih = g.tarih?.toDate ? g.tarih.toDate() : null;
-              return (
-                <div key={g.id} className="table-row">
-                  <div className="table-cell">
-                    {tarih ? tarih.toLocaleDateString('tr-TR') + ' ' + tarih.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                  </div>
-                  <div className="table-cell">{g.giderKalemiAdi || '-'}</div>
-                  <div className="table-cell amount">₺{Number(g.tutar || 0).toFixed(2)}</div>
-                  <div className="table-cell">{g.odemeKaynagi === 'gunluk_kasa' ? 'Günlük Kasa' : g.odemeKaynagi === 'merkez_kasa' ? 'Merkez Kasa' : (g.odemeKaynagi || '-')}</div>
-                  <div className="table-cell">{g.aciklama || '-'}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <div className="empty-state">
-          <span className="material-icons">category</span>
-          <h3>Gider Kaydı Bulunamadı</h3>
-          <p>Seçilen tarih aralığında gider kaydı bulunmuyor.</p>
-        </div>
-      )}
+      {/* Expense lists removed intentionally per request */}
 
       {/* Rapor Tarihi */}
       <div className="report-footer">

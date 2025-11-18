@@ -92,6 +92,40 @@
   font-size: 1.1rem;
 }
 
+/* Mobile filter toggle */
+.mobile-filter-toggle {
+  display: none;
+  margin-bottom: 0.75rem;
+}
+
+.filter-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #1e3884;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(30, 56, 132, 0.25);
+}
+
+.filter-toggle-button .material-icons { font-size: 1.2rem; }
+
+@media (max-width: 768px) {
+  .mobile-filter-toggle { display: block; }
+  .filter-section { padding: 0.9rem; margin-bottom: 1rem; }
+  .filter-section.collapsed .filter-row { display: none; }
+  .filter-section.open .filter-row { display: flex; }
+  .filter-row { gap: 0.75rem; }
+  .filter-group { min-width: unset; flex: 1 1 calc(50% - 8px); }
+  .filter-group label { font-size: 0.8rem; }
+  .filter-select, .filter-date { padding: 0.6rem 0.75rem; font-size: 0.95rem; }
+  .clear-date-filter-btn { padding: 0.6rem 0.8rem; border-radius: 10px; }
+  .clear-date-filter-btn .material-icons { font-size: 1rem; }
+}
+
 /* Section Title */
 .section-title {
   margin-bottom: 2rem;
@@ -257,6 +291,21 @@
   font-weight: 500;
 }
 
+/* Mobile adjustments for Genel Özet */
+@media (max-width: 768px) {
+  .tarih-arasi-ozet-section h3 { font-size: 1.2rem; margin-bottom: 1rem; }
+  .ozet-widgets { grid-template-columns: 1fr; gap: 0.75rem; }
+  .ozet-widget { padding: 1.1rem; }
+  .ozet-widget .widget-content .widget-amount { font-size: 1.25rem; }
+}
+
+@media (max-width: 480px) {
+  .ozet-widget { padding: 0.9rem; }
+  .ozet-widget .widget-content h4 { font-size: 0.85rem; }
+  .ozet-widget .widget-content .widget-amount { font-size: 1.15rem; }
+  .ozet-widget .widget-content .widget-subtitle { font-size: 0.8rem; }
+}
+
 /* Bakiye Hareketleri Tablosu */
 .hareketler-section {
   margin-bottom: 2rem;
@@ -270,6 +319,39 @@
   flex-wrap: wrap;
   gap: 1rem;
 }
+
+/* View toggle (Table | Cards) */
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  background: #ffffff;
+  color: #1e293b;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.view-btn .material-icons { font-size: 1.1rem; }
+
+.view-btn.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.25);
+}
+
+/* Force view switching on desktop */
+.hareketler-cards.force-show { display: flex !important; flex-direction: column; }
+.hareketler-table-container.hide-force { display: none !important; }
+.desktop-only.force-show { display: block !important; }
 
 .header-actions {
   display: flex;
@@ -639,6 +721,57 @@
   .hareketler-table {
     display: block;
     overflow-x: auto;
+  }
+}
+
+/* Mobil kart görünümlü tablo (<=768px) */
+@media (max-width: 768px) {
+  .hareketler-table {
+    display: block;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .hareketler-table thead {
+    display: none;
+  }
+  .hareketler-table tbody {
+    display: block;
+  }
+  .hareketler-table tr {
+    display: block;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(203, 213, 225, 0.6);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  .hareketler-table tr:hover {
+    background: rgba(255, 255, 255, 0.9);
+  }
+  .hareketler-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-top: 1px solid rgba(203, 213, 225, 0.4);
+  }
+  .hareketler-table td:first-child {
+    border-top: none;
+  }
+  .hareketler-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #334155;
+    flex: 0 0 auto;
+    margin-right: 12px;
+  }
+  .hareketler-table .sube-info {
+    gap: 8px;
+  }
+  .hareketler-table .info-icon {
+    margin-left: auto;
   }
 }
 
@@ -1470,10 +1603,6 @@
   background: rgba(59, 130, 246, 0.15);
 }
 
-.bakiye-item.kalan.pozitif h5 {
-  color: #3B82F6;
-}
-
 .bakiye-item.kalan.negatif {
   background: rgba(245, 158, 11, 0.08);
   border-color: rgba(245, 158, 11, 0.2);
@@ -1489,6 +1618,7 @@
 }
 
 /* Hareketler Table */
+/* Desktop table container */
 .hareketler-table-container {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px);
@@ -1599,6 +1729,134 @@
 .detail-button.small:hover {
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Bakiye hareketleri - mobil kartlar */
+.hareketler-cards {
+  display: none;
+}
+
+.hareket-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Accent by hareket tipi on mobile cards */
+.hareket-card.borc { border-left: 4px solid #dc3545; }
+.hareket-card.alacak { border-left: 4px solid #28a745; }
+
+.hareket-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.hareket-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hareket-card-date {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.hareket-card .sube-info {
+  font-size: 0.9rem;
+}
+
+.hareket-tipi-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.hareket-tipi-chip.borc {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.hareket-tipi-chip.alacak {
+  background: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+}
+
+.hareket-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hareket-card-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.hareket-card-row .label {
+  color: #64748b;
+}
+
+.hareket-card-row .value {
+  color: #0f172a;
+  text-align: right;
+}
+
+/* Make amount stand out slightly more */
+.hareket-card-row .value.tutar { font-weight: 800; font-size: 1.05rem; }
+
+.hareket-card-row .value.aciklama {
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hareket-card-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hareket-card-footer .detail-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.hareket-card-footer .detail-button .material-icons {
+  font-size: 1rem;
+}
+
+/* Desktop vs mobile visibility */
+.desktop-only { display: block; }
+.mobile-only { display: none; }
+@media (max-width: 768px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; flex-direction: column; }
+  .hareketler-table-container.desktop-only { display: none; }
+  .hareketler-cards.mobile-only { display: flex; flex-direction: column; }
 }
 
 /* Modal Stilleri */
@@ -2298,11 +2556,9 @@
   }
 }
 
-/* Ultra small horizontal scroll support for widgets & cards */
+/* Keep Genel Özet stacked on mobile; optional scroll only for gunluk if needed */
 @media (max-width: 620px) {
-  .ozet-widgets,
-  .gunluk-widgets,
-  .bakiye-cards {
+  .gunluk-widgets {
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -2311,22 +2567,10 @@
     gap: 1rem;
     padding-bottom: 0.25rem;
   }
-  .ozet-widgets .ozet-widget,
-  .gunluk-widgets .gunluk-widget,
-  .bakiye-cards .bakiye-card { flex: 0 0 260px; scroll-snap-align: start; }
-  .ozet-widgets::-webkit-scrollbar,
-  .gunluk-widgets::-webkit-scrollbar,
-  .bakiye-cards::-webkit-scrollbar { display: none; }
+  .gunluk-widgets .gunluk-widget { flex: 0 0 260px; scroll-snap-align: start; }
+  .gunluk-widgets::-webkit-scrollbar { display: none; }
 }
 @media (max-width: 480px) {
-  .ozet-widgets .ozet-widget,
-  .gunluk-widgets .gunluk-widget,
-  .bakiye-cards .bakiye-card { flex: 0 0 230px; }
   .title-section h1 { font-size: 1.75rem; }
   .title-section p { font-size: 0.95rem; }
-}
-@media (max-width: 380px) {
-  .ozet-widgets .ozet-widget,
-  .gunluk-widgets .gunluk-widget,
-  .bakiye-cards .bakiye-card { flex: 0 0 210px; }
 }

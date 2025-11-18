@@ -192,6 +192,10 @@
   border-spacing: 0;
 }
 
+.subeler-table-desktop {
+  display: table;
+}
+
 .subeler-table th, .subeler-table td {
   padding: 1.25rem;
   text-align: left;
@@ -304,6 +308,143 @@
   margin: 1rem 0;
 }
 
+/* Mobil kart görünümü */
+.subeler-cards-mobile {
+  display: none;
+}
+
+.sube-card {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem 1rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.sube-card + .sube-card {
+  margin-top: 0.75rem;
+}
+
+.sube-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.sube-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(37,99,235,0.22));
+  color: #1D4ED8;
+}
+
+.sube-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sube-name {
+  font-weight: 600;
+  color: #0F172A;
+  font-size: 1rem;
+  margin-bottom: 0.15rem;
+}
+
+.sube-id-inline {
+  font-size: 0.8rem;
+  color: #64748B;
+}
+
+.sube-card-body {
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  padding-top: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.sube-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+}
+
+.sube-row + .sube-row {
+  margin-top: 0.35rem;
+}
+
+.sube-row .label {
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.sube-row .value {
+  color: #111827;
+  text-align: right;
+}
+
+.sube-row .value.address {
+  max-width: 60%;
+  word-break: break-word;
+}
+
+.sube-card-footer {
+  margin-top: 0.85rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.card-action-button {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: #F9FAFB;
+  color: #111827;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-action-button .material-icons {
+  font-size: 18px;
+}
+
+.card-action-button.view {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #1D4ED8;
+}
+
+.card-action-button.edit {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #047857;
+}
+
+.card-action-button.delete {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #B91C1C;
+}
+
+.card-action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
 @media (max-width: 1200px) {
   .shortcuts-grid {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -363,6 +504,25 @@
   .sube-form-container {
     padding: 1rem;
     border-radius: 12px;
+  }
+
+  .subeler-table-desktop {
+    display: none;
+  }
+
+  .subeler-table-container {
+    border-radius: 16px;
+    margin-top: 1rem;
+    background: transparent;
+    box-shadow: none;
+    border: none;
+  }
+
+  .subeler-cards-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem 0.75rem 1rem;
   }
 }
 
