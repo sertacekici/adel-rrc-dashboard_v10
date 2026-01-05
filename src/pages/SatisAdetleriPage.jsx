@@ -10,8 +10,21 @@ const SatisAdetleriPage = () => {
   const [selectedSube, setSelectedSube] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportMode, setReportMode] = useState('daily'); // 'daily', 'range'
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  // Tarih aralığı varsayılanları: başlangıç = dün, bitiş = bugün
+  const todayRef = new Date();
+  const yesterdayRef = new Date(todayRef);
+  yesterdayRef.setDate(yesterdayRef.getDate() - 1);
+  const [startDate, setStartDate] = useState(yesterdayRef.toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(todayRef.toISOString().split('T')[0]);
+  // Saat seçimi için state - varsayılan 08:00 (24 saat çalışan işletmeler için)
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('08:00');
+  // Günlük mod için saat seçimi
+  const [dailyStartTime, setDailyStartTime] = useState('00:00');
+  const [dailyEndTime, setDailyEndTime] = useState('23:59');
+  const [useDailyTimeFilter, setUseDailyTimeFilter] = useState(false);
+  // Rapor getir butonu için tetikleyici
+  const [reportTrigger, setReportTrigger] = useState(0);
   const [subeler, setSubeler] = useState([]);
   const [adisyonIcerik, setAdisyonIcerik] = useState([]);
   const [satisAdetleri, setSatisAdetleri] = useState([]);
@@ -119,25 +132,43 @@ const SatisAdetleriPage = () => {
             try {
               // Tarih formatını kontrol et
               const icerikTarihStr = String(icerik.tarih);
-              let icerikTarih;
+              let icerikDateTime;
               
               if (icerikTarihStr.includes('T')) {
-                // ISO format: "2025-08-04T10:45:47" -> "2025-08-04"
-                icerikTarih = icerikTarihStr.split('T')[0];
+                // ISO format: "2025-08-04T10:45:47"
+                icerikDateTime = new Date(icerikTarihStr);
               } else if (icerikTarihStr.includes(' ')) {
-                // SQL format: "2025-08-04 10:45:47" -> "2025-08-04"
-                icerikTarih = icerikTarihStr.split(' ')[0];
+                // SQL format: "2025-08-04 10:45:47"
+                icerikDateTime = new Date(icerikTarihStr.replace(' ', 'T'));
               } else {
                 // Sadece tarih: "2025-08-04"
-                icerikTarih = icerikTarihStr;
+                icerikDateTime = new Date(icerikTarihStr + 'T00:00:00');
               }
               
               if (reportMode === 'daily') {
-                console.log('Günlük filtre - İçerik tarihi:', icerikTarih, 'Hedef tarih:', selectedDate);
-                return icerikTarih === selectedDate;
+                if (useDailyTimeFilter) {
+                  // Saat filtresi aktifse, tarih ve saat aralığına göre filtrele
+                  const dayStart = new Date(`${selectedDate}T${dailyStartTime}:00`);
+                  const dayEnd = new Date(`${selectedDate}T${dailyEndTime}:59`);
+                  console.log('Günlük saat filtresi - İçerik:', icerikDateTime, 'Başlangıç:', dayStart, 'Bitiş:', dayEnd);
+                  return icerikDateTime >= dayStart && icerikDateTime <= dayEnd;
+                } else {
+                  // Saat filtresi kapalıysa, sadece tarihe göre filtrele
+                  const icerikTarih = icerikTarihStr.includes('T') 
+                    ? icerikTarihStr.split('T')[0] 
+                    : icerikTarihStr.includes(' ') 
+                      ? icerikTarihStr.split(' ')[0] 
+                      : icerikTarihStr;
+                  console.log('Günlük filtre - İçerik tarihi:', icerikTarih, 'Hedef tarih:', selectedDate);
+                  return icerikTarih === selectedDate;
+                }
               } else if (reportMode === 'range') {
-                console.log('Aralık filtre - İçerik tarihi:', icerikTarih, 'Başlangıç:', startDate, 'Bitiş:', endDate);
-                return icerikTarih >= startDate && icerikTarih <= endDate;
+                // Saat dahil tarih aralığı kontrolü
+                const rangeStart = new Date(`${startDate}T${startTime}:00`);
+                const rangeEnd = new Date(`${endDate}T${endTime}:00`);
+                
+                console.log('Aralık filtre - İçerik:', icerikDateTime, 'Başlangıç:', rangeStart, 'Bitiş:', rangeEnd);
+                return icerikDateTime >= rangeStart && icerikDateTime <= rangeEnd;
               }
               
               return false;
@@ -164,7 +195,8 @@ const SatisAdetleriPage = () => {
       setError('Satış verileri sorgulanırken bir hata oluştu: ' + err.message);
       setLoading(false);
     }
-  }, [selectedSube, selectedDate, reportMode, startDate, endDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSube, reportTrigger]);
 
   // Satış adetlerini hesapla
   useEffect(() => {
@@ -273,7 +305,7 @@ const SatisAdetleriPage = () => {
         </div>
 
         {reportMode === 'daily' ? (
-          <div className="filter-group">
+          <div className="filter-group daily-filter-group">
             <label htmlFor="date-select">Tarih Seçin:</label>
             <input
               type="date"
@@ -281,31 +313,177 @@ const SatisAdetleriPage = () => {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
+            
+            <div className="time-filter-toggle">
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  checked={useDailyTimeFilter}
+                  onChange={(e) => setUseDailyTimeFilter(e.target.checked)}
+                />
+                <span className="toggle-switch"></span>
+                <span className="toggle-text">Saat Filtresi</span>
+              </label>
+            </div>
+            
+            {useDailyTimeFilter && (
+              <div className="daily-time-inputs">
+                <div className="time-input-wrapper">
+                  <label>Başlangıç Saati:</label>
+                  <input
+                    type="time"
+                    value={dailyStartTime}
+                    onChange={(e) => setDailyStartTime(e.target.value)}
+                  />
+                </div>
+                <div className="time-input-wrapper">
+                  <label>Bitiş Saati:</label>
+                  <input
+                    type="time"
+                    value={dailyEndTime}
+                    onChange={(e) => setDailyEndTime(e.target.value)}
+                  />
+                </div>
+                <div className="quick-daily-buttons">
+                  <button
+                    type="button"
+                    className="quick-btn small"
+                    onClick={() => {
+                      setDailyStartTime('08:00');
+                      setDailyEndTime('23:59');
+                    }}
+                  >
+                    08:00 - 23:59
+                  </button>
+                  <button
+                    type="button"
+                    className="quick-btn small"
+                    onClick={() => {
+                      setDailyStartTime('00:00');
+                      setDailyEndTime('08:00');
+                    }}
+                  >
+                    00:00 - 08:00
+                  </button>
+                  <button
+                    type="button"
+                    className="quick-btn small"
+                    onClick={() => {
+                      setDailyStartTime('12:00');
+                      setDailyEndTime('23:59');
+                    }}
+                  >
+                    12:00 - 23:59
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="filter-group date-range-group">
+            <div className="date-range-info">
+              <span className="material-icons">info</span>
+              <span>24 saat çalışan işletmeler için saat seçimi yapabilirsiniz. Örn: Dün 08:00 - Bugün 08:00</span>
+            </div>
             <div className="date-range-inputs">
-              <div className="date-input-wrapper">
-                <label htmlFor="start-date">Başlangıç:</label>
-                <input
-                  type="date"
-                  id="start-date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+              <div className="date-time-input-wrapper">
+                <label>Başlangıç Tarihi ve Saati:</label>
+                <div className="date-time-inputs">
+                  <input
+                    type="date"
+                    id="start-date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    id="start-time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="date-input-wrapper">
-                <label htmlFor="end-date">Bitiş:</label>
-                <input
-                  type="date"
-                  id="end-date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+              <div className="date-time-input-wrapper">
+                <label>Bitiş Tarihi ve Saati:</label>
+                <div className="date-time-inputs">
+                  <input
+                    type="date"
+                    id="end-date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    id="end-time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
               </div>
+            </div>
+            <div className="quick-time-buttons">
+              <span className="quick-label">Hızlı Seçim:</span>
+              <button
+                type="button"
+                className="quick-btn"
+                onClick={() => {
+                  const today = new Date();
+                  const yesterday = new Date(today);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  setStartDate(yesterday.toISOString().split('T')[0]);
+                  setEndDate(today.toISOString().split('T')[0]);
+                  setStartTime('08:00');
+                  setEndTime('08:00');
+                }}
+              >
+                <span className="material-icons">schedule</span>
+                Dün 08:00 - Bugün 08:00
+              </button>
+              <button
+                type="button"
+                className="quick-btn"
+                onClick={() => {
+                  const today = new Date();
+                  setStartDate(today.toISOString().split('T')[0]);
+                  setEndDate(today.toISOString().split('T')[0]);
+                  setStartTime('00:00');
+                  setEndTime('23:59');
+                }}
+              >
+                <span className="material-icons">today</span>
+                Bugün Tüm Gün
+              </button>
+              <button
+                type="button"
+                className="quick-btn"
+                onClick={() => {
+                  const today = new Date();
+                  const yesterday = new Date(today);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  setStartDate(yesterday.toISOString().split('T')[0]);
+                  setEndDate(yesterday.toISOString().split('T')[0]);
+                  setStartTime('00:00');
+                  setEndTime('23:59');
+                }}
+              >
+                <span className="material-icons">history</span>
+                Dün Tüm Gün
+              </button>
             </div>
           </div>
         )}
+
+        {/* Rapor Getir Butonu */}
+        <div className="filter-group report-action-group">
+          <button
+            className="report-fetch-btn"
+            onClick={() => setReportTrigger(prev => prev + 1)}
+            disabled={!selectedSube || (reportMode === 'daily' && !selectedDate) || (reportMode === 'range' && (!startDate || !endDate))}
+          >
+            <span className="material-icons">search</span>
+            Rapor Getir
+          </button>
+        </div>
       </div>
 
       {error && (

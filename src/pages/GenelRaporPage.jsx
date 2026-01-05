@@ -16,21 +16,29 @@ const GenelRaporPage = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
 
-  // Tarih aralığı varsayılanları: başlangıç = önceki ayın son günü, bitiş = sonraki ayın ilk günü
+  // Tarih aralığı varsayılanları: başlangıç = dün, bitiş = bugün
   const today = new Date();
-  const prevMonthLastDay = new Date(today.getFullYear(), today.getMonth(), 0) // önceki ayın son günü
-    .toISOString()
-    .split('T')[0];
-  const nextMonthFirstDay = new Date(today.getFullYear(), today.getMonth() + 1, 1) // sonraki ayın ilk günü
-    .toISOString()
-    .split('T')[0];
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const defaultStartDate = yesterday.toISOString().split('T')[0];
+  const defaultEndDate = today.toISOString().split('T')[0];
+
+  // Saat seçimi için state - varsayılan 08:00 (24 saat çalışan işletmeler için)
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('08:00');
+  // Günlük mod için saat seçimi
+  const [dailyStartTime, setDailyStartTime] = useState('00:00');
+  const [dailyEndTime, setDailyEndTime] = useState('23:59');
+  const [useDailyTimeFilter, setUseDailyTimeFilter] = useState(false);
+  // Rapor getir butonu için tetikleyici
+  const [reportTrigger, setReportTrigger] = useState(0);
 
   // Filter state
   const [filter, setFilter] = useState({
     mode: 'range', // 'daily' | 'range'
     date: new Date().toISOString().split('T')[0],
-    startDate: prevMonthLastDay,
-    endDate: nextMonthFirstDay,
+    startDate: defaultStartDate,
+    endDate: defaultEndDate,
     subeId: currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : ''
   });
 
@@ -63,7 +71,8 @@ const GenelRaporPage = () => {
 
   useEffect(() => {
     fetchReportData();
-  }, [filter, currentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportTrigger, currentUser]);
 
   // Detect mobile and set default filters visibility (hidden on mobile by default)
   useEffect(() => {
@@ -81,12 +90,22 @@ const GenelRaporPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const startDate = filter.mode === 'daily'
-        ? new Date(filter.date + 'T00:00:00')
-        : new Date(filter.startDate + 'T00:00:00');
-      const endDate = filter.mode === 'daily'
-        ? new Date(filter.date + 'T23:59:59')
-        : new Date(filter.endDate + 'T23:59:59');
+      let startDate, endDate;
+      
+      if (filter.mode === 'daily') {
+        if (useDailyTimeFilter) {
+          // Saat filtresi aktifse
+          startDate = new Date(`${filter.date}T${dailyStartTime}:00`);
+          endDate = new Date(`${filter.date}T${dailyEndTime}:59`);
+        } else {
+          startDate = new Date(filter.date + 'T00:00:00');
+          endDate = new Date(filter.date + 'T23:59:59');
+        }
+      } else {
+        // Tarih aralığı modu - saat dahil
+        startDate = new Date(`${filter.startDate}T${startTime}:00`);
+        endDate = new Date(`${filter.endDate}T${endTime}:59`);
+      }
 
       // Gider kayıtlarını getir
       let giderQuery;
@@ -441,7 +460,7 @@ const GenelRaporPage = () => {
           </div>
 
           {filter.mode === 'daily' ? (
-            <div className="filter-group">
+            <div className="filter-group daily-filter-group">
               <label htmlFor="date">Tarih:</label>
               <input
                 id="date"
@@ -449,28 +468,149 @@ const GenelRaporPage = () => {
                 value={filter.date}
                 onChange={(e) => setFilter({ ...filter, date: e.target.value })}
               />
+              
+              <div className="time-filter-toggle">
+                <label className="toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={useDailyTimeFilter}
+                    onChange={(e) => setUseDailyTimeFilter(e.target.checked)}
+                  />
+                  <span className="toggle-switch"></span>
+                  <span className="toggle-text">Saat Filtresi</span>
+                </label>
+              </div>
+              
+              {useDailyTimeFilter && (
+                <div className="daily-time-inputs">
+                  <div className="time-input-wrapper">
+                    <label>Başlangıç Saati:</label>
+                    <input
+                      type="time"
+                      value={dailyStartTime}
+                      onChange={(e) => setDailyStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="time-input-wrapper">
+                    <label>Bitiş Saati:</label>
+                    <input
+                      type="time"
+                      value={dailyEndTime}
+                      onChange={(e) => setDailyEndTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="quick-daily-buttons">
+                    <button
+                      type="button"
+                      className="quick-btn small"
+                      onClick={() => {
+                        setDailyStartTime('08:00');
+                        setDailyEndTime('23:59');
+                      }}
+                    >
+                      08:00 - 23:59
+                    </button>
+                    <button
+                      type="button"
+                      className="quick-btn small"
+                      onClick={() => {
+                        setDailyStartTime('00:00');
+                        setDailyEndTime('08:00');
+                      }}
+                    >
+                      00:00 - 08:00
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <>
-              <div className="filter-group">
-                <label htmlFor="start-date">Başlangıç Tarihi:</label>
-                <input
-                  id="start-date"
-                  type="date"
-                  value={filter.startDate}
-                  onChange={(e) => setFilter({ ...filter, startDate: e.target.value })}
-                />
+            <div className="filter-group date-range-group">
+              <div className="date-range-info">
+                <span className="material-icons">info</span>
+                <span>24 saat çalışan işletmeler için saat seçimi yapabilirsiniz</span>
               </div>
-              <div className="filter-group">
-                <label htmlFor="end-date">Bitiş Tarihi:</label>
-                <input
-                  id="end-date"
-                  type="date"
-                  value={filter.endDate}
-                  onChange={(e) => setFilter({ ...filter, endDate: e.target.value })}
-                />
+              <div className="date-range-inputs">
+                <div className="date-time-input-wrapper">
+                  <label>Başlangıç Tarihi ve Saati:</label>
+                  <div className="date-time-inputs">
+                    <input
+                      id="start-date"
+                      type="date"
+                      value={filter.startDate}
+                      onChange={(e) => setFilter({ ...filter, startDate: e.target.value })}
+                    />
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="date-time-input-wrapper">
+                  <label>Bitiş Tarihi ve Saati:</label>
+                  <div className="date-time-inputs">
+                    <input
+                      id="end-date"
+                      type="date"
+                      value={filter.endDate}
+                      onChange={(e) => setFilter({ ...filter, endDate: e.target.value })}
+                    />
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-            </>
+              <div className="quick-time-buttons">
+                <span className="quick-label">Hızlı Seçim:</span>
+                <button
+                  type="button"
+                  className="quick-btn"
+                  onClick={() => {
+                    const t = new Date();
+                    const y = new Date(t);
+                    y.setDate(y.getDate() - 1);
+                    setFilter({ ...filter, startDate: y.toISOString().split('T')[0], endDate: t.toISOString().split('T')[0] });
+                    setStartTime('08:00');
+                    setEndTime('08:00');
+                  }}
+                >
+                  <span className="material-icons">schedule</span>
+                  Dün 08:00 - Bugün 08:00
+                </button>
+                <button
+                  type="button"
+                  className="quick-btn"
+                  onClick={() => {
+                    const t = new Date();
+                    setFilter({ ...filter, startDate: t.toISOString().split('T')[0], endDate: t.toISOString().split('T')[0] });
+                    setStartTime('00:00');
+                    setEndTime('23:59');
+                  }}
+                >
+                  <span className="material-icons">today</span>
+                  Bugün Tüm Gün
+                </button>
+                <button
+                  type="button"
+                  className="quick-btn"
+                  onClick={() => {
+                    const t = new Date();
+                    const y = new Date(t);
+                    y.setDate(y.getDate() - 1);
+                    setFilter({ ...filter, startDate: y.toISOString().split('T')[0], endDate: y.toISOString().split('T')[0] });
+                    setStartTime('00:00');
+                    setEndTime('23:59');
+                  }}
+                >
+                  <span className="material-icons">history</span>
+                  Dün Tüm Gün
+                </button>
+              </div>
+            </div>
           )}
 
           {currentUser?.role === 'sirket_yoneticisi' && (
@@ -488,6 +628,17 @@ const GenelRaporPage = () => {
               </select>
             </div>
           )}
+
+          {/* Rapor Getir Butonu */}
+          <div className="filter-group report-action-group">
+            <button
+              className="report-fetch-btn"
+              onClick={() => setReportTrigger(prev => prev + 1)}
+            >
+              <span className="material-icons">search</span>
+              Rapor Getir
+            </button>
+          </div>
         </div>
         )}
       </div>
