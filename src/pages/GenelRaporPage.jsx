@@ -1,409 +1,311 @@
-import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import React, { useState, useEffect, useMemo } from 'react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { formatCurrency, toDate } from '../utils/dateUtils';
 import './GenelRaporPage.css';
 
 const GenelRaporPage = () => {
   const { currentUser } = useAuth();
+  
+  // State
+  const [subeler, setSubeler] = useState([]);
+  const [selectedSube, setSelectedSube] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [data, setData] = useState({
-    giderler: [],
-    adisyonlar: [],
-    kuryeRaporlari: []
-  });
-  const [isMobile, setIsMobile] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
-
-  // Tarih aralığı varsayılanları: başlangıç = dün, bitiş = bugün
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const defaultStartDate = yesterday.toISOString().split('T')[0];
-  const defaultEndDate = today.toISOString().split('T')[0];
-
-  // Saat seçimi için state - varsayılan 08:00 (24 saat çalışan işletmeler için)
+  
+  // Data State
+  const [adisyonlar, setAdisyonlar] = useState([]);
+  const [masaOdemeleri, setMasaOdemeleri] = useState([]);
+  const [giderler, setGiderler] = useState([]);
+  const [dataLoading, setDataLoading] = useState(false);
+  
+  // Filtreler
+  const [reportMode, setReportMode] = useState('daily'); // 'daily', 'range'
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // Range modu için
+  const todayRef = new Date();
+  const yesterdayRef = new Date(todayRef);
+  yesterdayRef.setDate(yesterdayRef.getDate() - 1);
+  const [startDate, setStartDate] = useState(yesterdayRef.toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(todayRef.toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('08:00');
+  
   // Günlük mod için saat seçimi
   const [dailyStartTime, setDailyStartTime] = useState('00:00');
   const [dailyEndTime, setDailyEndTime] = useState('23:59');
   const [useDailyTimeFilter, setUseDailyTimeFilter] = useState(false);
-  // Rapor getir butonu için tetikleyici
+  
+  // Tetikleyici
   const [reportTrigger, setReportTrigger] = useState(0);
+  
+  // UI State
+  const [showGiderDetay, setShowGiderDetay] = useState(false);
+  const [showCiroDetay, setShowCiroDetay] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [showMasaDebug, setShowMasaDebug] = useState(false);
 
-  // Filter state
-  const [filter, setFilter] = useState({
-    mode: 'range', // 'daily' | 'range'
-    date: new Date().toISOString().split('T')[0],
-    startDate: defaultStartDate,
-    endDate: defaultEndDate,
-    subeId: currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : ''
-  });
+  const pad = (n) => String(n).padStart(2, '0');
+  const toLocalDateString = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-  const [subeler, setSubeler] = useState([]);
+  const buildDateRange = () => {
+    let startDatePart = reportMode === 'daily' ? selectedDate : startDate;
+    let endDatePart = reportMode === 'daily' ? selectedDate : endDate;
+    let startDateTime;
+    let endDateTime;
 
-  useEffect(() => {
-    // Şubeleri getir (şirket yöneticisi için)
-    const fetchSubeler = async () => {
-      if (currentUser?.role === 'sirket_yoneticisi') {
-        try {
-          const q = query(collection(db, 'subeler'));
-          const snapshot = await getDocs(q);
-          const items = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          
-          // Client-side sorting
-          items.sort((a, b) => (a.ad || '').localeCompare(b.ad || ''));
-          setSubeler(items);
-        } catch (error) {
-          console.error('Şubeler getirme hatası:', error);
-          setSubeler([]);
+    if (reportMode === 'daily') {
+      if (useDailyTimeFilter) {
+        startDateTime = new Date(`${selectedDate}T${dailyStartTime}:00`);
+        endDateTime = new Date(`${selectedDate}T${dailyEndTime}:59`);
+
+        if (endDateTime <= startDateTime) {
+          endDateTime.setDate(endDateTime.getDate() + 1);
+          endDatePart = toLocalDateString(endDateTime);
         }
+      } else {
+        startDateTime = new Date(`${selectedDate}T00:00:00`);
+        endDateTime = new Date(`${selectedDate}T23:59:59`);
+      }
+    } else {
+      startDateTime = new Date(`${startDate}T${startTime}:00`);
+      endDateTime = endTime === '23:59'
+        ? new Date(`${endDate}T23:59:59`)
+        : new Date(`${endDate}T${endTime}:59`);
+    }
+
+    const startQueryStr = startDatePart;
+    const endQueryStr = `${endDatePart}\uf8ff`;
+
+    return { startDateTime, endDateTime, startQueryStr, endQueryStr };
+  };
+
+  const isInRange = (val, start, end) => {
+    const d = toDate(val);
+    if (!d) return false;
+    return d >= start && d <= end;
+  };
+
+  // Şubeleri Getir
+  useEffect(() => {
+    const getSubeler = async () => {
+      try {
+        let subeQuery;
+        
+        if (currentUser?.role === 'sirket_yoneticisi') {
+          subeQuery = query(collection(db, 'subeler'));
+        } else if (currentUser?.subeId) {
+          subeQuery = query(
+            collection(db, 'subeler'), 
+            where('__name__', '==', currentUser.subeId)
+          );
+        } else {
+          return;
+        }
+
+        if (subeQuery) {
+          const unsubscribe = onSnapshot(subeQuery, (snapshot) => {
+            const subeList = snapshot.docs.map(doc => {
+              const data = { id: doc.id, ...doc.data() };
+              return data;
+            });
+            setSubeler(subeList);
+            
+            if (currentUser?.role !== 'sirket_yoneticisi' && subeList.length > 0) {
+              const autoId = subeList[0].rrc_restaurant_id || subeList[0].id;
+              setSelectedSube(autoId);
+            }
+          }, (error) => {
+            console.error('Şubeler alınırken hata:', error);
+            setError('Şubeler yüklenirken bir hata oluştu: ' + error.message);
+          });
+
+          return () => unsubscribe();
+        }
+      } catch (err) {
+        console.error('Şubeler alınırken hata:', err);
+        setError('Şubeler yüklenirken bir hata oluştu: ' + err.message);
       }
     };
 
-    fetchSubeler();
+    if (currentUser) {
+      getSubeler();
+    }
+    setLoading(false);
   }, [currentUser]);
 
+  // Veri Çekme
   useEffect(() => {
-    fetchReportData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportTrigger, currentUser]);
+    if (!selectedSube) return;
+    
+    if (reportMode === 'daily' && !selectedDate) return;
+    if (reportMode === 'range' && (!startDate || !endDate)) return;
+    if (reportTrigger === 0) return; // İlk render'da çalışmasın
 
-  // Detect mobile and set default filters visibility (hidden on mobile by default)
-  useEffect(() => {
-    const onResize = () => {
-      const m = window.innerWidth <= 768;
-      setIsMobile(m);
-      setShowFilters(!m); // show on desktop, hide on mobile by default
-    };
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  const fetchReportData = async () => {
-    setLoading(true);
+    setDataLoading(true);
     setError(null);
+
     try {
-      let startDate, endDate;
-      
-      if (filter.mode === 'daily') {
-        if (useDailyTimeFilter) {
-          // Saat filtresi aktifse
-          startDate = new Date(`${filter.date}T${dailyStartTime}:00`);
-          endDate = new Date(`${filter.date}T${dailyEndTime}:59`);
-        } else {
-          startDate = new Date(filter.date + 'T00:00:00');
-          endDate = new Date(filter.date + 'T23:59:59');
-        }
-      } else {
-        // Tarih aralığı modu - saat dahil
-        startDate = new Date(`${filter.startDate}T${startTime}:00`);
-        endDate = new Date(`${filter.endDate}T${endTime}:59`);
-      }
+      const { startDateTime, endDateTime, startQueryStr, endQueryStr } = buildDateRange();
 
-      // Gider kayıtlarını getir
-      let giderQuery;
-      if (filter.subeId) {
-        giderQuery = query(
-          collection(db, 'giderKayitlari'),
-          where('subeId', '==', filter.subeId)
-        );
-      } else if (currentUser?.role === 'sube_yoneticisi') {
-        giderQuery = query(
-          collection(db, 'giderKayitlari'),
-          where('subeId', '==', currentUser.subeId)
-        );
-      } else {
-        giderQuery = query(collection(db, 'giderKayitlari'));
-      }
+      // 1. Adisyonlar
+      const adisyonQuery = query(
+        collection(db, 'Adisyonlar'),
+        where('rrc_restaurant_id', '==', selectedSube),
+        where('tarih', '>=', startQueryStr),
+        where('tarih', '<=', endQueryStr)
+      );
 
-      const giderSnapshot = await getDocs(giderQuery);
-      let giderler = giderSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      // Client-side tarih filtresi
-      giderler = giderler.filter(item => {
-        const itemDate = item.tarih?.toDate();
-        return itemDate && itemDate >= startDate && itemDate <= endDate;
-      }).sort((a, b) => {
-        const dateA = a.tarih?.toDate() || new Date(0);
-        const dateB = b.tarih?.toDate() || new Date(0);
-        return dateB - dateA;
+      const unsubAdisyon = onSnapshot(adisyonQuery, (snap) => {
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const filtered = data.filter(item => isInRange(item.tarih, startDateTime, endDateTime));
+        setAdisyonlar(filtered);
+      }, (err) => {
+        console.error('Adisyon hatası:', err);
+        setError('Adisyonlar yüklenirken hata: ' + err.message);
       });
 
-      // Adisyonları getir (rrc_restaurant_id alanını da destekle)
-      let adisyonlar = [];
-      if (filter.subeId) {
-        // Önce rrc_restaurant_id ile dene (AdisyonlarPage ile uyumlu)
-        try {
-          const qRrc = query(
-            collection(db, 'Adisyonlar'),
-            where('rrc_restaurant_id', '==', filter.subeId)
-          );
-          const snapRrc = await getDocs(qRrc);
-          adisyonlar = snapRrc.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch (e) {
-          console.warn('rrc_restaurant_id sorgusu hata verdi, subeId ile denenecek:', e);
-        }
-        // Eğer sonuç yoksa veya hata olduysa subeId ile fallback
-        if (adisyonlar.length === 0) {
-          try {
-            const qSube = query(
-              collection(db, 'Adisyonlar'),
-              where('subeId', '==', filter.subeId)
-            );
-            const snapSube = await getDocs(qSube);
-            adisyonlar = snapSube.docs.map(d => ({ id: d.id, ...d.data() }));
-          } catch (e2) {
-            console.warn('subeId sorgusu da başarısız:', e2);
-          }
-        }
-      } else if (currentUser?.role === 'sube_yoneticisi') {
-        // Şube yöneticisinin gördüğü adisyonlar: kullanıcı kaydındaki subeId hem rrc_restaurant_id hem subeId için denenir
-        try {
-          const qRrcUser = query(
-            collection(db, 'Adisyonlar'),
-            where('rrc_restaurant_id', '==', currentUser.subeId)
-          );
-          const snapUserRrc = await getDocs(qRrcUser);
-          adisyonlar = snapUserRrc.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch (e) {
-          console.warn('Kullanıcı rrc_restaurant_id sorgusu hata:', e);
-        }
-        if (adisyonlar.length === 0) {
-          try {
-            const qUserSube = query(
-              collection(db, 'Adisyonlar'),
-              where('subeId', '==', currentUser.subeId)
-            );
-            const snapUserSube = await getDocs(qUserSube);
-            adisyonlar = snapUserSube.docs.map(d => ({ id: d.id, ...d.data() }));
-          } catch (e2) {
-            console.warn('Kullanıcı subeId sorgusu hata:', e2);
-          }
-        }
-      } else {
-        // Tüm şubeler
-        const allSnap = await getDocs(collection(db, 'Adisyonlar'));
-        adisyonlar = allSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      }
+      // 2. Masa Ödemeleri
+      const masaQuery = query(
+        collection(db, 'MasaOdemeleri'),
+        where('rrc_restaurant_id', '==', selectedSube)
+      );
 
-      // Client-side tarih filtresi (olusturmaTarihi Timestamp yoksa 'tarih' string alanını kullan)
-      adisyonlar = adisyonlar.filter(item => {
-        let itemDate = item.olusturmaTarihi?.toDate();
-        if (!itemDate && item.tarih) {
-          try {
-            const t = String(item.tarih);
-            let dateStr;
-            if (t.includes('T')) {
-              dateStr = t; // ISO
-            } else if (t.includes(' ')) {
-              dateStr = t.replace(' ', 'T');
-            } else {
-              dateStr = t + 'T00:00:00';
-            }
-            const parsed = new Date(dateStr);
-            if (!isNaN(parsed.getTime())) itemDate = parsed;
-          } catch (e) {
-            // ignore parse errors
-          }
-        }
-        return itemDate && itemDate >= startDate && itemDate <= endDate;
-      }).sort((a, b) => {
-        const dateA = a.olusturmaTarihi?.toDate() || (() => {
-          if (a.tarih) {
-            const t = String(a.tarih);
-            return new Date(t.includes('T') ? t : t.includes(' ') ? t.replace(' ', 'T') : t + 'T00:00:00');
-          }
-          return new Date(0);
-        })();
-        const dateB = b.olusturmaTarihi?.toDate() || (() => {
-          if (b.tarih) {
-            const t = String(b.tarih);
-            return new Date(t.includes('T') ? t : t.includes(' ') ? t.replace(' ', 'T') : t + 'T00:00:00');
-          }
-          return new Date(0);
-        })();
-        return dateB - dateA;
+      const unsubMasa = onSnapshot(masaQuery, (snap) => {
+        const allData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Client-side tarih filtresi (string karşılaştırma)
+        const filtered = allData.filter(item => {
+          const dateField = item.tarih || item.createdAt || item.odemeTarihi;
+          return isInRange(dateField, startDateTime, endDateTime);
+        });
+        setMasaOdemeleri(filtered);
+      }, (err) => {
+        console.warn('Masa ödemeleri hatası:', err);
       });
 
-      // Kurye atama kayıtlarını getir
-      let kuryeQuery;
-      if (filter.subeId) {
-        kuryeQuery = query(
-          collection(db, 'kuryeatama'),
-          where('subeId', '==', filter.subeId)
-        );
-      } else if (currentUser?.role === 'sube_yoneticisi') {
-        kuryeQuery = query(
-          collection(db, 'kuryeatama'),
-          where('subeId', '==', currentUser.subeId)
-        );
-      } else {
-        kuryeQuery = query(collection(db, 'kuryeatama'));
-      }
+      // 3. Giderler
+      const giderQuery = query(
+        collection(db, 'giderKayitlari'),
+        where('subeId', '==', selectedSube)
+      );
 
-      const kuryeSnapshot = await getDocs(kuryeQuery);
-      let kuryeRaporlari = kuryeSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      // Client-side tarih filtresi
-      kuryeRaporlari = kuryeRaporlari.filter(item => {
-        const itemDate = item.atamaTarihi?.toDate();
-        return itemDate && itemDate >= startDate && itemDate <= endDate;
-      }).sort((a, b) => {
-        const dateA = a.atamaTarihi?.toDate() || new Date(0);
-        const dateB = b.atamaTarihi?.toDate() || new Date(0);
-        return dateB - dateA;
+      const unsubGider = onSnapshot(giderQuery, (snap) => {
+        const allData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Client-side tarih filtresi
+        const filtered = allData.filter(item => {
+          const dateField = item.tarih || item.createdAt;
+          return isInRange(dateField, startDateTime, endDateTime);
+        });
+        setGiderler(filtered);
+      }, (err) => {
+        console.warn('Giderler hatası:', err);
       });
 
-      setData({
-        giderler,
-        adisyonlar,
-        kuryeRaporlari
-      });
-
-    } catch (error) {
-      console.error('Rapor verisi getirme hatası:', error);
-      setData({
-        giderler: [],
-        adisyonlar: [],
-        kuryeRaporlari: []
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // İptal kontrolü (AdisyonlarPage ile aynı mantık)
-  const isCanceled = (adisyon) => {
-    if (!adisyon || !adisyon.durum) return false;
-    try {
-      const s = String(adisyon.durum).toUpperCase();
-      return s.includes('İPTAL') || s.includes('IPTAL');
-    } catch {
-      return false;
-    }
-  };
-
-  // Hesaplamalar
-  const nonCanceledAdisyonlar = data.adisyonlar.filter(a => !isCanceled(a));
-  const canceledAdisyonlar = data.adisyonlar.filter(a => isCanceled(a));
-
-  const calculations = {
-    // Toplam Gider
-    toplamGider: data.giderler.reduce((total, item) => total + item.tutar, 0),
-    
-    // Ödeme Kaynağına Göre Giderler
-    gunlukKasaGider: data.giderler
-      .filter(item => item.odemeKaynagi === 'gunluk_kasa')
-      .reduce((total, item) => total + item.tutar, 0),
-    merkezKasaGider: data.giderler
-      .filter(item => item.odemeKaynagi === 'merkez_kasa')
-      .reduce((total, item) => total + item.tutar, 0),
-    
-  // Toplam Satış (iptaller hariç, atop alanı öncelikli; yoksa fallback toplamTutar)
-  toplamSatis: nonCanceledAdisyonlar.reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0),
-    
-    // Ödeme Tipine Göre Satışlar
-    nakit: nonCanceledAdisyonlar
-      .filter(item => (item.odemeTipi === 'Nakit' || item.odemeTipi === 1))
-      .reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0),
-    kartKredi: nonCanceledAdisyonlar
-      .filter(item => (item.odemeTipi === 'Kart/Kredi' || item.odemeTipi === 2))
-      .reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0),
-    
-    // Kurye İstatistikleri
-    toplamTeslimat: data.kuryeRaporlari.length,
-    tamamlananTeslimat: data.kuryeRaporlari.filter(item => item.durum === 'tamamlandi').length,
-    bekleyenTeslimat: data.kuryeRaporlari.filter(item => item.durum === 'beklemede').length,
-    
-    // Net Kar (Satış - Gider)
-    get netKar() {
-      return this.toplamSatis - calculations.toplamGider;
-    }
-  };
-
-  // Ödeme tiplerine göre atop toplamları (Firestore alanı: 'odemetipi'); eski kodla uyum için 'odemeTipi' fallback
-  const normalizeOdemeTipi = (value) => {
-    if (value === undefined || value === null) return 'Diğer';
-    if (typeof value === 'number') {
-      if (value === 1) return 'Nakit';
-      if (value === 2) return 'Kart/Kredi';
-      return `Kod ${value}`;
-    }
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (!trimmed) return 'Diğer';
-      const norm = trimmed.toUpperCase().replace(/İ/g, 'I');
-      if (/NAK/.test(norm) || norm === 'CASH') return 'Nakit';
-      if (/KART|KREDI|POS/.test(norm)) return 'Kart/Kredi';
-      return trimmed; // orijinal etiketi koru
-    }
-    return 'Diğer';
-  };
-
-  const odemeTipiToplamlariObj = nonCanceledAdisyonlar.reduce((acc, item) => {
-    const raw = item.odemetipi !== undefined ? item.odemetipi : item.odemeTipi; // tercih 'odemetipi'
-    const key = normalizeOdemeTipi(raw);
-    const tutar = Number(item.atop) || Number(item.toplamTutar) || 0;
-    acc[key] = (acc[key] || 0) + tutar;
-    return acc;
-  }, {});
-  const toplamSatisForPercent = Object.values(odemeTipiToplamlariObj).reduce((a, b) => a + b, 0) || 1;
-  const odemeTipiToplamlari = Object.entries(odemeTipiToplamlariObj)
-    .map(([tip, tutar]) => ({ tip, tutar, yuzde: (tutar / toplamSatisForPercent) * 100 }))
-    .sort((a, b) => b.tutar - a.tutar);
-
-  // Gider kalemi bazında gruplandırma
-  const giderKalemleriGrouped = data.giderler.reduce((acc, item) => {
-    const key = item.giderKalemiAdi;
-    if (!acc[key]) {
-      acc[key] = {
-        ad: key,
-        tutar: 0,
-        adet: 0
+      setDataLoading(false);
+      return () => {
+        unsubAdisyon();
+        unsubMasa();
+        unsubGider();
       };
+    } catch (err) {
+      console.error('Veri çekme hatası:', err);
+      setError('Veriler yüklenirken hata oluştu: ' + err.message);
+      setDataLoading(false);
     }
-    acc[key].tutar += item.tutar;
-    acc[key].adet += 1;
-    return acc;
-  }, {});
+  }, [selectedSube, reportTrigger, reportMode, selectedDate, startDate, endDate, startTime, endTime, dailyStartTime, dailyEndTime, useDailyTimeFilter]);
 
-  const giderKalemleriArray = Object.values(giderKalemleriGrouped).sort((a, b) => b.tutar - a.tutar);
+  // İstatistikleri Hesapla
+  const stats = useMemo(() => {
+    // Adisyonları filtrele (MASA olanları hariç tut)
+    const paketAdisyonlar = adisyonlar.filter(a => a.kisikod !== 'MASA');
+    
+    // İptal kontrolü
+    const isCanceled = (item) => {
+      const durumStr = (item.durum || '').toString().toUpperCase();
+      return durumStr.includes('İPTAL') || durumStr.includes('IPTAL');
+    };
 
-  if (loading) {
-    return (
-      <div className="genel-rapor-container">
-        <div className="page-header">
-          <div className="header-content">
-            <div className="title-section">
-              <h1>
-                <span className="material-icons">analytics</span>
-                Genel Rapor
-              </h1>
-              <p>Şube performans ve finansal analiz özeti</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Rapor hazırlanıyor...</p>
-        </div>
-      </div>
-    );
+    // Paket siparişler
+    const paketValid = paketAdisyonlar.filter(a => !isCanceled(a));
+    const paketIptal = paketAdisyonlar.filter(a => isCanceled(a));
+    const paketCiro = paketValid.reduce((sum, a) => sum + (parseFloat(a.atop) || 0), 0);
+    const paketIptalTutar = paketIptal.reduce((sum, a) => sum + (parseFloat(a.atop) || 0), 0);
+
+    // Masa ödemeleri
+    const masaCiro = masaOdemeleri.reduce((sum, m) => sum + (parseFloat(m.tutar || m.toplamTutar) || 0), 0);
+
+    // Toplam ciro
+    const toplamCiro = paketCiro + masaCiro;
+
+    // Giderler
+    const toplamGider = giderler.reduce((sum, g) => sum + (parseFloat(g.tutar) || 0), 0);
+
+    // Net kâr/zarar
+    const netKar = toplamCiro - toplamGider;
+
+    // Ödeme tipi dağılımı
+    const paketOdemeTipleri = {};
+    paketValid.forEach(a => {
+      const tip = (a.odemetipi || a.odemeYontemi || 'Bilinmiyor').toString();
+      paketOdemeTipleri[tip] = (paketOdemeTipleri[tip] || 0) + (parseFloat(a.atop) || 0);
+    });
+
+    const masaOdemeTipleri = {};
+    masaOdemeleri.forEach(m => {
+      const tip = (m.odemesekli || m.odemeYontemi || 'Bilinmiyor').toString();
+      masaOdemeTipleri[tip] = (masaOdemeTipleri[tip] || 0) + (parseFloat(m.tutar || m.toplamTutar) || 0);
+    });
+
+    // Platform dağılımı (sadece paket için)
+    const platformlar = {};
+    paketValid.forEach(a => {
+      const platform = getPlatformName(a.siparisnerden);
+      platformlar[platform] = (platformlar[platform] || 0) + (parseFloat(a.atop) || 0);
+    });
+
+    // Gider kategorileri
+    const giderKategorileri = {};
+    giderler.forEach(g => {
+      const kategori = g.giderKalemiAdi || g.giderKalemi || 'Diğer';
+      giderKategorileri[kategori] = (giderKategorileri[kategori] || 0) + (parseFloat(g.tutar) || 0);
+    });
+
+    return {
+      toplamCiro,
+      toplamGider,
+      netKar,
+      paketCiro,
+      masaCiro,
+      paketAdet: paketValid.length,
+      masaAdet: masaOdemeleri.length,
+      iptalAdet: paketIptal.length,
+      iptalTutar: paketIptalTutar,
+      platformlar,
+      paketOdemeTipleri,
+      masaOdemeTipleri,
+      giderKategorileri,
+      giderAdet: giderler.length
+    };
+  }, [adisyonlar, masaOdemeleri, giderler]);
+
+  // Platform adı
+  function getPlatformName(kod) {
+    switch (kod) {
+      case 0: return 'Telefon';
+      case 1: return 'Yemek Sepeti';
+      case 2: return 'Getir';
+      case 5: return 'Trendyol';
+      case 8: return 'Migros';
+      default: return 'Diğer';
+    }
   }
+
+  // Rapor Getir
+  const handleFetchReport = () => {
+    setReportTrigger(prev => prev + 1);
+  };
 
   return (
     <div className="genel-rapor-container">
@@ -411,236 +313,236 @@ const GenelRaporPage = () => {
         <div className="header-content">
           <div className="title-section">
             <h1>
-              <span className="material-icons">analytics</span>
-              Genel Rapor
+              <span className="material-icons">bar_chart</span>
+              Genel Finans Raporu
             </h1>
-            <p>Şube performans ve finansal analiz özeti</p>
+            <p>Detaylı ciro, gider ve kâr/zarar analizleri</p>
           </div>
         </div>
       </div>
 
-      {/* Filtreler */}
+      {/* Filtre Bölümü */}
       <div className="filters-section">
-        <div className="filters-toggle-row">
-          <h4 className="filters-title">
-            <span className="material-icons">filter_list</span>
-            Filtreler
-          </h4>
-          <button
-            type="button"
-            className="filters-toggle-button"
-            onClick={() => setShowFilters(v => !v)}
-            aria-expanded={showFilters}
+        <div className="filter-group">
+          <label htmlFor="sube-select">Şube Seçin:</label>
+          <select
+            id="sube-select"
+            value={selectedSube}
+            onChange={(e) => setSelectedSube(e.target.value)}
+            disabled={currentUser?.role !== 'sirket_yoneticisi'}
           >
-            <span className="material-icons" aria-hidden="true">{showFilters ? 'expand_less' : 'expand_more'}</span>
-            {showFilters ? 'Gizle' : 'Göster'}
-          </button>
+            <option value="">Şube seçin...</option>
+            {subeler.map((sube) => {
+              const rrcId = sube.rrc_restaurant_id || sube.id;
+              return (
+                <option key={sube.id} value={rrcId}>
+                  {sube.subeAdi} (RRC ID: {rrcId})
+                </option>
+              );
+            })}
+          </select>
         </div>
 
-        {(showFilters || !isMobile) && (
-        <div className="filter-row" style={{ gap: '16px', flexWrap: 'wrap' }}>
-          <div className="filter-group">
-            <label>Rapor Tipi:</label>
-            <div className="report-mode-buttons">
-              <button
-                className={`filter-btn ${filter.mode === 'daily' ? 'active' : ''}`}
-                onClick={() => setFilter({ ...filter, mode: 'daily' })}
-              >
-                <span className="material-icons">today</span>
-                Günlük
-              </button>
-              <button
-                className={`filter-btn ${filter.mode === 'range' ? 'active' : ''}`}
-                onClick={() => setFilter({ ...filter, mode: 'range' })}
-              >
-                <span className="material-icons">date_range</span>
-                Tarih Aralığı
-              </button>
-            </div>
-          </div>
-
-          {filter.mode === 'daily' ? (
-            <div className="filter-group daily-filter-group">
-              <label htmlFor="date">Tarih:</label>
-              <input
-                id="date"
-                type="date"
-                value={filter.date}
-                onChange={(e) => setFilter({ ...filter, date: e.target.value })}
-              />
-              
-              <div className="time-filter-toggle">
-                <label className="toggle-label">
-                  <input
-                    type="checkbox"
-                    checked={useDailyTimeFilter}
-                    onChange={(e) => setUseDailyTimeFilter(e.target.checked)}
-                  />
-                  <span className="toggle-switch"></span>
-                  <span className="toggle-text">Saat Filtresi</span>
-                </label>
-              </div>
-              
-              {useDailyTimeFilter && (
-                <div className="daily-time-inputs">
-                  <div className="time-input-wrapper">
-                    <label>Başlangıç Saati:</label>
-                    <input
-                      type="time"
-                      value={dailyStartTime}
-                      onChange={(e) => setDailyStartTime(e.target.value)}
-                    />
-                  </div>
-                  <div className="time-input-wrapper">
-                    <label>Bitiş Saati:</label>
-                    <input
-                      type="time"
-                      value={dailyEndTime}
-                      onChange={(e) => setDailyEndTime(e.target.value)}
-                    />
-                  </div>
-                  <div className="quick-daily-buttons">
-                    <button
-                      type="button"
-                      className="quick-btn small"
-                      onClick={() => {
-                        setDailyStartTime('08:00');
-                        setDailyEndTime('23:59');
-                      }}
-                    >
-                      08:00 - 23:59
-                    </button>
-                    <button
-                      type="button"
-                      className="quick-btn small"
-                      onClick={() => {
-                        setDailyStartTime('00:00');
-                        setDailyEndTime('08:00');
-                      }}
-                    >
-                      00:00 - 08:00
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="filter-group date-range-group">
-              <div className="date-range-info">
-                <span className="material-icons">info</span>
-                <span>24 saat çalışan işletmeler için saat seçimi yapabilirsiniz</span>
-              </div>
-              <div className="date-range-inputs">
-                <div className="date-time-input-wrapper">
-                  <label>Başlangıç Tarihi ve Saati:</label>
-                  <div className="date-time-inputs">
-                    <input
-                      id="start-date"
-                      type="date"
-                      value={filter.startDate}
-                      onChange={(e) => setFilter({ ...filter, startDate: e.target.value })}
-                    />
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="date-time-input-wrapper">
-                  <label>Bitiş Tarihi ve Saati:</label>
-                  <div className="date-time-inputs">
-                    <input
-                      id="end-date"
-                      type="date"
-                      value={filter.endDate}
-                      onChange={(e) => setFilter({ ...filter, endDate: e.target.value })}
-                    />
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="quick-time-buttons">
-                <span className="quick-label">Hızlı Seçim:</span>
-                <button
-                  type="button"
-                  className="quick-btn"
-                  onClick={() => {
-                    const t = new Date();
-                    const y = new Date(t);
-                    y.setDate(y.getDate() - 1);
-                    setFilter({ ...filter, startDate: y.toISOString().split('T')[0], endDate: t.toISOString().split('T')[0] });
-                    setStartTime('08:00');
-                    setEndTime('08:00');
-                  }}
-                >
-                  <span className="material-icons">schedule</span>
-                  Dün 08:00 - Bugün 08:00
-                </button>
-                <button
-                  type="button"
-                  className="quick-btn"
-                  onClick={() => {
-                    const t = new Date();
-                    setFilter({ ...filter, startDate: t.toISOString().split('T')[0], endDate: t.toISOString().split('T')[0] });
-                    setStartTime('00:00');
-                    setEndTime('23:59');
-                  }}
-                >
-                  <span className="material-icons">today</span>
-                  Bugün Tüm Gün
-                </button>
-                <button
-                  type="button"
-                  className="quick-btn"
-                  onClick={() => {
-                    const t = new Date();
-                    const y = new Date(t);
-                    y.setDate(y.getDate() - 1);
-                    setFilter({ ...filter, startDate: y.toISOString().split('T')[0], endDate: y.toISOString().split('T')[0] });
-                    setStartTime('00:00');
-                    setEndTime('23:59');
-                  }}
-                >
-                  <span className="material-icons">history</span>
-                  Dün Tüm Gün
-                </button>
-              </div>
-            </div>
-          )}
-
-          {currentUser?.role === 'sirket_yoneticisi' && (
-            <div className="filter-group">
-              <label htmlFor="sube-select">Şube:</label>
-              <select
-                id="sube-select"
-                value={filter.subeId}
-                onChange={(e) => setFilter({ ...filter, subeId: e.target.value })}
-              >
-                <option value="">Tüm Şubeler</option>
-                {subeler.map(sube => (
-                  <option key={sube.id} value={sube.id}>{sube.ad || sube.subeAdi}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Rapor Getir Butonu */}
-          <div className="filter-group report-action-group">
+        <div className="filter-group">
+          <label>Rapor Tipi:</label>
+          <div className="report-mode-buttons">
             <button
-              className="report-fetch-btn"
-              onClick={() => setReportTrigger(prev => prev + 1)}
+              className={`filter-btn ${reportMode === 'daily' ? 'active' : ''}`}
+              onClick={() => setReportMode('daily')}
             >
-              <span className="material-icons">search</span>
-              Rapor Getir
+              <span className="material-icons">today</span>
+              Günlük
+            </button>
+            <button
+              className={`filter-btn ${reportMode === 'range' ? 'active' : ''}`}
+              onClick={() => setReportMode('range')}
+            >
+              <span className="material-icons">date_range</span>
+              Tarih Aralığı
             </button>
           </div>
         </div>
+
+        {reportMode === 'daily' ? (
+          <div className="filter-group daily-filter-group">
+            <label htmlFor="date-select">Tarih Seçin:</label>
+            <input
+              type="date"
+              id="date-select"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+            
+            <div className="time-filter-toggle">
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  checked={useDailyTimeFilter}
+                  onChange={(e) => setUseDailyTimeFilter(e.target.checked)}
+                />
+                <span className="toggle-switch"></span>
+                <span className="toggle-text">Saat Filtresi</span>
+              </label>
+            </div>
+            
+            {useDailyTimeFilter && (
+              <div className="daily-time-inputs">
+                <div className="time-input-wrapper">
+                  <label>Başlangıç Saati:</label>
+                  <input
+                    type="time"
+                    value={dailyStartTime}
+                    onChange={(e) => setDailyStartTime(e.target.value)}
+                  />
+                </div>
+                <div className="time-input-wrapper">
+                  <label>Bitiş Saati:</label>
+                  <input
+                    type="time"
+                    value={dailyEndTime}
+                    onChange={(e) => setDailyEndTime(e.target.value)}
+                  />
+                </div>
+                <div className="quick-daily-buttons">
+                  <button
+                    type="button"
+                    className="quick-btn small"
+                    onClick={() => {
+                      setDailyStartTime('08:00');
+                      setDailyEndTime('23:59');
+                    }}
+                  >
+                    08:00 - 23:59
+                  </button>
+                  <button
+                    type="button"
+                    className="quick-btn small"
+                    onClick={() => {
+                      setDailyStartTime('00:00');
+                      setDailyEndTime('08:00');
+                    }}
+                  >
+                    00:00 - 08:00
+                  </button>
+                  <button
+                    type="button"
+                    className="quick-btn small"
+                    onClick={() => {
+                      setDailyStartTime('12:00');
+                      setDailyEndTime('23:59');
+                    }}
+                  >
+                    12:00 - 23:59
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="filter-group date-range-group">
+            <div className="date-range-info">
+              <span className="material-icons">info</span>
+              <span>24 saat çalışan işletmeler için saat seçimi yapabilirsiniz. Örn: Dün 08:00 - Bugün 08:00</span>
+            </div>
+            <div className="date-range-inputs">
+              <div className="date-time-input-wrapper">
+                <label>Başlangıç Tarihi ve Saati:</label>
+                <div className="date-time-inputs">
+                  <input
+                    type="date"
+                    id="start-date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    id="start-time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="date-time-input-wrapper">
+                <label>Bitiş Tarihi ve Saati:</label>
+                <div className="date-time-inputs">
+                  <input
+                    type="date"
+                    id="end-date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    id="end-time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="quick-time-buttons">
+              <span className="quick-label">Hızlı Seçim:</span>
+              <button
+                type="button"
+                className="quick-btn"
+                onClick={() => {
+                  const today = new Date();
+                  const yesterday = new Date(today);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  setStartDate(yesterday.toISOString().split('T')[0]);
+                  setEndDate(today.toISOString().split('T')[0]);
+                  setStartTime('08:00');
+                  setEndTime('08:00');
+                }}
+              >
+                <span className="material-icons">schedule</span>
+                Dün 08:00 - Bugün 08:00
+              </button>
+              <button
+                type="button"
+                className="quick-btn"
+                onClick={() => {
+                  const today = new Date();
+                  setStartDate(today.toISOString().split('T')[0]);
+                  setEndDate(today.toISOString().split('T')[0]);
+                  setStartTime('00:00');
+                  setEndTime('23:59');
+                }}
+              >
+                <span className="material-icons">today</span>
+                Bugün Tüm Gün
+              </button>
+              <button
+                type="button"
+                className="quick-btn"
+                onClick={() => {
+                  const today = new Date();
+                  const yesterday = new Date(today);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  setStartDate(yesterday.toISOString().split('T')[0]);
+                  setEndDate(yesterday.toISOString().split('T')[0]);
+                  setStartTime('00:00');
+                  setEndTime('23:59');
+                }}
+              >
+                <span className="material-icons">history</span>
+                Dün Tüm Gün
+              </button>
+            </div>
+          </div>
         )}
+
+        {/* Rapor Getir Butonu */}
+        <div className="filter-group report-action-group">
+          <button
+            className="report-fetch-btn"
+            onClick={handleFetchReport}
+            disabled={!selectedSube || (reportMode === 'daily' && !selectedDate) || (reportMode === 'range' && (!startDate || !endDate))}
+          >
+            <span className="material-icons">search</span>
+            Rapor Getir
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -650,123 +552,412 @@ const GenelRaporPage = () => {
         </div>
       )}
 
-      {/* Özet Kartları */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon success">
-            <span className="material-icons">trending_up</span>
-          </div>
-          <div className="stat-info">
-            <div className="stat-number">₺{calculations.toplamSatis.toFixed(2)}</div>
-            <div className="stat-label">Toplam Satış</div>
-          </div>
+      {/* Loading State */}
+      {dataLoading && (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Rapor hazırlanıyor...</p>
         </div>
+      )}
 
-        <div className="stat-card">
-          <div className="stat-icon danger">
-            <span className="material-icons">trending_down</span>
-          </div>
-          <div className="stat-info">
-            <div className="stat-number">₺{calculations.toplamGider.toFixed(2)}</div>
-            <div className="stat-label">Toplam Gider</div>
-          </div>
+      {/* Empty State */}
+      {!dataLoading && reportTrigger === 0 && (
+        <div className="empty-state">
+          <span className="material-icons">assessment</span>
+          <h3>Rapor Hazır Değil</h3>
+          <p>Yukarıdan şube ve tarih seçerek "Rapor Getir" butonuna tıklayın.</p>
         </div>
+      )}
 
-        <div className="stat-card">
-          <div className={`stat-icon ${calculations.netKar >= 0 ? 'success' : 'danger'}`}>
-            <span className="material-icons">
-              {calculations.netKar >= 0 ? 'account_balance' : 'warning'}
-            </span>
-          </div>
-          <div className="stat-info">
-            <div className="stat-number">₺{calculations.netKar.toFixed(2)}</div>
-            <div className="stat-label">Net Kar/Zarar</div>
-          </div>
-        </div>
+      {/* Rapor İçeriği */}
+      {!dataLoading && reportTrigger > 0 && (
+        <>
+          {/* Ana İstatistikler */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-icon success">
+                <span className="material-icons">payments</span>
+              </div>
+              <div className="stat-info">
+                <div className="stat-number">{formatCurrency(stats.toplamCiro)}</div>
+                <div className="stat-label">Toplam Ciro</div>
+                <div className="stat-sublabel">{stats.paketAdet + stats.masaAdet} İşlem</div>
+              </div>
+            </div>
 
-      </div>
+            <div className="stat-card">
+              <div className="stat-icon danger">
+                <span className="material-icons">trending_down</span>
+              </div>
+              <div className="stat-info">
+                <div className="stat-number">{formatCurrency(stats.toplamGider)}</div>
+                <div className="stat-label">Toplam Gider</div>
+                <div className="stat-sublabel">{stats.giderAdet} Kayıt</div>
+              </div>
+            </div>
 
-      {/* Detaylı Analizler */}
-      <div className="analysis-grid">
-        {/* Ödeme Tipi Satış Toplamları (odemetipi alanı) */}
-        <div className="analysis-card">
-          <div className="analysis-header">
-            <span className="material-icons">payments</span>
-            <h3>Ödeme Tipi Dağılımı</h3>
-          </div>
-          <div className="analysis-content">
-            {odemeTipiToplamlari.length === 0 && (
-              <div className="metric">
-                <span className="label">Kayıt Yok</span>
-                <span className="value">-</span>
+            <div className="stat-card">
+              <div className={`stat-icon ${stats.netKar >= 0 ? 'primary' : 'warning'}`}>
+                <span className="material-icons">
+                  {stats.netKar >= 0 ? 'trending_up' : 'trending_down'}
+                </span>
+              </div>
+              <div className="stat-info">
+                <div className="stat-number" style={{color: stats.netKar >= 0 ? '#38a169' : '#dd6b20'}}>
+                  {formatCurrency(stats.netKar)}
+                </div>
+                <div className="stat-label">Net {stats.netKar >= 0 ? 'Kâr' : 'Zarar'}</div>
+                <div className="stat-sublabel">
+                  {stats.netKar >= 0 ? '✓ Pozitif' : '⚠ Negatif'}
+                </div>
+              </div>
+            </div>
+
+            {stats.iptalAdet > 0 && (
+              <div className="stat-card">
+                <div className="stat-icon secondary">
+                  <span className="material-icons">cancel</span>
+                </div>
+                <div className="stat-info">
+                  <div className="stat-number">{stats.iptalAdet}</div>
+                  <div className="stat-label">İptal Edilen</div>
+                  <div className="stat-sublabel">{formatCurrency(stats.iptalTutar)}</div>
+                </div>
               </div>
             )}
-            {odemeTipiToplamlari.map(item => (
-              <div className="metric" key={item.tip}>
-                <span className="label">{item.tip}:</span>
-                <span className="value">₺{item.tutar.toFixed(2)} ({item.yuzde.toFixed(1)}%)</span>
-              </div>
-            ))}
-            {nonCanceledAdisyonlar.length > 0 && (
-              <div className="metric">
-                <span className="label">Toplam Adisyon:</span>
-                <span className="value">{nonCanceledAdisyonlar.length}</span>
+          </div>
+
+          {/* Ciro Detayı */}
+          <div className="detail-section">
+            <h3>
+              <span className="material-icons">monetization_on</span>
+              Ciro Detayı
+              <button 
+                className="toggle-button"
+                onClick={() => setShowCiroDetay(!showCiroDetay)}
+              >
+                <span className="material-icons">
+                  {showCiroDetay ? 'expand_less' : 'expand_more'}
+                </span>
+                {showCiroDetay ? 'Gizle' : 'Göster'}
+              </button>
+            </h3>
+
+            {showCiroDetay && (
+              <div className="analysis-grid">
+                <div className="analysis-card">
+                  <div className="analysis-header">
+                    <span className="material-icons">table_restaurant</span>
+                    <h3>Masa Siparişleri</h3>
+                  </div>
+                  <div className="analysis-content">
+                    <div className="metric">
+                      <span className="label">Sipariş Adedi</span>
+                      <span className="value">{stats.masaAdet}</span>
+                    </div>
+                    <div className="metric">
+                      <span className="label">Toplam Tutar</span>
+                      <span className="value success">{formatCurrency(stats.masaCiro)}</span>
+                    </div>
+                    <div className="metric">
+                      <span className="label">Ortalama</span>
+                      <span className="value">
+                        {stats.masaAdet > 0 ? formatCurrency(stats.masaCiro / stats.masaAdet) : '0 ₺'}
+                      </span>
+                    </div>
+                    {Object.keys(stats.masaOdemeTipleri).length > 0 && (
+                      <div className="metric" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: '0.5rem' }}>
+                        <span className="label">Ödeme Tipi Dağılımı</span>
+                        <div style={{ display: 'grid', gap: '0.35rem', width: '100%' }}>
+                          {Object.entries(stats.masaOdemeTipleri).map(([tip, tutar]) => (
+                            <div key={tip} className="metric" style={{ marginBottom: 0 }}>
+                              <span className="label">{tip}</span>
+                              <span className="value">{formatCurrency(tutar)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="analysis-card">
+                  <div className="analysis-header">
+                    <span className="material-icons">takeout_dining</span>
+                    <h3>Paket Siparişler</h3>
+                  </div>
+                  <div className="analysis-content">
+                    <div className="metric">
+                      <span className="label">Sipariş Adedi</span>
+                      <span className="value">{stats.paketAdet}</span>
+                    </div>
+                    <div className="metric">
+                      <span className="label">Toplam Tutar</span>
+                      <span className="value success">{formatCurrency(stats.paketCiro)}</span>
+                    </div>
+                    <div className="metric">
+                      <span className="label">Ortalama</span>
+                      <span className="value">
+                        {stats.paketAdet > 0 ? formatCurrency(stats.paketCiro / stats.paketAdet) : '0 ₺'}
+                      </span>
+                    </div>
+                    {Object.keys(stats.paketOdemeTipleri).length > 0 && (
+                      <div className="metric" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: '0.5rem' }}>
+                        <span className="label">Ödeme Tipi Dağılımı</span>
+                        <div style={{ display: 'grid', gap: '0.35rem', width: '100%' }}>
+                          {Object.entries(stats.paketOdemeTipleri).map(([tip, tutar]) => (
+                            <div key={tip} className="metric" style={{ marginBottom: 0 }}>
+                              <span className="label">{tip}</span>
+                              <span className="value">{formatCurrency(tutar)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="analysis-card">
+                  <div className="analysis-header">
+                    <span className="material-icons">summarize</span>
+                    <h3>Masa vs Paket Toplamı</h3>
+                  </div>
+                  <div className="analysis-content">
+                    <div className="metric">
+                      <span className="label">Masa Siparişleri Toplamı</span>
+                      <span className="value success">{formatCurrency(stats.masaCiro)}</span>
+                    </div>
+                    <div className="metric">
+                      <span className="label">Paket Siparişler Toplamı</span>
+                      <span className="value success">{formatCurrency(stats.paketCiro)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
-            {nonCanceledAdisyonlar.length > 0 && (
-              <div className="metric">
-                <span className="label">Ortalama Adisyon:</span>
-                <span className="value">₺{(calculations.toplamSatis / nonCanceledAdisyonlar.length).toFixed(2)}</span>
+          </div>
+
+          {/* Gider Detayı */}
+          <div className="detail-section">
+            <h3>
+              <span className="material-icons">receipt_long</span>
+              Gider Detayı
+              <button 
+                className="toggle-button"
+                onClick={() => setShowGiderDetay(!showGiderDetay)}
+              >
+                <span className="material-icons">
+                  {showGiderDetay ? 'expand_less' : 'expand_more'}
+                </span>
+                {showGiderDetay ? 'Gizle' : 'Göster'}
+              </button>
+            </h3>
+
+            {showGiderDetay && Object.keys(stats.giderKategorileri).length > 0 && (
+              <div className="detail-table">
+                <div className="table-header">
+                  <div className="header-cell">Gider Kalemi</div>
+                  <div className="header-cell">Tutar</div>
+                  <div className="header-cell">Oran</div>
+                </div>
+                {Object.entries(stats.giderKategorileri)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([kategori, tutar]) => (
+                    <div className="table-row" key={kategori}>
+                      <div className="table-cell">{kategori}</div>
+                      <div className="table-cell amount">{formatCurrency(tutar)}</div>
+                      <div className="table-cell">
+                        %{stats.toplamGider > 0 ? ((tutar / stats.toplamGider) * 100).toFixed(1) : 0}
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
-            {/* İptal metrikleri */}
-            <div className="metric">
-              <span className="label">İptal Adedi:</span>
-              <span className="value">{canceledAdisyonlar.length}</span>
-            </div>
-            <div className="metric">
-              <span className="label">İptal Tutarı:</span>
-              <span className="value">₺{canceledAdisyonlar.reduce((t, a) => t + (Number(a.atop) || Number(a.toplamTutar) || 0), 0).toFixed(2)}</span>
-            </div>
+
+            {showGiderDetay && Object.keys(stats.giderKategorileri).length === 0 && (
+              <div className="empty-state">
+                <span className="material-icons">info</span>
+                <p>Bu dönem için gider kaydı bulunmuyor.</p>
+              </div>
+            )}
           </div>
+
+          {/* Rapor Bilgi Footer */}
+          <div className="report-footer">
+            <p>
+              <span className="material-icons">info</span>
+              Bu rapor {reportMode === 'daily' ? selectedDate : `${startDate} - ${endDate}`} tarihleri 
+              için oluşturulmuştur. {' '}
+              Toplam {stats.paketAdet + stats.masaAdet} işlem ve {stats.giderAdet} gider kaydı analiz edildi.
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Debug Alanı */}
+      {reportTrigger > 0 && (
+        <div className="detail-section" style={{marginTop: '2rem'}}>
+          <h3>
+            <span className="material-icons" style={{color: '#e53e3e'}}>bug_report</span>
+            Debug - Adisyonlar Verisi
+            <button 
+              className="toggle-button"
+              onClick={() => setShowDebug(!showDebug)}
+            >
+              <span className="material-icons">
+                {showDebug ? 'expand_less' : 'expand_more'}
+              </span>
+              {showDebug ? 'Gizle' : 'Göster'}
+            </button>
+          </h3>
+
+          {showDebug && (
+            <div style={{
+              background: '#1a1a1a',
+              color: '#00ff00',
+              padding: '1.5rem',
+              borderRadius: '8px',
+              fontFamily: 'monospace',
+              fontSize: '0.85rem',
+              maxHeight: '500px',
+              overflow: 'auto'
+            }}>
+              <div style={{marginBottom: '1rem', color: '#ffff00'}}>
+                <strong>📊 Toplam Adisyon: {adisyonlar.length}</strong>
+              </div>
+              
+              {adisyonlar.length === 0 ? (
+                <div style={{color: '#ff6b6b'}}>⚠️ Adisyon verisi bulunamadı</div>
+              ) : (
+                <>
+                  <div style={{marginBottom: '1rem', color: '#60a5fa'}}>
+                    <strong>İlk 5 Adisyon:</strong>
+                  </div>
+                  {adisyonlar.slice(0, 5).map((adisyon, index) => (
+                    <div key={adisyon.id} style={{
+                      marginBottom: '1.5rem',
+                      padding: '1rem',
+                      background: '#2a2a2a',
+                      borderRadius: '6px',
+                      borderLeft: '4px solid #10b981'
+                    }}>
+                      <div style={{color: '#fbbf24', marginBottom: '0.5rem'}}>
+                        <strong>#{index + 1} - ID: {adisyon.id}</strong>
+                      </div>
+                      <pre style={{margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
+                        {JSON.stringify(adisyon, null, 2)}
+                      </pre>
+                    </div>
+                  ))}
+                  
+                  {adisyonlar.length > 5 && (
+                    <div style={{color: '#a78bfa', textAlign: 'center', marginTop: '1rem'}}>
+                      ... ve {adisyonlar.length - 5} adisyon daha
+                    </div>
+                  )}
+
+                  <div style={{marginTop: '2rem', padding: '1rem', background: '#2a2a2a', borderRadius: '6px'}}>
+                    <div style={{color: '#60a5fa', marginBottom: '1rem'}}>
+                      <strong>📈 İstatistikler:</strong>
+                    </div>
+                    <div style={{display: 'grid', gap: '0.5rem'}}>
+                      <div>• Toplam: {adisyonlar.length} adisyon</div>
+                      <div>• Masa (kisikod=MASA): {adisyonlar.filter(a => a.kisikod === 'MASA').length}</div>
+                      <div>• Paket (kisikod≠MASA): {adisyonlar.filter(a => a.kisikod !== 'MASA').length}</div>
+                      <div>• İptal: {adisyonlar.filter(a => {
+                        const durum = (a.durum || '').toString().toUpperCase();
+                        return durum.includes('İPTAL') || durum.includes('IPTAL');
+                      }).length}</div>
+                      <div style={{color: '#fbbf24', marginTop: '0.5rem'}}>• Toplam Tutar: {formatCurrency(
+                        adisyonlar.reduce((sum, a) => sum + (parseFloat(a.atop) || 0), 0)
+                      )}</div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
+      )}
 
-        {/* Gider Analizi */}
-        <div className="analysis-card">
-          <div className="analysis-header">
-            <span className="material-icons">receipt</span>
-            <h3>Gider Analizi</h3>
-          </div>
-          <div className="analysis-content">
-            <div className="metric">
-              <span className="label">Günlük Kasadan:</span>
-              <span className="value">₺{calculations.gunlukKasaGider.toFixed(2)}</span>
+      {reportTrigger > 0 && (
+        <div className="detail-section" style={{marginTop: '1.5rem'}}>
+          <h3>
+            <span className="material-icons" style={{color: '#e53e3e'}}>bug_report</span>
+            Debug - Masa Ödemeleri Verisi
+            <button 
+              className="toggle-button"
+              onClick={() => setShowMasaDebug(!showMasaDebug)}
+            >
+              <span className="material-icons">
+                {showMasaDebug ? 'expand_less' : 'expand_more'}
+              </span>
+              {showMasaDebug ? 'Gizle' : 'Göster'}
+            </button>
+          </h3>
+
+          {showMasaDebug && (
+            <div style={{
+              background: '#1a1a1a',
+              color: '#00ff00',
+              padding: '1.5rem',
+              borderRadius: '8px',
+              fontFamily: 'monospace',
+              fontSize: '0.85rem',
+              maxHeight: '500px',
+              overflow: 'auto'
+            }}>
+              <div style={{marginBottom: '1rem', color: '#ffff00'}}>
+                <strong>📊 Toplam Masa Ödemesi: {masaOdemeleri.length}</strong>
+              </div>
+              
+              {masaOdemeleri.length === 0 ? (
+                <div style={{color: '#ff6b6b'}}>⚠️ Masa ödeme verisi bulunamadı</div>
+              ) : (
+                <>
+                  <div style={{marginBottom: '1rem', color: '#60a5fa'}}>
+                    <strong>İlk 5 Masa Ödemesi:</strong>
+                  </div>
+                  {masaOdemeleri.slice(0, 5).map((odeme, index) => (
+                    <div key={odeme.id} style={{
+                      marginBottom: '1.5rem',
+                      padding: '1rem',
+                      background: '#2a2a2a',
+                      borderRadius: '6px',
+                      borderLeft: '4px solid #3b82f6'
+                    }}>
+                      <div style={{color: '#fbbf24', marginBottom: '0.5rem'}}>
+                        <strong>#{index + 1} - ID: {odeme.id}</strong>
+                      </div>
+                      <pre style={{margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
+                        {JSON.stringify(odeme, null, 2)}
+                      </pre>
+                    </div>
+                  ))}
+                  
+                  {masaOdemeleri.length > 5 && (
+                    <div style={{color: '#a78bfa', textAlign: 'center', marginTop: '1rem'}}>
+                      ... ve {masaOdemeleri.length - 5} masa ödemesi daha
+                    </div>
+                  )}
+
+                  <div style={{marginTop: '2rem', padding: '1rem', background: '#2a2a2a', borderRadius: '6px'}}>
+                    <div style={{color: '#60a5fa', marginBottom: '1rem'}}>
+                      <strong>📈 İstatistikler:</strong>
+                    </div>
+                    <div style={{display: 'grid', gap: '0.5rem'}}>
+                      <div>• Toplam: {masaOdemeleri.length} ödeme</div>
+                      <div style={{color: '#fbbf24', marginTop: '0.5rem'}}>• Toplam Tutar: {formatCurrency(
+                        masaOdemeleri.reduce((sum, o) => sum + (parseFloat(o.tutar || o.toplamTutar) || 0), 0)
+                      )}</div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="metric">
-              <span className="label">Merkez Kasadan:</span>
-              <span className="value">₺{calculations.merkezKasaGider.toFixed(2)}</span>
-            </div>
-            <div className="metric">
-              <span className="label">Toplam Gider Kalemi:</span>
-              <span className="value">{giderKalemleriArray.length}</span>
-            </div>
-            <div className="metric">
-              <span className="label">Toplam Gider Sayısı:</span>
-              <span className="value">{data.giderler.length}</span>
-            </div>
-          </div>
+          )}
         </div>
-      </div>
-
-      {/* Expense lists removed intentionally per request */}
-
-      {/* Rapor Tarihi */}
-      <div className="report-footer">
-        <p>
-          <span className="material-icons">schedule</span>
-          Rapor Tarihi: {new Date().toLocaleString('tr-TR')}
-        </p>
-      </div>
+      )}
     </div>
   );
 };

@@ -111,10 +111,30 @@ const SatisAdetleriPage = () => {
     try {
       console.log('AdisyonIcerik sorgulanıyor, selectedSube:', selectedSube, 'reportMode:', reportMode);
       
-      // Şube bazlı sorgu
+      // Performans için sunucu tarafında filtreleme
+      let startStr, endStr;
+      if (reportMode === 'daily') {
+        const datePart = selectedDate; // YYYY-MM-DD
+        if (useDailyTimeFilter) {
+          startStr = `${datePart} ${dailyStartTime}:00`;
+          endStr = `${datePart} ${dailyEndTime}:59`;
+        } else {
+          startStr = `${datePart}`;
+          endStr = `${datePart}\uf8ff`;
+        }
+      } else {
+        startStr = `${startDate} ${startTime}:00`;
+        // Eğer bitiş saati 23:59 ise gün sonuna kadar (tüm stringleri) kapsasın
+        endStr = (endTime === '23:59') ? `${endDate}\uf8ff` : `${endDate} ${endTime}:59`;
+      }
+
+      // AdisyonIcerik sorgusu - Sunucu tarafı filtreleme
+      // Composite Index Gerekli: rrc_restaurant_id (ASC) + tarih (ASC)
       const adisyonIcerikQuery = query(
         collection(db, 'AdisyonIcerik'),
-        where('rrc_restaurant_id', '==', selectedSube)
+        where('rrc_restaurant_id', '==', selectedSube),
+        where('tarih', '>=', startStr),
+        where('tarih', '<=', endStr)
       );
 
       const unsubscribe = onSnapshot(adisyonIcerikQuery, 
@@ -122,69 +142,20 @@ const SatisAdetleriPage = () => {
           console.log('AdisyonIcerik snapshot alındı, doküman sayısı:', snapshot.docs.length);
           const icerikList = snapshot.docs.map(doc => {
             const data = { id: doc.id, ...doc.data() };
-            console.log('AdisyonIcerik verisi:', data);
             return data;
           });
           
-          // Client-side tarih filtreleme
-          const filteredIcerikList = icerikList.filter(icerik => {
-            if (!icerik.tarih) return false;
-            try {
-              // Tarih formatını kontrol et
-              const icerikTarihStr = String(icerik.tarih);
-              let icerikDateTime;
-              
-              if (icerikTarihStr.includes('T')) {
-                // ISO format: "2025-08-04T10:45:47"
-                icerikDateTime = new Date(icerikTarihStr);
-              } else if (icerikTarihStr.includes(' ')) {
-                // SQL format: "2025-08-04 10:45:47"
-                icerikDateTime = new Date(icerikTarihStr.replace(' ', 'T'));
-              } else {
-                // Sadece tarih: "2025-08-04"
-                icerikDateTime = new Date(icerikTarihStr + 'T00:00:00');
-              }
-              
-              if (reportMode === 'daily') {
-                if (useDailyTimeFilter) {
-                  // Saat filtresi aktifse, tarih ve saat aralığına göre filtrele
-                  const dayStart = new Date(`${selectedDate}T${dailyStartTime}:00`);
-                  const dayEnd = new Date(`${selectedDate}T${dailyEndTime}:59`);
-                  console.log('Günlük saat filtresi - İçerik:', icerikDateTime, 'Başlangıç:', dayStart, 'Bitiş:', dayEnd);
-                  return icerikDateTime >= dayStart && icerikDateTime <= dayEnd;
-                } else {
-                  // Saat filtresi kapalıysa, sadece tarihe göre filtrele
-                  const icerikTarih = icerikTarihStr.includes('T') 
-                    ? icerikTarihStr.split('T')[0] 
-                    : icerikTarihStr.includes(' ') 
-                      ? icerikTarihStr.split(' ')[0] 
-                      : icerikTarihStr;
-                  console.log('Günlük filtre - İçerik tarihi:', icerikTarih, 'Hedef tarih:', selectedDate);
-                  return icerikTarih === selectedDate;
-                }
-              } else if (reportMode === 'range') {
-                // Saat dahil tarih aralığı kontrolü
-                const rangeStart = new Date(`${startDate}T${startTime}:00`);
-                const rangeEnd = new Date(`${endDate}T${endTime}:00`);
-                
-                console.log('Aralık filtre - İçerik:', icerikDateTime, 'Başlangıç:', rangeStart, 'Bitiş:', rangeEnd);
-                return icerikDateTime >= rangeStart && icerikDateTime <= rangeEnd;
-              }
-              
-              return false;
-            } catch (err) {
-              console.error('Tarih karşılaştırma hatası:', err, 'İçerik tarihi:', icerik.tarih);
-              return false;
-            }
-          });
-          
-          console.log('Filtrelenmiş içerik sayısı:', filteredIcerikList.length);
-          setAdisyonIcerik(filteredIcerikList);
+          // Sunucudan zaten filtrelenmiş geldiği için client-side filtreye gerek yok
+          setAdisyonIcerik(icerikList);
           setLoading(false);
         },
         (err) => {
           console.error('AdisyonIcerik alınırken hata:', err);
-          setError('Satış verileri yüklenirken bir hata oluştu: ' + err.message);
+          if (err.code === 'failed-precondition') {
+            setError('Bu rapor için "AdisyonIcerik" koleksiyonunda index oluşturulması gerekiyor. Lütfen konsolu açıp Firebase linkine tıklayın.');
+          } else {
+            setError('Satış verileri yüklenirken bir hata oluştu: ' + err.message);
+          }
           setLoading(false);
         }
       );

@@ -16,6 +16,7 @@ const GiderKaydiPage = () => {
   // Form state
   const [formData, setFormData] = useState({
     giderKalemiId: '',
+    subeId: '',
     aciklama: '',
     tutar: '',
     odemeKaynagi: 'gunluk_kasa',
@@ -34,8 +35,16 @@ const GiderKaydiPage = () => {
     startDate: '',
     endDate: '',
     giderKalemiId: '',
-    odemeKaynagi: ''
+    odemeKaynagi: '',
+    subeId: currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : ''
   });
+
+  useEffect(() => {
+    if (currentUser?.role === 'sube_yoneticisi' && currentUser.subeId) {
+      setFilter(prev => ({ ...prev, subeId: currentUser.subeId }));
+      setFormData(prev => ({ ...prev, subeId: currentUser.subeId }));
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     // Aktif gider kalemlerini getir
@@ -47,10 +56,15 @@ const GiderKaydiPage = () => {
         );
         
         const snapshot = await getDocs(q);
-        const items = snapshot.docs.map(doc => ({
+        let items = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
+
+        // Şube yöneticisi için filtreleme: Genel (subeId yok) veya Kendi Şubesi
+        if (currentUser?.role === 'sube_yoneticisi' && currentUser.subeId) {
+          items = items.filter(item => !item.subeId || item.subeId === currentUser.subeId);
+        }
         
         // Client-side sorting
         items.sort((a, b) => (a.ad || '').localeCompare(b.ad || ''));
@@ -73,7 +87,7 @@ const GiderKaydiPage = () => {
           }));
           
           // Client-side sorting
-          items.sort((a, b) => (a.ad || '').localeCompare(b.ad || ''));
+          items.sort((a, b) => (a.subeAdi || a.ad || '').localeCompare(b.subeAdi || b.ad || ''));
           setSubeler(items);
         } catch (error) {
           console.error('Şubeler getirme hatası:', error);
@@ -193,6 +207,10 @@ const GiderKaydiPage = () => {
       newErrors.saat = 'Saat seçimi zorunludur';
     }
 
+    if (currentUser?.role === 'sirket_yoneticisi' && !formData.subeId) {
+      newErrors.subeId = 'Şube seçimi zorunludur';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -224,7 +242,11 @@ const GiderKaydiPage = () => {
       };
 
       // Şube bilgisi ekle
-      if (currentUser.subeId) {
+      if (currentUser.role === 'sirket_yoneticisi') {
+        const selectedSube = subeler.find(sube => sube.id === formData.subeId);
+        giderKaydi.subeId = formData.subeId;
+        giderKaydi.subeAdi = selectedSube?.ad || selectedSube?.subeAdi || 'Bilinmeyen Şube';
+      } else if (currentUser.subeId) {
         giderKaydi.subeId = currentUser.subeId;
         giderKaydi.subeAdi = currentUser.subeAdi || 'Bilinmeyen Şube';
       }
@@ -236,6 +258,7 @@ const GiderKaydiPage = () => {
       // Form'u temizle
       setFormData({
         giderKalemiId: '',
+        subeId: currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : '',
         aciklama: '',
         tutar: '',
         odemeKaynagi: 'gunluk_kasa',
@@ -254,6 +277,7 @@ const GiderKaydiPage = () => {
   const resetForm = () => {
     setFormData({
       giderKalemiId: '',
+      subeId: currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : '',
       aciklama: '',
       tutar: '',
       odemeKaynagi: 'gunluk_kasa',
@@ -280,6 +304,10 @@ const GiderKaydiPage = () => {
     }
 
     if (filter.giderKalemiId) {
+    if (filter.subeId) {
+      matches = matches && item.subeId === filter.subeId;
+    }
+
       matches = matches && item.giderKalemiId === filter.giderKalemiId;
     }
 
@@ -322,7 +350,7 @@ const GiderKaydiPage = () => {
           <div className="title-section">
             <h1>
               <span className="material-icons">receipt</span>
-              Gider Kaydı
+              Gider İşlemleri
             </h1>
             <p>Tüm şube giderlerinizi bu sayfadan takip edebilirsiniz</p>
           </div>
@@ -374,6 +402,25 @@ const GiderKaydiPage = () => {
               {giderKalemleri.map(item => (
                 <option key={item.id} value={item.id}>{item.ad}</option>
               ))}
+            </select>
+          </div>
+          <div className="filter-group">
+            <label>Şube</label>
+            <select
+              value={filter.subeId || ''}
+              onChange={(e) => setFilter({ ...filter, subeId: e.target.value })}
+              disabled={currentUser?.role !== 'sirket_yoneticisi'}
+            >
+              {currentUser?.role === 'sirket_yoneticisi' ? (
+                <>
+                  <option value="">Tümü</option>
+                  {subeler.map(sube => (
+                    <option key={sube.id} value={sube.id}>{sube.subeAdi || sube.ad}</option>
+                  ))}
+                </>
+              ) : (
+                <option value={currentUser?.subeId}>{currentUser?.subeAdi}</option>
+              )}
             </select>
           </div>
           <div className="filter-group">
@@ -470,6 +517,26 @@ const GiderKaydiPage = () => {
                   {errors.giderKalemiId && <span className="error-message">{errors.giderKalemiId}</span>}
                 </div>
               </div>
+
+              {currentUser?.role === 'sirket_yoneticisi' && (
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="subeId">Şube *</label>
+                    <select
+                      id="subeId"
+                      value={formData.subeId}
+                      onChange={(e) => setFormData({ ...formData, subeId: e.target.value })}
+                      className={errors.subeId ? 'error' : ''}
+                    >
+                      <option value="">Şube seçin</option>
+                      {subeler.map(sube => (
+                        <option key={sube.id} value={sube.id}>{sube.ad || sube.subeAdi}</option>
+                      ))}
+                    </select>
+                    {errors.subeId && <span className="error-message">{errors.subeId}</span>}
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label htmlFor="aciklama">Açıklama *</label>

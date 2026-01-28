@@ -738,6 +738,7 @@
   font-weight: 700;
   padding-bottom: 1rem;
   border-bottom: 2px solid #e2e8f0;
+  flex-wrap: wrap;
 }
 
 .detail-section h3 .material-icons {
@@ -905,6 +906,14 @@
 }
 
 @media (max-width: 768px) {
+    .detail-section h3 {
+      font-size: 1.1rem;
+      gap: 0.5rem;
+    }
+
+    .detail-section pre {
+      font-size: 0.75rem;
+    }
   .genel-rapor-container {
     padding: 1rem;
   }

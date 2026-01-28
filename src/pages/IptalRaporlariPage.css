@@ -1,37 +1,384 @@
-.iptal-raporlari-container { padding:20px; }
-.iptal-raporlari-container .page-header { margin-bottom:20px; }
+/* IptalRaporlariPage.css */
 
-/* Reuse existing utilities from other pages (assuming global styles) */
-.filters-section { background:#fff; border:1px solid #e3e8ef; border-radius:12px; padding:16px; margin-bottom:20px; display:flex; flex-wrap:wrap; gap:16px; }
-.filter-group { display:flex; flex-direction:column; gap:6px; min-width:160px; }
-.filter-group label { font-size:13px; font-weight:600; color:#334155; }
-.report-mode-buttons, .order-type-buttons { display:flex; gap:8px; }
-.filter-btn { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; padding:6px 12px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:4px; color:#475569; transition:.2s; }
-.filter-btn.active { background:#2563eb; border-color:#2563eb; color:#fff; }
-.filter-btn:hover { background:#e2e8f0; }
-.filter-btn.active:hover { background:#1d4ed8; }
+.iptal-raporlari-container {
+  padding: 24px;
+  background: #1e3884 !important; /* Genel Rapor stili */
+  min-height: 100vh;
+}
 
-.stats-grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); margin-top:12px; }
-.stat-card { background:#fff; border:1px solid #e3e8ef; border-radius:16px; padding:16px; display:flex; gap:12px; align-items:center; box-shadow:0 4px 10px -2px rgba(15,23,42,.06),0 2px 4px -2px rgba(15,23,42,.05); }
-.stat-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#6366f1,#3b82f6); color:#fff; font-size:22px; }
-.stat-icon.danger { background:linear-gradient(135deg,#ef4444,#dc2626); }
-.stat-icon.warning { background:linear-gradient(135deg,#f59e0b,#d97706); }
-.stat-info { display:flex; flex-direction:column; }
-.stat-number { font-size:20px; font-weight:600; color:#0f172a; }
-.stat-label { font-size:12px; font-weight:500; color:#64748b; }
+/* Üst Kısım Tab ve Filtreler */
+.controls-section {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 1.75rem;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
 
-.detail-table { border:1px solid #e3e8ef; border-radius:14px; overflow:hidden; background:#fff; }
-.table-header, .table-row { display:grid; grid-template-columns:160px 160px 1fr 90px 110px 110px 1.2fr; }
-.table-header { background:#f1f5f9; font-weight:600; font-size:13px; color:#334155; }
-.header-cell, .table-cell { padding:10px 12px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:6px; font-size:13px; }
-.table-row:last-child .table-cell { border-bottom:none; }
-.table-row:nth-child(even) { background:#f8fafc; }
-.amount { font-variant-numeric:tabular-nums; font-weight:600; color:#0f172a; }
+/* Sayfa Başlığı */
+.page-header {
+  margin-bottom: 1.5rem;
+}
 
-.loading-container, .empty-state, .error-message { margin-top:20px; background:#fff; border:1px solid #e3e8ef; border-radius:16px; padding:32px; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; }
-.loading-spinner { width:42px; height:42px; border:4px solid #e2e8f0; border-top:4px solid #3b82f6; border-radius:50%; animation:spin 1s linear infinite; }
-@keyframes spin { to { transform:rotate(360deg);} }
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(25px);
+  padding: 1.75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
+}
 
-@media (max-width: 1100px) { .table-header, .table-row { grid-template-columns:140px 140px 1fr 70px 90px 90px 1fr; } }
-@media (max-width: 860px) { .table-header, .table-row { grid-template-columns:140px 120px 1fr 60px 80px 80px 1fr; } }
-@media (max-width: 720px) { .table-header, .table-row { grid-template-columns:120px 110px 1fr 60px 80px 80px 1fr; } .filters-section { flex-direction:column; } }
+.title-section h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.title-section h1 .material-icons {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, #60A5FA, #3B82F6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.title-section p {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.1rem;
+  margin: 0.5rem 0 0 0;
+  font-weight: 400;
+  line-height: 1.6;
+}
+  
+  .tabs-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 16px;
+  }
+  
+  .tab-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: #f1f5f9;
+    color: #64748b;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .tab-button.active {
+    background: #2563eb;
+    color: white;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  }
+  
+  .tab-button:hover:not(.active) {
+    background: #e2e8f0;
+  }
+  
+  .filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+  
+  .report-mode-buttons {
+    display: flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    gap: 4px;
+  }
+  
+  .filter-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  
+  .filter-btn.active {
+    background: white;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  
+  .date-input {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #334155;
+    outline: none;
+    font-family: inherit;
+  }
+  
+  .sube-select {
+    padding: 8px 36px 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background-color: white;
+    color: #334155;
+    outline: none;
+    cursor: pointer;
+  }
+  
+  /* Rapor Listesi ve Kartları */
+  .report-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .report-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  
+  .card-header {
+    background: #f8fafc;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .date-badge {
+    background: #e0e7ff;
+    color: #4338ca;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  
+  .order-code {
+    font-weight: 600;
+    color: #334155;
+  }
+  
+  .total-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  
+  .card-body {
+    padding: 16px;
+  }
+  
+  .card-footer {
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    font-size: 13px;
+    color: #475569;
+    display: flex;
+    gap: 24px;
+  }
+  
+  /* Ürün Tablosu */
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  
+  .items-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: #64748b;
+    font-weight: 500;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+  
+  .items-table td {
+    padding: 12px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  
+  .items-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .section-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-bottom: 8px;
+    margin-top: 16px;
+  }
+  
+  .section-label:first-child {
+    margin-top: 0;
+  }
+  
+  /* Ödeme Etiketleri */
+  .payment-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .payment-tag {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  
+  /* Alt Özet */
+  .summary-footer {
+    background: #1e293b;
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    margin-top: 12px;
+  }
+  
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .summary-row h3 {
+    margin: 0;
+    font-weight: 500;
+    color: #94a3b8;
+  }
+  
+  .grand-total {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+  }
+  
+  .payment-breakdown {
+    border-top: 1px solid #334155;
+    padding-top: 16px;
+  }
+  
+  .payment-breakdown h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+  
+  .breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  
+  .breakdown-item {
+    background: #334155;
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .breakdown-item .label {
+    font-size: 12px;
+    color: #cbd5e1;
+  }
+  
+  .breakdown-item .value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+  }
+  
+  /* Genel */
+  .empty-state {
+    text-align: center;
+    padding: 48px;
+    background: white;
+    border-radius: 12px;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    font-weight: 500;
+  }
+  
+  .loading-container {
+    text-align: center;
+    padding: 40px;
+  }
+  
+  .loading-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+  
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
+  @media (max-width: 768px) {
+    .filters-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  
+    .card-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+  
+    .header-right {
+      align-self: flex-end;
+    }
+    
+    .card-footer {
+      flex-direction: column;
+      gap: 8px;
+    }
+  }

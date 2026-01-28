@@ -66,6 +66,11 @@ const RootHandler = () => {
 };
 
 function App() {
+  const adminRoles = ['sirket_yoneticisi'];
+  const managementRoles = ['sirket_yoneticisi', 'sube_yoneticisi'];
+  const staffAndManagementRoles = ['sirket_yoneticisi', 'sube_yoneticisi', 'personel'];
+  const allAuthenticatedRoles = ['sirket_yoneticisi', 'sube_yoneticisi', 'kurye', 'personel', 'muhasebe', 'depo'];
+
   return (
     <Router>
       <AuthProvider>
@@ -75,29 +80,50 @@ function App() {
             <Route path="/login" element={<Login />} />
             
             {/* Protected routes */}
-            <Route element={<PrivateRoute />}>
+            <Route element={<PrivateRoute allowedRoles={allAuthenticatedRoles} />}>
               <Route element={<Layout />}>
+                {/* Herkesin erişebileceği ama rol bazlı içeriği değişen sayfalar */}
                 <Route path="/dashboard" element={<DashboardAccess />} />
-                <Route path="/users" element={<UsersPage />} />
-                <Route path="/database" element={<DatabasePage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/subeler" element={<SubelerPage />} />
-                <Route path="/sube-personel/:subeId" element={<SubePersonelPage />} />
-                <Route path="/masalar" element={<MasalarPage />} />
-                <Route path="/adisyonlar" element={<AdisyonlarPage />} />
-                <Route path="/satis-adetleri" element={<SatisAdetleriPage />} />
-                <Route path="/urun-islemleri" element={<UrunIslemleriPage />} />
-                <Route path="/sube-siparis-olusturma" element={<SubeSiparisOlusturmaPage />} />
-                <Route path="/sube-siparis-takip" element={<SubeSiparisTakipPage />} />
-                <Route path="/sube-bakiye-takip" element={<SubeBakiyeTakipPage />} />
-                <Route path="/kurye-atama" element={<KuryeAtamaPage />} />
-                <Route path="/kurye-raporu" element={<KuryeRaporuPage />} />
-                <Route path="/detayli-kurye-raporu" element={<DetayliKuryeRaporuPage />} />
-                <Route path="/gider-kalemi-kaydi" element={<GiderKalemiKaydiPage />} />
-                <Route path="/gider-kaydi" element={<GiderKaydiPage />} />
-                <Route path="/genel-rapor" element={<GenelRaporPage />} />
-                <Route path="/iptal-raporlari" element={<IptalRaporlariPage />} />
+                
+                {/* Sadece Üst Yönetim (Admin) sayfaları */}
+                <Route element={<PrivateRoute allowedRoles={adminRoles} />}>
+                  <Route path="/database" element={<DatabasePage />} />
+                  <Route path="/analytics" element={<AnalyticsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/urun-islemleri" element={<UrunIslemleriPage />} />
+                </Route>
+
+                {/* Yönetim (Admin + Şube Müdürü) sayfaları */}
+                <Route element={<PrivateRoute allowedRoles={managementRoles} />}>
+                  <Route path="/users" element={<UsersPage />} />
+                  <Route path="/subeler" element={<SubelerPage />} />
+                  <Route path="/sube-personel/:subeId" element={<SubePersonelPage />} />
+                  <Route path="/sube-bakiye-takip" element={<SubeBakiyeTakipPage />} />
+                  <Route path="/genel-rapor" element={<GenelRaporPage />} />
+                  <Route path="/iptal-raporlari" element={<IptalRaporlariPage />} />
+                </Route>
+
+                {/* Şube Müdürü + Şirket Yöneticisi Sayfaları */}
+                <Route element={<PrivateRoute allowedRoles={['sube_yoneticisi', 'sirket_yoneticisi']} />}>
+                  <Route path="/gider-kalemi-kaydi" element={<GiderKalemiKaydiPage />} />
+                  <Route path="/gider-kaydi" element={<GiderKaydiPage />} />
+                </Route>
+
+                {/* İşletme (Yönetim + Personel) sayfaları */}
+                <Route element={<PrivateRoute allowedRoles={staffAndManagementRoles} />}>
+                  <Route path="/masalar" element={<MasalarPage />} />
+                  <Route path="/adisyonlar" element={<AdisyonlarPage />} />
+                  <Route path="/satis-adetleri" element={<SatisAdetleriPage />} />
+                  <Route path="/sube-siparis-olusturma" element={<SubeSiparisOlusturmaPage />} />
+                  <Route path="/sube-siparis-takip" element={<SubeSiparisTakipPage />} />
+                </Route>
+
+                {/* Kurye ve Yönetim sayfaları - Sadece Şube Yöneticisi ve Kurye */}
+                <Route element={<PrivateRoute allowedRoles={['sube_yoneticisi', 'kurye']} />}>
+                  <Route path="/kurye-atama" element={<KuryeAtamaPage />} />
+                  <Route path="/kurye-raporu" element={<KuryeRaporuPage />} />
+                  <Route path="/detayli-kurye-raporu" element={<DetayliKuryeRaporuPage />} />
+                </Route>
               </Route>
             </Route>
             

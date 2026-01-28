@@ -40,15 +40,27 @@ const GiderKalemiKaydiPage = () => {
   useEffect(() => {
     // Gider kalemlerini dinle
     try {
-      const q = query(collection(db, "giderKalemleri"));
+      let q = query(collection(db, "giderKalemleri"));
 
+      // Eğer kullanıcı şube yöneticisi ise, sadece kendi şubesine ait veya genel (subeId olmayan) kayıtları görsün
+      // Not: Firestore'da 'OR' sorgusu karmaşık olduğu için client-side filtreleme yapmak daha güvenli olabilir
+      // Ancak veri güvenliği için query ile filtreleme tercih edilir. 
+      // Şimdilik tümünü çekip client side filtreleyeceğiz çünkü "subeId == null OR subeId == mySubeId" sorgusu için index gerekir.
+      
       const unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          const items = snapshot.docs.map((doc) => ({
+          let items = snapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }));
+
+          // Şube yöneticisi için filtreleme:
+          // 1. subeId alanı olmayanlar (Genel)
+          // 2. subeId alanı kendi şubesi olanlar
+          if (currentUser?.role === 'sube_yoneticisi' && currentUser.subeId) {
+            items = items.filter(item => !item.subeId || item.subeId === currentUser.subeId);
+          }
 
           // Client-side sorting
           items.sort((a, b) => {
@@ -138,14 +150,22 @@ const GiderKalemiKaydiPage = () => {
         showNotification("Gider kalemi başarıyla güncellendi");
       } else {
         // Yeni kayıt
-        await addDoc(collection(db, "giderKalemleri"), {
+        const newGiderKalemi = {
           ad: formData.ad.trim(),
           aciklama: formData.aciklama.trim(),
           aktif: true,
           olusturanKullanici: currentUser.uid,
           olusturmaTarihi: now,
           guncellemeTarihi: now,
-        });
+        };
+
+        // Eğer kullanıcı bir şube yöneticisiyse, şube ID'yi ekle
+        // Şirket yöneticisi ise global (tüm şubelerde görünen) bir gider kalemi olarak kaydedilecek (subeId olmadan)
+        if (currentUser.role === 'sube_yoneticisi' && currentUser.subeId) {
+          newGiderKalemi.subeId = currentUser.subeId;
+        }
+
+        await addDoc(collection(db, "giderKalemleri"), newGiderKalemi);
         showNotification("Gider kalemi başarıyla eklendi");
       }
 

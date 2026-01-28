@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
 import { getFirestore, collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import './SubePersonelPage.css';
@@ -289,18 +290,34 @@ const SubePersonelPage = () => {
       return;
     }
     
+    let secondaryApp = null;
+    
     try {
       setLoading(true);
       
-      // Firebase Authentication ile kullanıcı oluştur
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseConfig = {
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+      };
+
+      // Geçici bir Firebase uygulaması oluştur
+      secondaryApp = initializeApp(firebaseConfig, "SecondaryAppSube");
+      const secondaryAuth = getAuth(secondaryApp);
+      
+      // Secondary auth ile kullanıcı oluştur (Mevcut oturumu etkilemez)
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
       
       // Kullanıcı displayName'ini ayarla
       await updateProfile(userCredential.user, {
         displayName: displayName
       });
       
-      // Firestore'a kullanıcı bilgilerini ekle
+      // Firestore'a kullanıcı bilgilerini ekle (Ana db instance ve admin yetkisiyle)
       await addDoc(collection(db, 'users'), {
         uid: userCredential.user.uid,
         email: email,
@@ -311,6 +328,8 @@ const SubePersonelPage = () => {
         createdAt: new Date(),
         createdBy: currentUser.uid
       });
+      
+      await signOut(secondaryAuth);
       
       setSuccess('Kullanıcı başarıyla oluşturuldu!');
       
@@ -323,6 +342,9 @@ const SubePersonelPage = () => {
       setError('Kullanıcı oluşturulurken bir hata oluştu: ' + err.message);
       console.error(err);
     } finally {
+      if (secondaryApp) {
+        await deleteApp(secondaryApp);
+      }
       setLoading(false);
     }
   };

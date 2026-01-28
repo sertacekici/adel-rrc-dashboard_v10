@@ -3,50 +3,8 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
+import { normalizeDateStr, toDate, formatDateTime, formatCurrency } from '../utils/dateUtils';
 import './DetayliKuryeRaporuPage.css';
-
-// Tarih utils
-// Basit util: sayısal/karışık tarih alanlarını ISO 'YYYY-MM-DD' stringe indirger
-const normalizeDateStr = (val) => {
-  if (!val) return '';
-  // Firestore Timestamp
-  if (val && typeof val === 'object' && typeof val.toDate === 'function') {
-    const d = val.toDate();
-    return isNaN(d?.getTime?.()) ? '' : d.toISOString().split('T')[0];
-  }
-  const s = String(val);
-  if (s.includes('T')) return s.split('T')[0];
-  if (s.includes(' ')) return s.split(' ')[0];
-  // Yalnız tarih geldiyse
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // Son çare: Date parse
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
-};
-
-// Karışık tarih değerini Date objesine çevir (Timestamp/string)
-const toDate = (val) => {
-  if (!val) return null;
-  if (val && typeof val === 'object' && typeof val.toDate === 'function') {
-    const d = val.toDate();
-    return isNaN(d?.getTime?.()) ? null : d;
-  }
-  const s = String(val);
-  const iso = s.includes('T') ? s : s.includes(' ') ? s.replace(' ', 'T') : s;
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-const formatDateTime = (val) => {
-  const d = toDate(val);
-  if (!d) return '-';
-  return d.toLocaleString('tr-TR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-};
-
-const formatAmount = (n) => (Number(n) || 0).toLocaleString('tr-TR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-}) + ' ₺';
 
 const DetayliKuryeRaporuPage = () => {
   const { currentUser } = useAuth();
@@ -102,16 +60,37 @@ const DetayliKuryeRaporuPage = () => {
     setLoading(true);
     setError('');
     try {
-      // Adisyonlar üzerinden kurye ve tarih aralığına göre filtreleme (client-side)
-      // Not: Masa siparişleri (88) hariç
-      const adSnap = await getDocs(collection(db, 'Adisyonlar'));
-      let items = adSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      if (currentUser?.role === 'sube_yoneticisi') {
-        items = items.filter(x => (x.rrc_restaurant_id || x.subeId) === currentUser.subeId);
-      } else if (currentUser?.role === 'sirket_yoneticisi' && selectedSube) {
-        items = items.filter(x => (x.rrc_restaurant_id || x.subeId) === selectedSube);
+      const activeSubeId = selectedSube || (currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : null);
+      
+      let startStr, endStr;
+      if (reportMode === 'daily') {
+        startStr = `${selectedDate} 00:00:00`;
+        endStr = `${selectedDate} 23:59:59`;
+      } else {
+        startStr = `${startDate} 00:00:00`;
+        endStr = `${endDate} 23:59:59`;
       }
+
+      let q;
+      const adisyonCollection = collection(db, 'Adisyonlar');
+      
+      if (activeSubeId) {
+        q = query(
+          adisyonCollection,
+          where('rrc_restaurant_id', '==', activeSubeId),
+          where('tarih', '>=', startStr),
+          where('tarih', '<=', endStr)
+        );
+      } else {
+        q = query(
+          adisyonCollection,
+          where('tarih', '>=', startStr),
+          where('tarih', '<=', endStr)
+        );
+      }
+
+      const adSnap = await getDocs(q);
+      let items = adSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // Kurye ismi belirle (adisyon.motorcu string alanı ile eşleşecek)
       let kuryeName = '';
@@ -127,21 +106,14 @@ const DetayliKuryeRaporuPage = () => {
         items = items.filter(x => String(x.motorcu || '').toLowerCase() === target);
       }
 
+      // Masa siparişleri (88) hariç filtrele (Client-side handles this since we already have the range)
       items = items.filter(x => x.siparisnerden !== 88);
-
-      // Tarih filtresi
-      items = items.filter(x => {
-        const ds = normalizeDateStr(x.tarih);
-        if (!ds) return false;
-        if (reportMode === 'daily') return ds === selectedDate;
-        return ds >= startDate && ds <= endDate;
-      });
 
       // Sıralama (tarih + adisyon numarası)
       items.sort((a, b) => {
-        const da = new Date(String(a.tarih).includes(' ') ? String(a.tarih).replace(' ', 'T') : a.tarih || 0);
-        const db = new Date(String(b.tarih).includes(' ') ? String(b.tarih).replace(' ', 'T') : b.tarih || 0);
-        if (da - db !== 0) return da - db;
+        const tA = String(a.tarih || '');
+        const tB = String(b.tarih || '');
+        if (tA !== tB) return tA.localeCompare(tB);
         return (parseInt(a.padsgnum) || 0) - (parseInt(b.padsgnum) || 0);
       });
 
@@ -307,14 +279,14 @@ const DetayliKuryeRaporuPage = () => {
         <div className="stat-card">
           <div className="stat-icon success"><span className="material-icons">payments</span></div>
           <div className="stat-info">
-            <div className="stat-number">{formatAmount(totals.total)}</div>
+            <div className="stat-number">{formatCurrency(totals.total)}</div>
             <div className="stat-label">Toplam Tutar</div>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon warning"><span className="material-icons">trending_up</span></div>
           <div className="stat-info">
-            <div className="stat-number">{formatAmount(totals.avg)}</div>
+            <div className="stat-number">{formatCurrency(totals.avg)}</div>
             <div className="stat-label">Ortalama</div>
           </div>
         </div>
@@ -343,7 +315,7 @@ const DetayliKuryeRaporuPage = () => {
                     <span className="material-icons">receipt</span>
                     <strong>{ad.padsgnum || ad.adisyoncode || ad.id}</strong>
                   </div>
-                  <div className="right amount">{formatAmount(ad.atop)}</div>
+                  <div className="right amount">{formatCurrency(ad.atop)}</div>
                 </div>
                 <div className="card-row">
                   <span className="label">Sipariş</span>

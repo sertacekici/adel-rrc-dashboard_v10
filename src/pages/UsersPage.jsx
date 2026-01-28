@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
 import { getFirestore, collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import './UsersPage.css';
@@ -450,11 +451,29 @@ const UsersPage = () => {
       }
     }
     
+    let secondaryApp = null;
+
     try {
       setLoading(true);
       
-      // Firebase Authentication ile kullanıcı oluştur
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // İkinci bir Firebase uygulaması oluştur (Mevcut oturumu kapatmamak için)
+      // Bu sayede admin kullanıcısının oturumu açık kalırken yeni kullanıcı oluşturulabilir
+      const firebaseConfig = {
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+      };
+
+      // Benzersiz bir isimle geçici app oluştur
+      secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+      const secondaryAuth = getAuth(secondaryApp);
+
+      // Secondary auth ile kullanıcı oluştur (Bu işlem main auth'u etkilemeyecek)
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
       
       // Kullanıcı displayName'ini ayarla
       await updateProfile(userCredential.user, {
@@ -462,6 +481,7 @@ const UsersPage = () => {
       });
       
       // Firestore'a kullanıcı bilgilerini ekle
+      // Burası main db instance'ı kullandığı için mevcut admin yetkisiyle yazar
       const userData = {
         uid: userCredential.user.uid,
         email: email,
@@ -482,6 +502,9 @@ const UsersPage = () => {
       
       await addDoc(collection(db, 'users'), userData);
       
+      // Temizlik: Oluşturulan kullanıcıdan çıkış yap
+      await signOut(secondaryAuth);
+
       setSuccess('Kullanıcı başarıyla oluşturuldu!');
       
       // Formu temizle
@@ -493,6 +516,10 @@ const UsersPage = () => {
       setError('Kullanıcı oluşturulurken bir hata oluştu: ' + err.message);
       console.error(err);
     } finally {
+      // Geçici uygulamayı sil
+      if (secondaryApp) {
+        await deleteApp(secondaryApp);
+      }
       setLoading(false);
     }
   };

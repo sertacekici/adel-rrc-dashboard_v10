@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const PrivateRoute = () => {
+const PrivateRoute = ({ allowedRoles }) => {
   const { currentUser, loading } = useAuth();
 
   if (loading) {
@@ -39,7 +39,17 @@ const PrivateRoute = () => {
     );
   }
 
-  return currentUser ? <Outlet /> : <Navigate to="/login" replace />;
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Rol kontrolü ekle
+  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+    console.warn(`Yetkisiz erişim denemesi: ${currentUser.role} rolü için izin verilmeyen sayfa.`);
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
 };
 
 export default PrivateRoute;

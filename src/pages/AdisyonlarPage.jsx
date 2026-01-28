@@ -130,10 +130,31 @@ const AdisyonlarPage = () => {
     try {
       console.log('Adisyonlar sorgulanıyor, selectedSube:', selectedSube, 'reportMode:', reportMode);
       
-      // Index gerektirmemek için sadece şube ile sorgulayalım ve client-side filtreleme yapalım
+      // Performans için sunucu tarafında filtreleme
+      let startStr, endStr;
+      if (reportMode === 'daily') {
+        const datePart = selectedDate;
+        if (useDailyTimeFilter) {
+          startStr = `${datePart} ${dailyStartTime}:00`;
+          endStr = `${datePart} ${dailyEndTime}:59`;
+        } else {
+          startStr = `${datePart}`;
+          endStr = `${datePart}\uf8ff`;
+        }
+      } else {
+        startStr = `${startDate} ${startTime}:00`;
+        endStr = (endTime === '23:59') ? `${endDate}\uf8ff` : `${endDate} ${endTime}:59`;
+      }
+
+      // Not: Veritabanında tarihler hem 'YYYY-MM-DD HH:mm:ss' hem de ISO formatında olabilir.
+      // String karşılaştırması ' ' ve 'T' karakterleri arasındaki ASCII farkından dolayı 
+      // her iki formatı da (YYYY-MM-DD...) doğru şekilde yakalar.
       const adisyonlarQuery = query(
         collection(db, 'Adisyonlar'),
-        where('rrc_restaurant_id', '==', selectedSube)
+        where('rrc_restaurant_id', '==', selectedSube),
+        where('tarih', '>=', startStr),
+        where('tarih', '<=', endStr),
+        orderBy('tarih', 'asc')
       );
 
       const unsubscribe = onSnapshot(adisyonlarQuery, 
@@ -141,106 +162,21 @@ const AdisyonlarPage = () => {
           console.log('Adisyonlar snapshot alındı, doküman sayısı:', snapshot.docs.length);
           const adisyonList = snapshot.docs.map(doc => {
             const data = { id: doc.id, ...doc.data() };
-            console.log('Adisyon verisi:', data);
             return data;
           });
           
-          // Client-side tarih filtreleme
-          const filteredAdisyonList = adisyonList.filter(adisyon => {
-            if (!adisyon.tarih) return false;
-            try {
-              // Tarih formatını kontrol et - ISO formatında: "2025-08-04T10:45:47"
-              const adisyonTarihStr = String(adisyon.tarih);
-              let adisyonDateTime;
-              
-              if (adisyonTarihStr.includes('T')) {
-                // ISO format: "2025-08-04T10:45:47"
-                adisyonDateTime = new Date(adisyonTarihStr);
-              } else if (adisyonTarihStr.includes(' ')) {
-                // SQL format: "2025-08-04 10:45:47"
-                adisyonDateTime = new Date(adisyonTarihStr.replace(' ', 'T'));
-              } else {
-                // Sadece tarih: "2025-08-04"
-                adisyonDateTime = new Date(adisyonTarihStr + 'T00:00:00');
-              }
-              
-              if (reportMode === 'daily') {
-                if (useDailyTimeFilter) {
-                  // Saat filtresi aktifse, tarih ve saat aralığına göre filtrele
-                  const dayStart = new Date(`${selectedDate}T${dailyStartTime}:00`);
-                  const dayEnd = new Date(`${selectedDate}T${dailyEndTime}:59`);
-                  console.log('Günlük saat filtresi - Adisyon:', adisyonDateTime, 'Başlangıç:', dayStart, 'Bitiş:', dayEnd);
-                  return adisyonDateTime >= dayStart && adisyonDateTime <= dayEnd;
-                } else {
-                  // Saat filtresi kapalıysa, sadece tarihe göre filtrele
-                  const adisyonTarih = adisyonTarihStr.includes('T') 
-                    ? adisyonTarihStr.split('T')[0] 
-                    : adisyonTarihStr.includes(' ') 
-                      ? adisyonTarihStr.split(' ')[0] 
-                      : adisyonTarihStr;
-                  console.log('Günlük filtre - Adisyon tarihi:', adisyonTarih, 'Hedef tarih:', selectedDate);
-                  return adisyonTarih === selectedDate;
-                }
-              } else if (reportMode === 'range') {
-                // Saat dahil tarih aralığı kontrolü
-                const rangeStart = new Date(`${startDate}T${startTime}:00`);
-                const rangeEnd = new Date(`${endDate}T${endTime}:00`);
-                
-                console.log('Aralık filtre - Adisyon:', adisyonDateTime, 'Başlangıç:', rangeStart, 'Bitiş:', rangeEnd);
-                return adisyonDateTime >= rangeStart && adisyonDateTime <= rangeEnd;
-              }
-              
-              return false;
-            } catch (err) {
-              console.error('Tarih karşılaştırma hatası:', err, 'Adisyon tarihi:', adisyon.tarih);
-              return false;
-            }
-          });
-          
-          console.log('Filtrelenmiş adisyon sayısı:', filteredAdisyonList.length);
-          
-          // Tarihe ve adisyon numarasına göre sıralama
-          const sortedAdisyonList = filteredAdisyonList.sort((a, b) => {
-            // Önce tarihe göre (eskiden yeniye)
-            try {
-              let dateA, dateB;
-              
-              // ISO formatını Date objesine çevir
-              if (a.tarih && a.tarih.includes('T')) {
-                dateA = new Date(a.tarih);
-              } else if (a.tarih && a.tarih.includes(' ')) {
-                dateA = new Date(a.tarih.replace(' ', 'T'));
-              } else {
-                dateA = new Date(a.tarih || 0);
-              }
-              
-              if (b.tarih && b.tarih.includes('T')) {
-                dateB = new Date(b.tarih);
-              } else if (b.tarih && b.tarih.includes(' ')) {
-                dateB = new Date(b.tarih.replace(' ', 'T'));
-              } else {
-                dateB = new Date(b.tarih || 0);
-              }
-              
-              // Tarih karşılaştırması - eskiden yeniye (A - B)
-              if (dateA - dateB !== 0) return dateA - dateB;
-            } catch (err) {
-              console.error('Tarih sıralama hatası:', err);
-            }
-            
-            // Sonra adisyon numarasına göre (küçükten büyüğe)
-            const numA = parseInt(a.padsgnum) || 0;
-            const numB = parseInt(b.padsgnum) || 0;
-            return numA - numB;
-          });
-          
-          console.log('Sıralanmış adisyon listesi:', sortedAdisyonList);
-          setAdisyonlar(sortedAdisyonList);
+          // Sorgu zaten sıralı ve filtreli geldiği için doğrudan set ediyoruz
+          setAdisyonlar(adisyonList);
           setLoading(false);
         },
         (err) => {
           console.error('Adisyonlar alınırken hata:', err);
-          setError('Adisyonlar yüklenirken bir hata oluştu: ' + err.message);
+          // Eğer index hatası alınırsa kullanıcıya bilgi ver
+          if (err.code === 'failed-precondition') {
+            setError('Bu raporu görüntülemek için gerekli Firestore Index henüz oluşturulmamış. Lütfen konsol üzerinden oluşturun.');
+          } else {
+            setError('Adisyonlar yüklenirken bir hata oluştu: ' + err.message);
+          }
           setLoading(false);
         }
       );

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './Sidebar.css';
 
@@ -10,10 +11,32 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [menuSettings, setMenuSettings] = useState({
+    showBranchOperations: true,
+    showCourierOperations: true
+  });
   
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
+
+  // Ayarları dinle
+  useEffect(() => {
+    const settingsRef = doc(db, 'system', 'settings');
+    const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setMenuSettings({
+          showBranchOperations: data.showBranchOperations !== undefined ? data.showBranchOperations : true,
+          showCourierOperations: data.showCourierOperations !== undefined ? data.showCourierOperations : true
+        });
+      }
+    }, (error) => {
+      console.error("Menu ayarları yüklenirken hata:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
   
   // Rol kodunu kullanıcı dostu metne dönüştür
   const getRoleName = (roleCode) => {
@@ -135,7 +158,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       icon: 'category',
     },
     {
-      title: 'Gider Kaydı',
+      title: 'Gider İşlemleri',
       path: '/gider-kaydi',
       icon: 'receipt',
     },
@@ -153,6 +176,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       icon: 'block',
     },
   ];
+
+  const isCompanyManager = currentUser?.role === 'sirket_yoneticisi';
 
   return (
     <>
@@ -194,14 +219,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             </div>
           )}
 
-          {currentUser?.role !== 'kurye' && (
+          {/* Şube İşlemleri - Ayara bağlı olarak gizlenebilir */}
+          {currentUser?.role !== 'kurye' && menuSettings.showBranchOperations && (
             <div className="menu-section">
               <p className="menu-label">Şube İşlemleri</p>
               <ul className="menu-items">
                 {subeMenuItems.map((item) => {
                   // Rol kontrolleri
                   const userRole = currentUser?.role;
-                  const isCompanyManager = userRole === 'sirket_yoneticisi';
                   const isBranchManager = userRole === 'sube_yoneticisi';
                   
                   // Ürün İşlemleri sadece şirket yöneticisi görebilir
@@ -230,27 +255,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             </div>
           )}
 
-          <div className="menu-section">
-            <p className="menu-label">Kurye İşlemleri</p>
-            <ul className="menu-items">
-              {kuryeMenuItems.map((item) => {
-                // Rol kontrolleri
-                const userRole = currentUser?.role;
-                const isCompanyManager = userRole === 'sirket_yoneticisi';
-                const isBranchManager = userRole === 'sube_yoneticisi';
-                const isCourier = userRole === 'kurye';
-                
-                // Kurye işlemlerini görebilecek roller
-                if (!isCompanyManager && !isBranchManager && !isCourier) {
-                  return null;
-                }
-
-                // Şirket yöneticisi "Kurye Atama İşlemleri" sayfasını göremesin
-                if (isCompanyManager && item.path === '/kurye-atama') {
-                  return null;
-                }
-
-                return (
+          {/* Kurye İşlemleri - Sadece şube müdürü ve kurye görebilir + Ayara bağlı */}
+          {(currentUser?.role === 'sube_yoneticisi' || currentUser?.role === 'kurye') && menuSettings.showCourierOperations && (
+            <div className="menu-section">
+              <p className="menu-label">Kurye İşlemleri</p>
+              <ul className="menu-items">
+                {kuryeMenuItems.map((item) => (
                   <li 
                     key={item.path} 
                     className={location.pathname === item.path ? 'active' : ''}
@@ -260,13 +270,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                       <span className="menu-title">{item.title}</span>
                     </Link>
                   </li>
-                );
-              })}
-            </ul>
-          </div>
+                ))}
+              </ul>
+            </div>
+          )}
 
-          {/* Gider İşlemleri - Sadece şirket yöneticisi ve şube müdürü görebilir */}
-          {(currentUser?.role === 'sirket_yoneticisi' || currentUser?.role === 'sube_yoneticisi') && (
+          {/* Gider İşlemleri - Şube müdürü ve şirket yöneticisi görebilir */}
+          {(currentUser?.role === 'sube_yoneticisi' || currentUser?.role === 'sirket_yoneticisi') && (
             <div className="menu-section">
               <p className="menu-label">Gider İşlemleri</p>
               <ul className="menu-items">
@@ -301,6 +311,23 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     </Link>
                   </li>
                 ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Yönetici Ayarları - Sadece Şirket Yöneticisi */}
+          {isCompanyManager && (
+            <div className="menu-section">
+              <p className="menu-label">Yönetim</p>
+              <ul className="menu-items">
+                <li 
+                  className={location.pathname === '/settings' ? 'active' : ''}
+                >
+                  <Link to="/settings" data-title="Ayarlar" onClick={handleItemClick}>
+                    <span className="material-icons">settings</span>
+                    <span className="menu-title">Ayarlar</span>
+                  </Link>
+                </li>
               </ul>
             </div>
           )}
