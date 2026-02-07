@@ -1,0 +1,93 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "Adisyonlar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rrc_restaurant_id", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Adisyonlar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rrc_restaurant_id", "order": "ASCENDING" },
+        { "fieldPath": "adisyoncode", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "AdisyonIcerik",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rrc_restaurant_id", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "padisyoniptaller",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rrc_restaurant_id", "order": "ASCENDING" },
+        { "fieldPath": "iptaltarihi", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tblmasaiptalads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rrc_restaurant_id", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "giderKayitlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "subeId", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "kuryeatama",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "subeId", "order": "ASCENDING" },
+        { "fieldPath": "atamaTarihi", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Masalar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rrc_restaurant_id", "order": "ASCENDING" },
+        { "fieldPath": "masa_id", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sube_bakiye_hareketleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sube_id", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sube_bakiye_hareketleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "siparis_id", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "subeId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

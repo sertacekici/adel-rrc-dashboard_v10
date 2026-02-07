@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "mrchefrrc",
+    "mrchefrrc": "mrchefrrc",
+    "jetdoner-rrc": "jetdoner-rrc",
+    "tatlidunyasirrc": "tatlidunyasirrc",
+    "scecafe": "scecafe",
+    "sceqr": "sceqr-4abb0",
+    "adeltest1": "rrc-adeltest1",
+    "adeltest2": "rrc-adeltest2"
+  }
+}

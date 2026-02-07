@@ -7,7 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:indexes:all": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-indexes.ps1",
+    "deploy:indexes:one": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-indexes-one.ps1",
+    "create:firebase": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/create-firebase-project.ps1",
+    "create:firebase:skip-deploy": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/create-firebase-project.ps1 -SkipDeploy",
+    "create:firebase:auto": "node scripts/create-firebase-project.mjs",
+    "generate:firebase": "node scripts/generate-firebase-config.mjs",
+    "auth:setup": "node scripts/enable-auth-and-user.mjs"
   },
   "dependencies": {
     "file-saver": "^2.0.5",
