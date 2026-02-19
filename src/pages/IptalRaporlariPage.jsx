@@ -128,12 +128,22 @@ const IptalRaporlariPage = () => {
     }
 
     const masterSnap = await getDocs(q);
-    const masterDocs = masterSnap.docs.map(d => d.data());
+    const masterDocsRaw = masterSnap.docs.map(d => d.data());
     
-    if (masterDocs.length === 0) {
+    if (masterDocsRaw.length === 0) {
       setPaketData([]);
       return;
     }
+
+    // Aynı adisyoncode ile birden fazla kayıt gelebilir (POS tekrar gönderimi vs.)
+    // adisyoncode bazında tekilleme yap
+    const seenAdisyonCodes = new Set();
+    const masterDocs = masterDocsRaw.filter(doc => {
+      if (!doc.adisyoncode) return true;
+      if (seenAdisyonCodes.has(doc.adisyoncode)) return false;
+      seenAdisyonCodes.add(doc.adisyoncode);
+      return true;
+    });
 
     // Adisyon kodlarını topla
     const adisyonCodes = masterDocs.map(d => d.adisyoncode).filter(c => c);
@@ -194,12 +204,21 @@ const IptalRaporlariPage = () => {
     }
 
     const masterSnap = await getDocs(q);
-    const masterDocs = masterSnap.docs.map(d => d.data());
+    const masterDocsRaw = masterSnap.docs.map(d => d.data());
     
-    if (masterDocs.length === 0) {
+    if (masterDocsRaw.length === 0) {
       setSalonData([]);
       return;
     }
+
+    // Aynı ad_code ile birden fazla kayıt gelebilir — tekilleme yap
+    const seenAdCodes = new Set();
+    const masterDocs = masterDocsRaw.filter(doc => {
+      if (!doc.ad_code) return true;
+      if (seenAdCodes.has(doc.ad_code)) return false;
+      seenAdCodes.add(doc.ad_code);
+      return true;
+    });
 
     // Kodları topla (ad_code)
     const adCodes = masterDocs.map(d => d.ad_code).filter(c => c);

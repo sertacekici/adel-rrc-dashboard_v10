@@ -11,6 +11,12 @@ html, body {
   overflow-x: hidden;
 }
 
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  line-height: 1.5;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
@@ -27,9 +33,73 @@ html {
   overflow-x: hidden;
 }
 
+:where(
+  .dashboard-container,
+  .adisyonlar-container,
+  .detayli-kurye-raporu-container,
+  .genel-rapor-container,
+  .gider-kalemi-page,
+  .gider-kaydi-container,
+  .iptal-raporlari-container,
+  .kurye-atama-container,
+  .kurye-raporu-container,
+  .masalar-container,
+  .placeholder-page,
+  .satis-adetleri-container,
+  .settings-container,
+  .sube-bakiye-takip-container,
+  .subeler-container,
+  .sube-personel-container,
+  .sube-siparis-container,
+  .sube-siparis-takip-container,
+  .urun-islemleri-container,
+  .users-container
+) {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+:where(
+  .records-table,
+  .table-container,
+  .indexes-table-wrapper,
+  .subeler-table-container,
+  .personel-table-container,
+  .adisyonlar-table-container,
+  .hareketler-table-container
+) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+:where(
+  .stats-grid,
+  .shortcuts-grid,
+  .ozet-widgets,
+  .bakiye-cards,
+  .adisyonlar-grid,
+  .teslimat-grid,
+  .urunler-grid,
+  .siparisler-grid,
+  .mobile-cards,
+  .items-grid,
+  .analysis-grid,
+  .product-sales-grid
+) {
+  max-width: 100%;
+}
+
 /* Prevent common elements from forcing horizontal scroll */
 img, table {
   max-width: 100%;
+}
+
+table {
+  table-layout: auto;
 }
 
 /* Global Modal Stilleri - Tüm Proje İçin Standart */
@@ -99,6 +169,31 @@ img, table {
 
 /* Responsive Modal Düzenlemeleri */
 @media (max-width: 768px) {
+  :where(
+    .dashboard-container,
+    .adisyonlar-container,
+    .detayli-kurye-raporu-container,
+    .genel-rapor-container,
+    .gider-kalemi-page,
+    .gider-kaydi-container,
+    .iptal-raporlari-container,
+    .kurye-atama-container,
+    .kurye-raporu-container,
+    .masalar-container,
+    .placeholder-page,
+    .satis-adetleri-container,
+    .settings-container,
+    .sube-bakiye-takip-container,
+    .subeler-container,
+    .sube-personel-container,
+    .sube-siparis-container,
+    .sube-siparis-takip-container,
+    .urun-islemleri-container,
+    .users-container
+  ) {
+    max-width: 100%;
+  }
+
   .modal-overlay {
     padding: 16px;
   }
@@ -109,6 +204,25 @@ img, table {
     max-height: calc(100vh - 32px);
     max-height: calc(100dvh - 32px);
     border-radius: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  :where(
+    .stats-grid,
+    .shortcuts-grid,
+    .ozet-widgets,
+    .bakiye-cards,
+    .adisyonlar-grid,
+    .teslimat-grid,
+    .urunler-grid,
+    .siparisler-grid,
+    .mobile-cards,
+    .items-grid,
+    .analysis-grid,
+    .product-sales-grid
+  ) {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

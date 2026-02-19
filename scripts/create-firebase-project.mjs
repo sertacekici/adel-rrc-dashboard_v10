@@ -113,6 +113,7 @@ const enableEmailPassword = async (projectId, token) => {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "x-goog-user-project": projectId,
     },
     body: JSON.stringify({
       signIn: { email: { enabled: true, passwordRequired: true } },
@@ -130,6 +131,7 @@ const createUser = async (projectId, token, email, password, retries = 3) => {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "x-goog-user-project": projectId,
         },
         body: JSON.stringify({ email, password, emailVerified: false, disabled: false }),
       });
@@ -187,6 +189,7 @@ const createStorageBucket = async (projectId, token) => {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        "x-goog-user-project": projectId,
       },
     });
     logOk("Bucket Firebase'e baglandi.");
@@ -364,12 +367,27 @@ const main = async () => {
     }
   }
 
+  // ── 10. Hosting: build + deploy ──────────────────────────
+  log("Frontend build aliniyor (Hosting icin)...");
+  try {
+    run("npm run build");
+    logOk("Build tamamlandi.");
+
+    log("Firebase Hosting deploy ediliyor...");
+    run(`firebase deploy --only hosting --project ${projectId}`);
+    logOk("Hosting deploy edildi.");
+  } catch (e) {
+    logErr(`Hosting deploy basarisiz: ${e.message}`);
+    logErr("Hosting adimini manuel tamamlayabilirsiniz: npm run deploy:hosting -- --project <projectId>");
+  }
+
   // ── Done ──────────────────────────────────────────────────
   console.log("\n╔════════════════════════════════════════════╗");
   console.log("║            SETUP TAMAMLANDI               ║");
   console.log("╠════════════════════════════════════════════╣");
   console.log(`║  Project ID : ${projectId}`);
   console.log(`║  API URL    : ${apiUrl}`);
+  console.log(`║  Hosting    : https://${projectId}.web.app`);
   console.log(`║  Admin      : ${DEFAULT_ADMIN_EMAIL}`);
   console.log(`║  JSON Config: firebaseConfig-${alias}.json`);
   console.log(`║  ENV File   : .env.${alias}`);

@@ -1,9 +1,9 @@
 import fs from "fs";
-import path from "path";
 import readline from "readline/promises";
 import { stdin as input, stdout as output } from "process";
-import { GoogleAuth } from "google-auth-library";
-import admin from "firebase-admin";
+import { execSync } from "child_process";
+
+const ENV_FILE_NAME = ".env";
 
 const rl = readline.createInterface({ input, output });
 
@@ -51,74 +51,160 @@ const askHidden = async (question) => {
   });
 };
 
-const readJsonSafe = (filePath) => {
-  if (!fs.existsSync(filePath)) {
-    return null;
-  }
-  const raw = fs.readFileSync(filePath, "utf8");
-  return JSON.parse(raw);
+const readProjectIdFromEnv = () => {
+  const envPath = ENV_FILE_NAME;
+  if (!fs.existsSync(envPath)) return "";
+
+  const envContent = fs.readFileSync(envPath, "utf8");
+  const line = envContent
+    .split(/\r?\n/)
+    .find((row) => row.trim().startsWith("VITE_FIREBASE_PROJECT_ID="));
+
+  if (!line) return "";
+
+  const value = line.split("=").slice(1).join("=").trim();
+  return value.replace(/^['"]|['"]$/g, "");
 };
 
-const enableEmailPasswordSignIn = async (projectId, credentials) => {
-  const auth = new GoogleAuth({
-    credentials,
-    scopes: [
-      "https://www.googleapis.com/auth/identitytoolkit",
-      "https://www.googleapis.com/auth/cloud-platform",
-    ],
-  });
-  const client = await auth.getClient();
+const resolveProjectId = async () => {
+  const projectIdFromArg = process.argv[2]?.trim();
+  if (projectIdFromArg) return projectIdFromArg;
+
+  const projectIdFromEnv = readProjectIdFromEnv();
+  if (projectIdFromEnv) {
+    console.log(`Project ID .env dosyasindan alindi: ${projectIdFromEnv}`);
+    return projectIdFromEnv;
+  }
+
+  const projectIdFromPrompt = await ask("Project ID (ornek: rrc-gyutootm): ");
+  return projectIdFromPrompt;
+};
+
+const getAccessToken = () => {
+  try {
+    return execSync("gcloud auth print-access-token", { encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+};
+
+const fetchJson = async (url, options = {}) => {
+  const response = await fetch(url, options);
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = body?.error?.message || JSON.stringify(body) || response.statusText;
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+
+  return body;
+};
+
+const assertProjectExists = async (projectId, token) => {
+  const url = `https://cloudresourcemanager.googleapis.com/v1/projects/${projectId}`;
+
+  try {
+    await fetchJson(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-goog-user-project": projectId,
+      },
+    });
+  } catch (error) {
+    const status = error?.status;
+    if (status === 404) {
+      throw new Error(
+        `PROJECT_NOT_FOUND: ${projectId} bulunamadi. Once projeyi olusturun (npm run create:firebase:auto) veya dogru Project ID kullanin.`
+      );
+    }
+
+    if (status === 403) {
+      throw new Error(
+        `Erisim reddedildi (403). Service account anahtari bu proje icin yetkili olmayabilir: ${projectId}`
+      );
+    }
+
+    throw error;
+  }
+};
+
+const enableEmailPasswordSignIn = async (projectId, token) => {
   const url = `https://identitytoolkit.googleapis.com/v2/projects/${projectId}/config?updateMask=signIn.email.enabled,signIn.email.passwordRequired`;
-  await client.request({
-    url,
+
+  await fetchJson(url, {
     method: "PATCH",
-    data: {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "x-goog-user-project": projectId,
+    },
+    body: JSON.stringify({
       signIn: {
         email: {
           enabled: true,
           passwordRequired: true,
         },
       },
-    },
+    }),
   });
 };
 
-const createAuthUser = async (projectId, credentials, email, password) => {
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(credentials),
-      projectId,
-    });
-  }
+const createAuthUser = async (projectId, token, email, password) => {
+  const url = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts`;
 
-  await admin.auth().createUser({
-    email,
-    password,
+  await fetchJson(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "x-goog-user-project": projectId,
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      emailVerified: false,
+      disabled: false,
+    }),
   });
 };
 
 const main = async () => {
-  const projectId = await ask("Project ID (ornek: rrc-gyutootm): ");
+  const projectId = await resolveProjectId();
   if (!projectId) {
     throw new Error("Project ID gerekli.");
   }
 
-  const serviceAccountPath = await ask("Service account JSON yolu: ");
-  if (!serviceAccountPath) {
-    throw new Error("Service account JSON gerekli.");
+  const accessToken = getAccessToken();
+  if (!accessToken) {
+    throw new Error("gcloud access token alinamadi. Once 'gcloud auth login' komutunu calistirin.");
   }
 
-  const resolvedPath = path.resolve(serviceAccountPath);
-  const credentials = readJsonSafe(resolvedPath);
-  if (!credentials) {
-    throw new Error("Service account JSON okunamadi.");
-  }
-  if (!credentials.client_email) {
-    throw new Error("Service account JSON gecersiz (client_email yok).");
-  }
+  await assertProjectExists(projectId, accessToken);
 
   console.log("Email/Password sign-in etkinlestiriliyor...");
-  await enableEmailPasswordSignIn(projectId, credentials);
+  try {
+    await enableEmailPasswordSignIn(projectId, accessToken);
+  } catch (error) {
+    const status = error?.status;
+    const message = error?.message;
+
+    if (String(message).toLowerCase().includes("quota project")) {
+      throw new Error(
+        `Quota project hatasi. Sirasiyla su komutlari calistirin:\n1) gcloud auth application-default login\n2) gcloud auth application-default set-quota-project ${projectId}`
+      );
+    }
+
+    if (status === 404 || String(message).includes("PROJECT_NOT_FOUND")) {
+      throw new Error(
+        `PROJECT_NOT_FOUND: ${projectId} bulunamadi. Once projeyi olusturun (npm run create:firebase:auto) veya dogru Project ID kullanin.`
+      );
+    }
+
+    throw error;
+  }
   console.log("Email/Password sign-in etkinlestirildi.");
 
   const userEmail = await ask("Olusturulacak kullanici e-postasi (bos birak: gec): ");
@@ -133,7 +219,7 @@ const main = async () => {
     return;
   }
 
-  await createAuthUser(projectId, credentials, userEmail, userPassword);
+  await createAuthUser(projectId, accessToken, userEmail, userPassword);
   console.log("Kullanici olusturuldu.");
 };
 

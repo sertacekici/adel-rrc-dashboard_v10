@@ -275,8 +275,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             </div>
           )}
 
-          {/* Gider İşlemleri - Şube müdürü ve şirket yöneticisi görebilir */}
-          {(currentUser?.role === 'sube_yoneticisi' || currentUser?.role === 'sirket_yoneticisi') && (
+          {/* Gider İşlemleri - Sadece şube müdürü görebilir */}
+          {currentUser?.role === 'sube_yoneticisi' && (
             <div className="menu-section">
               <p className="menu-label">Gider İşlemleri</p>
               <ul className="menu-items">

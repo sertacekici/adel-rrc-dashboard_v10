@@ -1,8 +1,9 @@
 /* IptalRaporlariPage.css */
 
 .iptal-raporlari-container {
-  padding: 24px;
-  background: #1e3884 !important; /* Genel Rapor stili */
+  padding: 20px;
+  margin: 0;
+  background: #1e3884 !important;
   min-height: 100vh;
 }
 

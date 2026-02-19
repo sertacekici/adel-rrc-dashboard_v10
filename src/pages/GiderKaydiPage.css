@@ -931,7 +931,7 @@
   
   .table-header,
   .table-row {
-    min-width: 800px;
+    min-width: 680px;
   }
 }
 
@@ -982,6 +982,11 @@
 
   .form-actions {
     flex-direction: column;
+  }
+
+  .table-header,
+  .table-row {
+    min-width: 560px;
   }
 }
 

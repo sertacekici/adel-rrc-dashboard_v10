@@ -1201,3 +1201,22 @@
     font-size: 1rem;
   }
 }
+
+@media (max-width: 1024px) {
+  .notification-popup {
+    min-width: 0;
+    width: min(92vw, 520px);
+    padding: 2rem 1.5rem;
+  }
+
+  .mobile-cards {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .mobile-cards {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  }
+}

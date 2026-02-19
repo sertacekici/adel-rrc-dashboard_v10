@@ -74,6 +74,16 @@ if (-not $sdkConfig) {
   $sdkConfig = $sdk.sdkConfig
 }
 
+# Project number ve API URL hesapla
+$projectNumber = gcloud projects describe $projectId --format="value(projectNumber)"
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($projectNumber)) {
+  throw "Project number alinamadi"
+}
+
+$region = "europe-west1"
+$serviceName = "${projectId}_rrcapi"
+$apiUrl = "https://$serviceName-$projectNumber.$region.run.app"
+
 $genDir = Join-Path $repoRoot "scripts\generated"
 New-Item -ItemType Directory -Force -Path $genDir | Out-Null
 $sdkPath = Join-Path $genDir "firebaseConfig-$alias.json"
@@ -81,6 +91,27 @@ $sdkPath = Join-Path $genDir "firebaseConfig-$alias.json"
 $sdkConfig | ConvertTo-Json -Depth 10 | Set-Content $sdkPath -Encoding UTF8
 
 Write-Host "firebaseConfig kaydedildi: $sdkPath"
+
+# .env dosyalari olustur (.env.<alias> ve root .env)
+$envPath = Join-Path $genDir ".env.$alias"
+$envContent = @(
+  "VITE_FIREBASE_API_KEY=$($sdkConfig.apiKey)",
+  "VITE_FIREBASE_AUTH_DOMAIN=$($sdkConfig.authDomain)",
+  "VITE_FIREBASE_PROJECT_ID=$($sdkConfig.projectId)",
+  "VITE_FIREBASE_STORAGE_BUCKET=$($sdkConfig.storageBucket)",
+  "VITE_FIREBASE_MESSAGING_SENDER_ID=$($sdkConfig.messagingSenderId)",
+  "VITE_FIREBASE_APP_ID=$($sdkConfig.appId)",
+  "VITE_API_URL=$apiUrl",
+  "SECRETS_SCAN_ENABLED=false",
+  ""
+)
+
+$envContent | Set-Content $envPath -Encoding UTF8
+Write-Host ".env kaydedildi: $envPath"
+
+$rootEnvPath = Join-Path $repoRoot ".env"
+Copy-Item -Path $envPath -Destination $rootEnvPath -Force
+Write-Host "Root .env guncellendi: $rootEnvPath"
 
 Write-Host "Auth (Email/Password) icin Firebase Console uzerinden etkinlestirme gerekir."
 Write-Host "Billing gerekirse, Firebase Console da plan degistirmeniz istenebilir."
