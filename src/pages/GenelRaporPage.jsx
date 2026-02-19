@@ -35,7 +35,7 @@ const GenelRaporPage = () => {
 
   // Filter state
   const [filter, setFilter] = useState({
-    mode: 'range', // 'daily' | 'range'
+    mode: 'daily', // 'daily' | 'range'
     date: new Date().toISOString().split('T')[0],
     startDate: defaultStartDate,
     endDate: defaultEndDate,
@@ -170,51 +170,29 @@ const GenelRaporPage = () => {
       // Adisyonlar sorgusu
       let adisyonQuery;
       
-      console.log('Adisyon sorgusu params:', { activeRrcId, activeDocId, startStr, endStr });
-
-      if (activeRrcId) {
-        // Specific branch query
-        // Not: orderBy('tarih') eklenince composite index zorunlu olur.
-        // Index oluşturulduğu için artık güvenle kullanabiliriz.
-        adisyonQuery = query(
-          adisyonCollection,
-          where('rrc_restaurant_id', '==', activeRrcId),
-          where('tarih', '>=', startStr),
-          where('tarih', '<=', endStr),
-          orderBy('tarih', 'asc')
-        );
-      } else {
-        // All branches
-        adisyonQuery = query(
-          adisyonCollection,
-          where('tarih', '>=', startStr),
-          where('tarih', '<=', endStr),
-          orderBy('tarih', 'asc') 
-        );
-      }
+      // Önce tarih aralığı ile tüm adisyonları çek (şube filtresi olmadan)
+      const allAdisyonQuery = query(
+        adisyonCollection,
+        where('tarih', '>=', startStr),
+        where('tarih', '<=', endStr),
+        orderBy('tarih', 'asc')
+      );
       
       try {
-        const adSnap = await getDocs(adisyonQuery);
+        const adSnap = await getDocs(allAdisyonQuery);
         adisyonlar = adSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log(`İlk sorgu sonucu (${activeRrcId ? activeRrcId : 'Tümü'}):`, adisyonlar.length);
         
-        // Fallback: If no results with rrc_restaurant_id, try activeDocId (Firestore ID)
-        if (activeDocId && adisyonlar.length === 0) {
-          console.log('Fallback deneniyor via subeId:', activeDocId);
-          const fallbackQuery = query(
-            adisyonCollection,
-            where('subeId', '==', activeDocId),
-            where('tarih', '>=', startStr),
-            where('tarih', '<=', endStr)
+        // Şube seçiliyse client-side filtrele
+        if (activeRrcId && adisyonlar.length > 0) {
+          const rrcStr = String(activeRrcId);
+          const filtered = adisyonlar.filter(a => 
+            String(a.rrc_restaurant_id) === rrcStr || 
+            String(a.subeId) === String(activeDocId)
           );
-          const fallSnap = await getDocs(fallbackQuery);
-          if (!fallSnap.empty) {
-            adisyonlar = fallSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            console.log('Fallback başarılı, kayıt sayısı:', adisyonlar.length);
-          }
+          adisyonlar = filtered;
         }
       } catch (e) {
-        console.warn('Adisyon sorgusu hata verdi, fallback yapılıyor:', e);
+        console.warn('Adisyon sorgusu hata:', e);
         if (e.code === 'failed-precondition') {
           setError('Sorgu için Firestore Index gerekli. Lütfen tarayıcı konsolundaki linke tıklayarak index oluşturun.');
         }

@@ -11,6 +11,9 @@
     "gyutoreal": "rrc-gyutoreal",
     "adeltest5": "rrc-adeltest5",
     "adelt1": "rrc-adelt1",
-    "adelt2": "rrc-adelt2"
-  }
+    "adelt2": "rrc-adelt2",
+    "deruntasfirin": "deruntasfirinrrc"
+  },
+  "targets": {},
+  "etags": {}
 }
