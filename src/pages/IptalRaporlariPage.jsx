@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, onSnapshot, documentId, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, documentId, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './IptalRaporlariPage.css';
@@ -19,10 +19,6 @@ const IptalRaporlariPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Debug
-  const [showDebug, setShowDebug] = useState(false);
-  const [debugInfo, setDebugInfo] = useState({});
-
   // Data states
   const [paketData, setPaketData] = useState([]);
   const [salonData, setSalonData] = useState([]);
@@ -92,67 +88,6 @@ const IptalRaporlariPage = () => {
 
       const activeSubeId = selectedSube || (currentUser.role === 'sube_yoneticisi' ? currentUser.subeId : null);
 
-      setDebugInfo(prev => ({
-        ...prev,
-        queryParams: { activeTab, mode, startStrIso, endStrIso, activeSubeId, userRole: currentUser.role, userSubeId: currentUser.subeId }
-      }));
-
-      // --- TANI SORGUSU: Tarih filtresi OLMADAN son 5 kayıt çek ---
-      try {
-        const diagCollection = activeTab === 'paket' ? 'padisyoniptaller' : 'tblmasaiptalads';
-        const diagDateField = activeTab === 'paket' ? 'iptaltarihi' : 'tarih';
-        
-        // Filtre olmadan son 5 kayıt
-        const diagQ = query(collection(db, diagCollection), orderBy(diagDateField, 'desc'), limit(5));
-        const diagSnap = await getDocs(diagQ);
-        const diagDocs = diagSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
-        
-        // Şube filtreli ama tarihsiz 5 kayıt
-        let diagFilteredDocs = [];
-        if (activeSubeId && activeSubeId !== 'all') {
-          const diagQ2 = query(collection(db, diagCollection), where('rrc_restaurant_id', '==', activeSubeId), limit(5));
-          const diagSnap2 = await getDocs(diagQ2);
-          diagFilteredDocs = diagSnap2.docs.map(d => ({ _id: d.id, ...d.data() }));
-        }
-
-        setDebugInfo(prev => ({
-          ...prev,
-          diag_collection: diagCollection,
-          diag_dateField: diagDateField,
-          diag_noFilterCount: diagDocs.length,
-          diag_noFilterSample: diagDocs.map(d => ({
-            _id: d._id,
-            [diagDateField]: d[diagDateField],
-            tarih: d.tarih,
-            iptaltarihi: d.iptaltarihi,
-            rrc_restaurant_id: d.rrc_restaurant_id,
-            typeOfDate: typeof d[diagDateField],
-            allKeys: Object.keys(d).sort().join(', ')
-          })),
-          diag_withSubeCount: diagFilteredDocs.length,
-          diag_withSubeSample: diagFilteredDocs.map(d => ({
-            _id: d._id,
-            [diagDateField]: d[diagDateField],
-            rrc_restaurant_id: d.rrc_restaurant_id
-          }))
-        }));
-      } catch (diagErr) {
-        setDebugInfo(prev => ({ ...prev, diag_error: diagErr.message }));
-      }
-
-      // --- TÜM MasaIptalAdsIcerik kayıtlarını filtresiz çek ---
-      try {
-        const allIcerikSnap = await getDocs(collection(db, 'MasaIptalAdsIcerik'));
-        const allIcerikDocs = allIcerikSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
-        setDebugInfo(prev => ({
-          ...prev,
-          icerik_totalCount: allIcerikDocs.length,
-          icerik_allDocs: allIcerikDocs
-        }));
-      } catch (icerikErr) {
-        setDebugInfo(prev => ({ ...prev, icerik_error: icerikErr.message }));
-      }
-
       if (activeTab === 'paket') {
         await fetchPaketIptalleri(startStrIso, endStrIso, activeSubeId);
       } else {
@@ -186,14 +121,7 @@ const IptalRaporlariPage = () => {
     }
 
     const masterSnap = await getDocs(q);
-    const masterDocsRaw = masterSnap.docs.map(d => ({ _docId: d.id, ...d.data() }));
-
-    setDebugInfo(prev => ({
-      ...prev,
-      paket_masterRawCount: masterDocsRaw.length,
-      paket_masterRawSample: masterDocsRaw.slice(0, 5),
-      paket_masterRawTarihler: masterDocsRaw.slice(0, 10).map(d => ({ docId: d._docId, iptaltarihi: d.iptaltarihi, tarih: d.tarih, rrc_restaurant_id: d.rrc_restaurant_id, adisyoncode: d.adisyoncode }))
-    }));
+    const masterDocsRaw = masterSnap.docs.map(d => d.data());
     
     if (masterDocsRaw.length === 0) {
       setPaketData([]);
@@ -207,12 +135,6 @@ const IptalRaporlariPage = () => {
       seenAdisyonCodes.add(doc.adisyoncode);
       return true;
     });
-
-    setDebugInfo(prev => ({
-      ...prev,
-      paket_afterDedup: masterDocs.length,
-      paket_removedByDedup: masterDocsRaw.length - masterDocs.length
-    }));
 
     const adisyonCodes = masterDocs.map(d => d.adisyoncode).filter(c => c);
     
@@ -230,12 +152,6 @@ const IptalRaporlariPage = () => {
       allItems = [...allItems, ...itemsSnap.docs.map(d => d.data())];
     }
     
-    setDebugInfo(prev => ({
-      ...prev,
-      paket_detayCount: allItems.length,
-      paket_detaySample: allItems.slice(0, 5)
-    }));
-
     // 3. Veriyi Birleştir
     const combinedData = masterDocs.map(master => {
       // items filtresi
@@ -278,12 +194,6 @@ const IptalRaporlariPage = () => {
     const icerikSnap = await getDocs(icerikQ);
     const allItems = icerikSnap.docs.map(d => d.data());
 
-    setDebugInfo(prev => ({
-      ...prev,
-      salon_icerikDirectCount: allItems.length,
-      salon_icerikDirectSample: allItems.slice(0, 5)
-    }));
-
     if (allItems.length === 0) {
       // Fallback: master tablodan dene (eski yöntem)
       let q = query(
@@ -295,12 +205,6 @@ const IptalRaporlariPage = () => {
         q = query(q, where('rrc_restaurant_id', '==', subeId));
       }
       const masterSnap = await getDocs(q);
-
-      setDebugInfo(prev => ({
-        ...prev,
-        salon_masterRawCount: masterSnap.docs.length,
-        salon_fallbackUsed: true
-      }));
 
       if (masterSnap.docs.length === 0) {
         setSalonData([]);
@@ -337,13 +241,6 @@ const IptalRaporlariPage = () => {
       }
     }
 
-    setDebugInfo(prev => ({
-      ...prev,
-      salon_masterRawCount: Object.keys(masterMap).length,
-      salon_masterMatchedCodes: Object.keys(masterMap),
-      salon_orphanCodes: adsCodes.filter(c => !masterMap[c])
-    }));
-
     // 4. Ödemeleri çek (MasaOdemeIptalleri)
     let allPayments = [];
     if (adsCodes.length > 0) {
@@ -357,12 +254,6 @@ const IptalRaporlariPage = () => {
         allPayments = [...allPayments, ...paymentsSnap.docs.map(d => d.data())];
       }
     }
-
-    setDebugInfo(prev => ({
-      ...prev,
-      salon_detayCount: allItems.length,
-      salon_odemeCount: allPayments.length
-    }));
 
     // 5. Veriyi birleştir — her ads_code bir adisyon kartı
     const combinedData = Object.entries(groupedByAdsCode).map(([adsCode, items]) => {
@@ -469,83 +360,6 @@ const IptalRaporlariPage = () => {
         </div>
       </div>
       
-      {/* Debug Paneli */}
-      <div className="debug-toggle-row">
-        <button className="debug-toggle-btn" onClick={() => setShowDebug(prev => !prev)}>
-          <span className="material-icons">{showDebug ? 'bug_report' : 'bug_report'}</span>
-          {showDebug ? 'Debug Kapat' : 'Debug Aç'}
-        </button>
-      </div>
-      {showDebug && (
-        <div className="debug-panel">
-          <div className="debug-header-row">
-            <h3>🔍 Debug Bilgileri</h3>
-            <button className="debug-copy-btn" onClick={() => {
-              const text = JSON.stringify(debugInfo, null, 2);
-              navigator.clipboard.writeText(text).then(() => {
-                const btn = document.querySelector('.debug-copy-btn');
-                const orig = btn.textContent;
-                btn.textContent = '✓ Kopyalandı!';
-                setTimeout(() => { btn.innerHTML = '<span class="material-icons">content_copy</span>Kopyala'; }, 1500);
-              });
-            }}>
-              <span className="material-icons">content_copy</span>Kopyala
-            </button>
-          </div>
-          <div className="debug-section">
-            <h4>Sorgu Parametreleri</h4>
-            <pre>{JSON.stringify(debugInfo.queryParams, null, 2)}</pre>
-          </div>
-          <div className="debug-section debug-highlight">
-            <h4>⚡ TANILAMA: Tarih filtresi OLMADAN son kayıtlar ({debugInfo.diag_collection} → {debugInfo.diag_noFilterCount ?? '?'} kayıt bulundu)</h4>
-            {debugInfo.diag_error && <pre style={{color:'#f87171'}}>HATA: {debugInfo.diag_error}</pre>}
-            <pre>{JSON.stringify(debugInfo.diag_noFilterSample, null, 2)}</pre>
-            {debugInfo.diag_withSubeCount !== undefined && (
-              <>
-                <h4 style={{marginTop: 12}}>Şube filtreli (tarihsiz): {debugInfo.diag_withSubeCount} kayıt</h4>
-                <pre>{JSON.stringify(debugInfo.diag_withSubeSample, null, 2)}</pre>
-              </>
-            )}
-          </div>
-          {activeTab === 'paket' ? (
-            <>
-              <div className="debug-section">
-                <h4>padisyoniptaller — Ham Sonuç: {debugInfo.paket_masterRawCount ?? '?'} kayıt (dedup sonrası: {debugInfo.paket_afterDedup ?? '?'}, çıkarılan: {debugInfo.paket_removedByDedup ?? 0})</h4>
-                <pre>{JSON.stringify(debugInfo.paket_masterRawTarihler, null, 2)}</pre>
-              </div>
-              <div className="debug-section">
-                <h4>psiparisiptaller — Detay: {debugInfo.paket_detayCount ?? '?'} kayıt</h4>
-                <pre>{JSON.stringify(debugInfo.paket_detaySample, null, 2)}</pre>
-              </div>
-              <div className="debug-section">
-                <h4>Ham Veri Örneği (ilk 3 master doküman)</h4>
-                <pre>{JSON.stringify(debugInfo.paket_masterRawSample?.slice(0, 3), null, 2)}</pre>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="debug-section">
-                <h4>tblmasaiptalads — Ham Sonuç: {debugInfo.salon_masterRawCount ?? '?'} kayıt (dedup sonrası: {debugInfo.salon_afterDedup ?? '?'}, çıkarılan: {debugInfo.salon_removedByDedup ?? 0})</h4>
-                <pre>{JSON.stringify(debugInfo.salon_masterRawTarihler, null, 2)}</pre>
-              </div>
-              <div className="debug-section">
-                <h4>MasaIptalAdsIcerik — Detay: {debugInfo.salon_detayCount ?? '?'} | MasaOdemeIptalleri: {debugInfo.salon_odemeCount ?? '?'}</h4>
-                <pre>{JSON.stringify(debugInfo.salon_detaySample, null, 2)}</pre>
-              </div>
-              <div className="debug-section">
-                <h4>Ham Veri Örneği (ilk 3 master doküman)</h4>
-                <pre>{JSON.stringify(debugInfo.salon_masterRawSample?.slice(0, 3), null, 2)}</pre>
-              </div>
-            </>
-          )}
-          <div className="debug-section debug-highlight">
-            <h4>📦 MasaIptalAdsIcerik — TÜM KAYITLAR (filtresiz): {debugInfo.icerik_totalCount ?? '?'} kayıt</h4>
-            {debugInfo.icerik_error && <pre style={{color:'#f87171'}}>HATA: {debugInfo.icerik_error}</pre>}
-            <pre>{JSON.stringify(debugInfo.icerik_allDocs, null, 2)}</pre>
-          </div>
-        </div>
-      )}
-
       {/* Hata Mesajı */}
       {error && (
         <div className="error-message">
