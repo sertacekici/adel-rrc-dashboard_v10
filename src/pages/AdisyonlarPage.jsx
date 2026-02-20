@@ -165,15 +165,15 @@ const AdisyonlarPage = () => {
             return data;
           });
           
-          // padsgnum bazında tekilleştirme - aynı adisyon numarasına sahip
+          // adisyoncode bazında tekilleştirme - aynı adisyon koduna sahip
           // birden fazla doküman varsa sadece sonuncusunu (en güncel) tut
           const seen = new Map();
           for (const adisyon of adisyonList) {
-            const key = adisyon.padsgnum;
-            if (key != null) {
+            const key = adisyon.adisyoncode;
+            if (key != null && key !== '') {
               seen.set(key, adisyon);
             } else {
-              // padsgnum yoksa doc id ile ekle (tekil kalır)
+              // adisyoncode yoksa doc id ile ekle (tekil kalır)
               seen.set(adisyon.id, adisyon);
             }
           }
