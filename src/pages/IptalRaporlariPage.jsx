@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, onSnapshot, documentId, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, documentId, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './IptalRaporlariPage.css';
@@ -19,6 +19,10 @@ const IptalRaporlariPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Debug
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({});
+
   // Data states
   const [paketData, setPaketData] = useState([]);
   const [salonData, setSalonData] = useState([]);
@@ -71,10 +75,6 @@ const IptalRaporlariPage = () => {
     setSalonPaymentSummary({});
 
     try {
-      // Tarih filtresi hazırlama
-      // Paket iptalleri için 'T' formatı (ISO-like), Salon için boşluklu format (SQL-like) gerekebilir.
-      // Ekrana gelen veriye göre: padisyoniptaller -> 2026-01-22T17:56:31 (T var)
-      
       let startStr, endStr;
       let startStrIso, endStrIso;
 
@@ -90,14 +90,72 @@ const IptalRaporlariPage = () => {
         endStrIso = `${endDate}T23:59:59`;
       }
 
-      // Şube filtresi
       const activeSubeId = selectedSube || (currentUser.role === 'sube_yoneticisi' ? currentUser.subeId : null);
 
+      setDebugInfo(prev => ({
+        ...prev,
+        queryParams: { activeTab, mode, startStrIso, endStrIso, activeSubeId, userRole: currentUser.role, userSubeId: currentUser.subeId }
+      }));
+
+      // --- TANI SORGUSU: Tarih filtresi OLMADAN son 5 kayıt çek ---
+      try {
+        const diagCollection = activeTab === 'paket' ? 'padisyoniptaller' : 'tblmasaiptalads';
+        const diagDateField = activeTab === 'paket' ? 'iptaltarihi' : 'tarih';
+        
+        // Filtre olmadan son 5 kayıt
+        const diagQ = query(collection(db, diagCollection), orderBy(diagDateField, 'desc'), limit(5));
+        const diagSnap = await getDocs(diagQ);
+        const diagDocs = diagSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+        
+        // Şube filtreli ama tarihsiz 5 kayıt
+        let diagFilteredDocs = [];
+        if (activeSubeId && activeSubeId !== 'all') {
+          const diagQ2 = query(collection(db, diagCollection), where('rrc_restaurant_id', '==', activeSubeId), limit(5));
+          const diagSnap2 = await getDocs(diagQ2);
+          diagFilteredDocs = diagSnap2.docs.map(d => ({ _id: d.id, ...d.data() }));
+        }
+
+        setDebugInfo(prev => ({
+          ...prev,
+          diag_collection: diagCollection,
+          diag_dateField: diagDateField,
+          diag_noFilterCount: diagDocs.length,
+          diag_noFilterSample: diagDocs.map(d => ({
+            _id: d._id,
+            [diagDateField]: d[diagDateField],
+            tarih: d.tarih,
+            iptaltarihi: d.iptaltarihi,
+            rrc_restaurant_id: d.rrc_restaurant_id,
+            typeOfDate: typeof d[diagDateField],
+            allKeys: Object.keys(d).sort().join(', ')
+          })),
+          diag_withSubeCount: diagFilteredDocs.length,
+          diag_withSubeSample: diagFilteredDocs.map(d => ({
+            _id: d._id,
+            [diagDateField]: d[diagDateField],
+            rrc_restaurant_id: d.rrc_restaurant_id
+          }))
+        }));
+      } catch (diagErr) {
+        setDebugInfo(prev => ({ ...prev, diag_error: diagErr.message }));
+      }
+
+      // --- TÜM MasaIptalAdsIcerik kayıtlarını filtresiz çek ---
+      try {
+        const allIcerikSnap = await getDocs(collection(db, 'MasaIptalAdsIcerik'));
+        const allIcerikDocs = allIcerikSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+        setDebugInfo(prev => ({
+          ...prev,
+          icerik_totalCount: allIcerikDocs.length,
+          icerik_allDocs: allIcerikDocs
+        }));
+      } catch (icerikErr) {
+        setDebugInfo(prev => ({ ...prev, icerik_error: icerikErr.message }));
+      }
+
       if (activeTab === 'paket') {
-        // Paket için ISO formatlı tarih ve 'iptaltarihi' alanı kullanılıyor
         await fetchPaketIptalleri(startStrIso, endStrIso, activeSubeId);
       } else {
-        // Salon için de T'li (ISO) format gerekiyor çünkü veritabanı örneği: 2026-01-26T13:11:17
         await fetchSalonIptalleri(startStrIso, endStrIso, activeSubeId);
       }
 
@@ -128,15 +186,20 @@ const IptalRaporlariPage = () => {
     }
 
     const masterSnap = await getDocs(q);
-    const masterDocsRaw = masterSnap.docs.map(d => d.data());
+    const masterDocsRaw = masterSnap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+
+    setDebugInfo(prev => ({
+      ...prev,
+      paket_masterRawCount: masterDocsRaw.length,
+      paket_masterRawSample: masterDocsRaw.slice(0, 5),
+      paket_masterRawTarihler: masterDocsRaw.slice(0, 10).map(d => ({ docId: d._docId, iptaltarihi: d.iptaltarihi, tarih: d.tarih, rrc_restaurant_id: d.rrc_restaurant_id, adisyoncode: d.adisyoncode }))
+    }));
     
     if (masterDocsRaw.length === 0) {
       setPaketData([]);
       return;
     }
 
-    // Aynı adisyoncode ile birden fazla kayıt gelebilir (POS tekrar gönderimi vs.)
-    // adisyoncode bazında tekilleme yap
     const seenAdisyonCodes = new Set();
     const masterDocs = masterDocsRaw.filter(doc => {
       if (!doc.adisyoncode) return true;
@@ -145,7 +208,12 @@ const IptalRaporlariPage = () => {
       return true;
     });
 
-    // Adisyon kodlarını topla
+    setDebugInfo(prev => ({
+      ...prev,
+      paket_afterDedup: masterDocs.length,
+      paket_removedByDedup: masterDocsRaw.length - masterDocs.length
+    }));
+
     const adisyonCodes = masterDocs.map(d => d.adisyoncode).filter(c => c);
     
     // 2. Detayları Çek (psiparisiptaller)
@@ -162,6 +230,12 @@ const IptalRaporlariPage = () => {
       allItems = [...allItems, ...itemsSnap.docs.map(d => d.data())];
     }
     
+    setDebugInfo(prev => ({
+      ...prev,
+      paket_detayCount: allItems.length,
+      paket_detaySample: allItems.slice(0, 5)
+    }));
+
     // 3. Veriyi Birleştir
     const combinedData = masterDocs.map(master => {
       // items filtresi
@@ -190,96 +264,136 @@ const IptalRaporlariPage = () => {
   };
 
   const fetchSalonIptalleri = async (startStr, endStr, subeId) => {
-    // 1. Master Tablo (tblmasaiptalads)
-    // Not: Tarih alanı kontrol edilmeli. 'tarih' varsayıyorum.
-    
-    let q = query(
-      collection(db, 'tblmasaiptalads'),
+    // 1. Doğrudan MasaIptalAdsIcerik'ten tarih aralığına göre çek
+    let icerikQ = query(
+      collection(db, 'MasaIptalAdsIcerik'),
       where('tarih', '>=', startStr),
       where('tarih', '<=', endStr)
     );
 
     if (subeId) {
-       q = query(q, where('rrc_restaurant_id', '==', subeId));
+      icerikQ = query(icerikQ, where('rrc_restaurant_id', '==', subeId));
     }
 
-    const masterSnap = await getDocs(q);
-    const masterDocsRaw = masterSnap.docs.map(d => d.data());
-    
-    if (masterDocsRaw.length === 0) {
-      setSalonData([]);
-      return;
+    const icerikSnap = await getDocs(icerikQ);
+    const allItems = icerikSnap.docs.map(d => d.data());
+
+    setDebugInfo(prev => ({
+      ...prev,
+      salon_icerikDirectCount: allItems.length,
+      salon_icerikDirectSample: allItems.slice(0, 5)
+    }));
+
+    if (allItems.length === 0) {
+      // Fallback: master tablodan dene (eski yöntem)
+      let q = query(
+        collection(db, 'tblmasaiptalads'),
+        where('tarih', '>=', startStr),
+        where('tarih', '<=', endStr)
+      );
+      if (subeId) {
+        q = query(q, where('rrc_restaurant_id', '==', subeId));
+      }
+      const masterSnap = await getDocs(q);
+
+      setDebugInfo(prev => ({
+        ...prev,
+        salon_masterRawCount: masterSnap.docs.length,
+        salon_fallbackUsed: true
+      }));
+
+      if (masterSnap.docs.length === 0) {
+        setSalonData([]);
+        return;
+      }
     }
 
-    // Aynı ad_code ile birden fazla kayıt gelebilir — tekilleme yap
-    const seenAdCodes = new Set();
-    const masterDocs = masterDocsRaw.filter(doc => {
-      if (!doc.ad_code) return true;
-      if (seenAdCodes.has(doc.ad_code)) return false;
-      seenAdCodes.add(doc.ad_code);
-      return true;
+    // 2. ads_code bazında grupla
+    const groupedByAdsCode = {};
+    allItems.forEach(item => {
+      const code = item.ads_code || 'unknown';
+      if (!groupedByAdsCode[code]) {
+        groupedByAdsCode[code] = [];
+      }
+      groupedByAdsCode[code].push(item);
     });
 
-    // Kodları topla (ad_code)
-    const adCodes = masterDocs.map(d => d.ad_code).filter(c => c);
-    const codeChunks = chunkArray(adCodes, 10);
-    
-    let allItems = [];
-    let allPayments = [];
+    const adsCodes = Object.keys(groupedByAdsCode).filter(c => c !== 'unknown');
 
-    // 2. Detayları Çek (MasaIptalAdsIcerik) - Key: ads_code
-    for (const chunk of codeChunks) {
-      const itemsQ = query(
-        collection(db, 'MasaIptalAdsIcerik'),
-        where('ads_code', 'in', chunk)
-      );
-      const itemsSnap = await getDocs(itemsQ);
-      allItems = [...allItems, ...itemsSnap.docs.map(d => d.data())];
-      
-      // 3. Ödemeleri Çek (MasaOdemeIptalleri) - Key: ads_code
-      const paymentsQ = query(
-        collection(db, 'MasaOdemeIptalleri'),
-        where('ads_code', 'in', chunk)
-      );
-      const paymentsSnap = await getDocs(paymentsQ);
-      allPayments = [...allPayments, ...paymentsSnap.docs.map(d => d.data())];
+    // 3. Master bilgileri çek (tblmasaiptalads) — ads_code'lar üzerinden ad_code eşleştir
+    let masterMap = {};
+    if (adsCodes.length > 0) {
+      const codeChunks = chunkArray(adsCodes, 10);
+      for (const chunk of codeChunks) {
+        const masterQ = query(
+          collection(db, 'tblmasaiptalads'),
+          where('ad_code', 'in', chunk)
+        );
+        const masterSnap = await getDocs(masterQ);
+        masterSnap.docs.forEach(d => {
+          const data = d.data();
+          masterMap[data.ad_code] = data;
+        });
+      }
     }
-    
-    // 4. Veriyi Birleştir
-    const combinedData = masterDocs.map(master => {
-      const items = allItems.filter(item => item.ads_code === master.ad_code);
-      const payments = allPayments.filter(pay => pay.ads_code === master.ad_code);
-      
-      // Adisyon Toplamı (Master'dan veya itemlardan)
-      // Genelde masa adisyonunda master'da toplam yazar ama itemlardan da gidebiliriz.
-      // MasaOdemeIptalleri varsa oradaki tutarlara bakmak daha doğru olabilir iptal tutarı için.
-      // Biz güvenli tarafta kalıp itemları toplayalım veya ödemeleri toplayalım.
-      
-      // İptal edilen ürünlerin toplamı:
-      const itemsTotal = items.reduce((sum, item) => sum + (Number(item.fiyat || 0) * Number(item.adet || 1)), 0);
-      
-      // Kayıttaki ad_total varsa ve items toplamı 0 ise onu kullan
+
+    setDebugInfo(prev => ({
+      ...prev,
+      salon_masterRawCount: Object.keys(masterMap).length,
+      salon_masterMatchedCodes: Object.keys(masterMap),
+      salon_orphanCodes: adsCodes.filter(c => !masterMap[c])
+    }));
+
+    // 4. Ödemeleri çek (MasaOdemeIptalleri)
+    let allPayments = [];
+    if (adsCodes.length > 0) {
+      const codeChunks = chunkArray(adsCodes, 10);
+      for (const chunk of codeChunks) {
+        const paymentsQ = query(
+          collection(db, 'MasaOdemeIptalleri'),
+          where('ads_code', 'in', chunk)
+        );
+        const paymentsSnap = await getDocs(paymentsQ);
+        allPayments = [...allPayments, ...paymentsSnap.docs.map(d => d.data())];
+      }
+    }
+
+    setDebugInfo(prev => ({
+      ...prev,
+      salon_detayCount: allItems.length,
+      salon_odemeCount: allPayments.length
+    }));
+
+    // 5. Veriyi birleştir — her ads_code bir adisyon kartı
+    const combinedData = Object.entries(groupedByAdsCode).map(([adsCode, items]) => {
+      const master = masterMap[adsCode] || {};
+      const payments = allPayments.filter(pay => pay.ads_code === adsCode);
+      const firstItem = items[0] || {};
+
+      const itemsTotal = items.reduce((sum, item) => sum + (Number(item.fiyati || item.fiyat || 0) * Number(item.miktar || item.adet || 1)), 0);
       const finalTotal = itemsTotal > 0 ? itemsTotal : (Number(master.ad_total) || 0);
 
       return {
         ...master,
-        masa_adi: master.masa_adi || master.masaadi || 'Masa ?', // masaadi fallback
+        ad_code: adsCode,
+        tarih: master.tarih || firstItem.tarih,
+        gadsno: master.gadsno || firstItem.gadsno || '-',
+        masa_adi: master.masa_adi || master.masaadi || firstItem.masaadi || 'Masa ?',
+        iptalaciklama: master.iptalaciklama || firstItem.iptalaciklama || '-',
+        rrc_restaurant_id: master.rrc_restaurant_id || firstItem.rrc_restaurant_id,
         items: items,
         payments: payments,
         totalAmount: finalTotal
       };
     });
 
-    // 5. Genel Toplamlar ve Ödeme Özetleri
+    // 6. Genel toplamlar ve ödeme özetleri
     const grandTotal = combinedData.reduce((sum, ad) => sum + ad.totalAmount, 0);
-    
-    // Ödeme Tiplerine Göre Toplam (MasaOdemeIptalleri üzerinden)
+
     const paymentSummary = {};
     allPayments.forEach(pay => {
-      // JSON örneğine göre alan adları: odemesekli, tutar
-      const type = pay.odemesekli || pay.odeme_sekli || 'Diğer'; 
+      const type = pay.odemesekli || pay.odeme_sekli || 'Diğer';
       const amount = Number(pay.tutar || pay.odenentutar || 0);
-      
       if (!paymentSummary[type]) paymentSummary[type] = 0;
       paymentSummary[type] += amount;
     });
@@ -355,6 +469,83 @@ const IptalRaporlariPage = () => {
         </div>
       </div>
       
+      {/* Debug Paneli */}
+      <div className="debug-toggle-row">
+        <button className="debug-toggle-btn" onClick={() => setShowDebug(prev => !prev)}>
+          <span className="material-icons">{showDebug ? 'bug_report' : 'bug_report'}</span>
+          {showDebug ? 'Debug Kapat' : 'Debug Aç'}
+        </button>
+      </div>
+      {showDebug && (
+        <div className="debug-panel">
+          <div className="debug-header-row">
+            <h3>🔍 Debug Bilgileri</h3>
+            <button className="debug-copy-btn" onClick={() => {
+              const text = JSON.stringify(debugInfo, null, 2);
+              navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.debug-copy-btn');
+                const orig = btn.textContent;
+                btn.textContent = '✓ Kopyalandı!';
+                setTimeout(() => { btn.innerHTML = '<span class="material-icons">content_copy</span>Kopyala'; }, 1500);
+              });
+            }}>
+              <span className="material-icons">content_copy</span>Kopyala
+            </button>
+          </div>
+          <div className="debug-section">
+            <h4>Sorgu Parametreleri</h4>
+            <pre>{JSON.stringify(debugInfo.queryParams, null, 2)}</pre>
+          </div>
+          <div className="debug-section debug-highlight">
+            <h4>⚡ TANILAMA: Tarih filtresi OLMADAN son kayıtlar ({debugInfo.diag_collection} → {debugInfo.diag_noFilterCount ?? '?'} kayıt bulundu)</h4>
+            {debugInfo.diag_error && <pre style={{color:'#f87171'}}>HATA: {debugInfo.diag_error}</pre>}
+            <pre>{JSON.stringify(debugInfo.diag_noFilterSample, null, 2)}</pre>
+            {debugInfo.diag_withSubeCount !== undefined && (
+              <>
+                <h4 style={{marginTop: 12}}>Şube filtreli (tarihsiz): {debugInfo.diag_withSubeCount} kayıt</h4>
+                <pre>{JSON.stringify(debugInfo.diag_withSubeSample, null, 2)}</pre>
+              </>
+            )}
+          </div>
+          {activeTab === 'paket' ? (
+            <>
+              <div className="debug-section">
+                <h4>padisyoniptaller — Ham Sonuç: {debugInfo.paket_masterRawCount ?? '?'} kayıt (dedup sonrası: {debugInfo.paket_afterDedup ?? '?'}, çıkarılan: {debugInfo.paket_removedByDedup ?? 0})</h4>
+                <pre>{JSON.stringify(debugInfo.paket_masterRawTarihler, null, 2)}</pre>
+              </div>
+              <div className="debug-section">
+                <h4>psiparisiptaller — Detay: {debugInfo.paket_detayCount ?? '?'} kayıt</h4>
+                <pre>{JSON.stringify(debugInfo.paket_detaySample, null, 2)}</pre>
+              </div>
+              <div className="debug-section">
+                <h4>Ham Veri Örneği (ilk 3 master doküman)</h4>
+                <pre>{JSON.stringify(debugInfo.paket_masterRawSample?.slice(0, 3), null, 2)}</pre>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="debug-section">
+                <h4>tblmasaiptalads — Ham Sonuç: {debugInfo.salon_masterRawCount ?? '?'} kayıt (dedup sonrası: {debugInfo.salon_afterDedup ?? '?'}, çıkarılan: {debugInfo.salon_removedByDedup ?? 0})</h4>
+                <pre>{JSON.stringify(debugInfo.salon_masterRawTarihler, null, 2)}</pre>
+              </div>
+              <div className="debug-section">
+                <h4>MasaIptalAdsIcerik — Detay: {debugInfo.salon_detayCount ?? '?'} | MasaOdemeIptalleri: {debugInfo.salon_odemeCount ?? '?'}</h4>
+                <pre>{JSON.stringify(debugInfo.salon_detaySample, null, 2)}</pre>
+              </div>
+              <div className="debug-section">
+                <h4>Ham Veri Örneği (ilk 3 master doküman)</h4>
+                <pre>{JSON.stringify(debugInfo.salon_masterRawSample?.slice(0, 3), null, 2)}</pre>
+              </div>
+            </>
+          )}
+          <div className="debug-section debug-highlight">
+            <h4>📦 MasaIptalAdsIcerik — TÜM KAYITLAR (filtresiz): {debugInfo.icerik_totalCount ?? '?'} kayıt</h4>
+            {debugInfo.icerik_error && <pre style={{color:'#f87171'}}>HATA: {debugInfo.icerik_error}</pre>}
+            <pre>{JSON.stringify(debugInfo.icerik_allDocs, null, 2)}</pre>
+          </div>
+        </div>
+      )}
+
       {/* Hata Mesajı */}
       {error && (
         <div className="error-message">

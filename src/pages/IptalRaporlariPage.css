@@ -362,6 +362,118 @@
   
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   
+  /* Debug Panel */
+  .debug-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+
+  .debug-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    color: #fbbf24;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .debug-toggle-btn:hover {
+    background: rgba(255,255,255,0.2);
+  }
+
+  .debug-panel {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #334155;
+    font-size: 13px;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+
+  .debug-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .debug-panel h3 {
+    margin: 0;
+    color: #fbbf24;
+    font-size: 16px;
+  }
+
+  .debug-copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #fbbf24;
+    background: transparent;
+    color: #fbbf24;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .debug-copy-btn:hover {
+    background: rgba(251, 191, 36, 0.15);
+  }
+
+  .debug-copy-btn .material-icons {
+    font-size: 16px;
+  }
+
+  .debug-section {
+    margin-bottom: 16px;
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #334155;
+  }
+
+  .debug-section h4 {
+    margin: 0 0 8px 0;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .debug-highlight {
+    border-color: #fbbf24 !important;
+    background: #1a1a2e !important;
+  }
+
+  .debug-highlight h4 {
+    color: #fbbf24 !important;
+  }
+
+  .debug-panel pre {
+    margin: 0;
+    padding: 8px;
+    background: #0f172a;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 12px;
+    color: #67e8f9;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
   @media (max-width: 768px) {
     .filters-row {
       flex-direction: column;

@@ -41,11 +41,27 @@
       ]
     },
     {
+      "collectionGroup": "MasaIptalAdsIcerik",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rrc_restaurant_id", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "giderKayitlari",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "subeId", "order": "ASCENDING" },
         { "fieldPath": "tarih", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "giderKayitlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "subeId", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" }
       ]
     },
     {
