@@ -165,8 +165,25 @@ const AdisyonlarPage = () => {
             return data;
           });
           
-          // Sorgu zaten sıralı ve filtreli geldiği için doğrudan set ediyoruz
-          setAdisyonlar(adisyonList);
+          // padsgnum bazında tekilleştirme - aynı adisyon numarasına sahip
+          // birden fazla doküman varsa sadece sonuncusunu (en güncel) tut
+          const seen = new Map();
+          for (const adisyon of adisyonList) {
+            const key = adisyon.padsgnum;
+            if (key != null) {
+              seen.set(key, adisyon);
+            } else {
+              // padsgnum yoksa doc id ile ekle (tekil kalır)
+              seen.set(adisyon.id, adisyon);
+            }
+          }
+          const dedupedList = Array.from(seen.values());
+          
+          if (dedupedList.length < adisyonList.length) {
+            console.warn(`Tekilleştirme: ${adisyonList.length} -> ${dedupedList.length} (${adisyonList.length - dedupedList.length} duplike kaldırıldı)`);
+          }
+          
+          setAdisyonlar(dedupedList);
           setLoading(false);
         },
         (err) => {
