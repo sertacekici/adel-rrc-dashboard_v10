@@ -61,8 +61,9 @@ const SatisAdetleriPage = () => {
           
           // Şirket yöneticisi değilse otomatik olarak kullanıcının şubesini seç
           if (currentUser?.role !== 'sirket_yoneticisi' && subeList.length > 0) {
-            console.log('Otomatik şube seçimi yapılıyor:', subeList[0].id);
-            setSelectedSube(subeList[0].id);
+            const autoId = subeList[0].rrc_restaurant_id || subeList[0].id;
+            console.log('Otomatik şube seçimi yapılıyor:', autoId);
+            setSelectedSube(autoId);
           }
         }, (error) => {
           console.error('Şubeler alınırken hata:', error);
@@ -182,8 +183,8 @@ const SatisAdetleriPage = () => {
     adisyonIcerik.forEach(icerik => {
       const urunAdi = icerik.urunadi || 'Bilinmeyen Ürün';
       const boyut = icerik.selectedsizename || 'Standart';
-      const miktar = parseInt(icerik.miktar) || 1;
-      const fiyat = parseFloat(icerik.fiyat) || 0;
+      const miktar = parseInt(icerik.miktar) || parseInt(icerik.adet) || 1;
+      const fiyat = parseFloat(icerik.birimfiyat) || parseFloat(icerik.fiyat) || 0;
       
       // Ürün adı + boyut kombinasyonu ile grupla
       const anahtar = `${urunAdi} - ${boyut}`;
@@ -196,17 +197,20 @@ const SatisAdetleriPage = () => {
           urunAdi,
           boyut,
           miktar,
-          birimFiyat: fiyat,
           toplamTutar: miktar * fiyat
         };
       }
     });
 
-    // Objeden array'e çevir ve miktar bazında sırala (çoktan aza)
-    const satisListesi = Object.keys(urunGruplari).map(anahtar => ({
-      anahtar,
-      ...urunGruplari[anahtar]
-    })).sort((a, b) => b.miktar - a.miktar);
+    // Objeden array'e çevir, birim fiyatı toplam/miktar olarak hesapla ve miktar bazında sırala
+    const satisListesi = Object.keys(urunGruplari).map(anahtar => {
+      const grup = urunGruplari[anahtar];
+      return {
+        anahtar,
+        ...grup,
+        birimFiyat: grup.miktar > 0 ? grup.toplamTutar / grup.miktar : 0
+      };
+    }).sort((a, b) => b.miktar - a.miktar);
 
     console.log('Hesaplanan satış adetleri:', satisListesi);
     setSatisAdetleri(satisListesi);
@@ -247,11 +251,14 @@ const SatisAdetleriPage = () => {
             disabled={currentUser?.role !== 'sirket_yoneticisi'}
           >
             <option value="">Şube seçin...</option>
-            {subeler.map((sube) => (
-              <option key={sube.id} value={sube.id}>
-                {sube.subeAdi} (ID: {sube.id})
-              </option>
-            ))}
+            {subeler.map((sube) => {
+              const rrcId = sube.rrc_restaurant_id || sube.id;
+              return (
+                <option key={sube.id} value={rrcId}>
+                  {sube.subeAdi} (RRC ID: {rrcId})
+                </option>
+              );
+            })}
           </select>
         </div>
 

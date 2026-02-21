@@ -212,17 +212,14 @@ const AdisyonlarPage = () => {
     let filtered = adisyonlar;
     
     if (orderTypeFilter === 'masa') {
-      filtered = adisyonlar.filter(adisyon => adisyon.siparisnerden === 88);
+      filtered = adisyonlar.filter(adisyon => Number(adisyon.siparisnerden) === 88);
     } else if (orderTypeFilter === 'online') {
-      filtered = adisyonlar.filter(adisyon => adisyon.siparisnerden !== 88);
-    } else if (orderTypeFilter === 'canceled') {
-      filtered = adisyonlar.filter(adisyon => isCanceled(adisyon));
+      filtered = adisyonlar.filter(adisyon => Number(adisyon.siparisnerden) !== 88);
     }
     // 'all' durumunda tüm adisyonları göster
     
     setFilteredAdisyonlar(filtered);
     setCurrentPage(1); // Filtre değiştiğinde ilk sayfaya dön
-    console.log('Filtrelenen adisyonlar:', filtered, 'Filtre tipi:', orderTypeFilter);
   }, [adisyonlar, orderTypeFilter]);
 
   // Adisyonun tipini belirle
@@ -356,6 +353,9 @@ const AdisyonlarPage = () => {
       maximumFractionDigits: 2
     }) + ' ₺';
   };
+
+  // Adisyon tutarını al (atop veya toplamTutar fallback)
+  const getAdisyonTutar = (a) => Number(a.atop) || Number(a.toplamTutar) || 0;
 
   // Pagination hesaplamaları
   const totalPages = Math.ceil(filteredAdisyonlar.length / itemsPerPage);
@@ -638,14 +638,6 @@ const AdisyonlarPage = () => {
               <span className="material-icons">takeout_dining</span>
               Paket
             </button>
-            <button
-              className={`filter-btn ${orderTypeFilter === 'canceled' ? 'active' : ''}`}
-              onClick={() => setOrderTypeFilter('canceled')}
-              title="İptal edilen adisyonları göster"
-            >
-              <span className="material-icons">cancel</span>
-              İptal Edilenler
-            </button>
           </div>
         </div>
 
@@ -701,15 +693,15 @@ const AdisyonlarPage = () => {
 
       {selectedSube && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate)) && !loading && adisyonlar.length > 0 && (
         <>
-          {/* İstatistikler */}
+          {/* İstatistikler - Her zaman tüm veriden hesaplanır (filtreden bağımsız) */}
           <div className="stats-grid">
             {(() => {
-              const canceledAdisyonlar = filteredAdisyonlar.filter(isCanceled);
-              const nonCanceledAdisyonlar = filteredAdisyonlar.filter(a => !isCanceled(a));
-              const toplamNonCanceledTutar = nonCanceledAdisyonlar.reduce((t, a) => t + (Number(a.atop) || 0), 0);
-              const toplamCanceledTutar = canceledAdisyonlar.reduce((t, a) => t + (Number(a.atop) || 0), 0);
-              const masaNonCanceled = nonCanceledAdisyonlar.filter(a => a.siparisnerden === 88);
-              const paketNonCanceled = nonCanceledAdisyonlar.filter(a => a.siparisnerden !== 88);
+              const canceledAdisyonlar = adisyonlar.filter(isCanceled);
+              const nonCanceledAdisyonlar = adisyonlar.filter(a => !isCanceled(a));
+              const toplamNonCanceledTutar = nonCanceledAdisyonlar.reduce((t, a) => t + getAdisyonTutar(a), 0);
+              const toplamCanceledTutar = canceledAdisyonlar.reduce((t, a) => t + getAdisyonTutar(a), 0);
+              const masaNonCanceled = nonCanceledAdisyonlar.filter(a => Number(a.siparisnerden) === 88);
+              const paketNonCanceled = nonCanceledAdisyonlar.filter(a => Number(a.siparisnerden) !== 88);
 
               return (
                 <>
@@ -754,7 +746,7 @@ const AdisyonlarPage = () => {
                     <div className="stat-info">
                       <div className="stat-number">{masaNonCanceled.length}</div>
                       <div className="stat-label">Masa Siparişi</div>
-                      <div className="stat-sublabel">{formatAmount(masaNonCanceled.reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                      <div className="stat-sublabel">{formatAmount(masaNonCanceled.reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
                     </div>
                   </div>
 
@@ -766,7 +758,7 @@ const AdisyonlarPage = () => {
                     <div className="stat-info">
                       <div className="stat-number">{paketNonCanceled.length}</div>
                       <div className="stat-label">Paket Sipariş</div>
-                      <div className="stat-sublabel">{formatAmount(paketNonCanceled.reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                      <div className="stat-sublabel">{formatAmount(paketNonCanceled.reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
                     </div>
                   </div>
 
@@ -774,71 +766,71 @@ const AdisyonlarPage = () => {
                   {paketNonCanceled.length > 0 && (
                     <>
                       {/* Telefon Siparişleri */}
-                      {paketNonCanceled.some(a => a.siparisnerden === 0) && (
+                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 0) && (
                         <div className="stat-card">
                           <div className="stat-icon info">
                             <span className="material-icons">phone</span>
                           </div>
                           <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 0).length}</div>
+                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 0).length}</div>
                             <div className="stat-label">Telefon</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 0).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 0).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
                           </div>
                         </div>
                       )}
 
                       {/* Yemek Sepeti */}
-                      {paketNonCanceled.some(a => a.siparisnerden === 1) && (
+                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 1) && (
                         <div className="stat-card">
                           <div className="stat-icon warning">
                             <span className="material-icons">delivery_dining</span>
                           </div>
                           <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 1).length}</div>
+                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 1).length}</div>
                             <div className="stat-label">Yemek Sepeti</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 1).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 1).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
                           </div>
                         </div>
                       )}
 
                       {/* Getir */}
-                      {paketNonCanceled.some(a => a.siparisnerden === 2) && (
+                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 2) && (
                         <div className="stat-card">
                           <div className="stat-icon success">
                             <span className="material-icons">motorcycle</span>
                           </div>
                           <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 2).length}</div>
+                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 2).length}</div>
                             <div className="stat-label">Getir</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 2).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 2).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
                           </div>
                         </div>
                       )}
 
                       {/* Trendyol */}
-                      {paketNonCanceled.some(a => a.siparisnerden === 5) && (
+                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 5) && (
                         <div className="stat-card">
                           <div className="stat-icon danger">
                             <span className="material-icons">shopping_bag</span>
                           </div>
                           <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 5).length}</div>
+                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 5).length}</div>
                             <div className="stat-label">Trendyol</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 5).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 5).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
                           </div>
                         </div>
                       )}
 
                       {/* Migros */}
-                      {paketNonCanceled.some(a => a.siparisnerden === 8) && (
+                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 8) && (
                         <div className="stat-card">
                           <div className="stat-icon secondary">
                             <span className="material-icons">store</span>
                           </div>
                           <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => a.siparisnerden === 8).length}</div>
+                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 8).length}</div>
                             <div className="stat-label">Migros</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => a.siparisnerden === 8).reduce((t, a) => t + (Number(a.atop) || 0), 0))}</div>
+                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 8).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
                           </div>
                         </div>
                       )}
@@ -970,7 +962,7 @@ const AdisyonlarPage = () => {
                   <div className="adisyon-details">
                     <div className="detail-row">
                       <span className="detail-label">Toplam:</span>
-                      <span className="detail-value amount">{formatAmount(adisyon.atop)}</span>
+                      <span className="detail-value amount">{formatAmount(adisyon.atop || adisyon.toplamTutar)}</span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Tarih:</span>

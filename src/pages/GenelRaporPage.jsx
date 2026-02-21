@@ -191,6 +191,18 @@ const GenelRaporPage = () => {
           );
           adisyonlar = filtered;
         }
+
+        // adisyoncode bazında tekilleştirme (AdisyonlarPage ile tutarlı)
+        const seen = new Map();
+        for (const adisyon of adisyonlar) {
+          const key = adisyon.adisyoncode;
+          if (key != null && key !== '') {
+            seen.set(key, adisyon);
+          } else {
+            seen.set(adisyon.id, adisyon);
+          }
+        }
+        adisyonlar = Array.from(seen.values());
       } catch (e) {
         console.warn('Adisyon sorgusu hata:', e);
         if (e.code === 'failed-precondition') {
@@ -268,9 +280,18 @@ const GenelRaporPage = () => {
     return 'Diğer';
   };
 
+  // Adisyon tutar helper
+  const getAdisyonTutar = (a) => Number(a.atop) || Number(a.toplamTutar) || 0;
+
   // Hesaplamalar
   const nonCanceledAdisyonlar = data.adisyonlar.filter(a => !isCanceled(a));
   const canceledAdisyonlar = data.adisyonlar.filter(a => isCanceled(a));
+
+  // siparisnerden'e göre Masa / Paket ayrımı (AdisyonlarPage ile tutarlı)
+  const isMasaAdisyon = (a) => Number(a.siparisnerden) === 88;
+
+  const masaAdisyonlar = nonCanceledAdisyonlar.filter(a => isMasaAdisyon(a));
+  const paketAdisyonlar = nonCanceledAdisyonlar.filter(a => !isMasaAdisyon(a));
 
   const toplamGider = data.giderler.reduce((total, item) => total + item.tutar, 0);
   
@@ -282,29 +303,20 @@ const GenelRaporPage = () => {
     .filter(item => item.odemeKaynagi === 'merkez_kasa')
     .reduce((total, item) => total + item.tutar, 0);
 
-  const toplamSatis = nonCanceledAdisyonlar.reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0);
-
-  const nakit = nonCanceledAdisyonlar
-    .filter(item => {
-      const raw = item.odemetipi !== undefined ? item.odemetipi : item.odemeTipi;
-      return normalizeOdemeTipi(raw) === 'Nakit';
-    })
-    .reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0);
-
-  const kartKredi = nonCanceledAdisyonlar
-    .filter(item => {
-      const raw = item.odemetipi !== undefined ? item.odemetipi : item.odemeTipi;
-      return normalizeOdemeTipi(raw) === 'Kart/Kredi';
-    })
-    .reduce((total, item) => total + (Number(item.atop) || Number(item.toplamTutar) || 0), 0);
+  // Masa satış toplamı
+  const masaSatis = masaAdisyonlar.reduce((total, item) => total + getAdisyonTutar(item), 0);
+  // Paket satış toplamı
+  const paketSatis = paketAdisyonlar.reduce((total, item) => total + getAdisyonTutar(item), 0);
+  // Genel toplam
+  const toplamSatis = masaSatis + paketSatis;
 
   const calculations = {
     toplamGider,
     gunlukKasaGider,
     merkezKasaGider,
     toplamSatis,
-    nakit,
-    kartKredi,
+    masaSatis,
+    paketSatis,
     
     // Kurye İstatistikleri
     toplamTeslimat: data.kuryeRaporlari.length,
@@ -315,10 +327,11 @@ const GenelRaporPage = () => {
     netKar: toplamSatis - toplamGider
   };
 
-  const odemeTipiToplamlariObj = nonCanceledAdisyonlar.reduce((acc, item) => {
-    const raw = item.odemetipi !== undefined ? item.odemetipi : item.odemeTipi; // tercih 'odemetipi'
+  // Ödeme tipi dağılımı — sadece paket adisyonlar üzerinden
+  const odemeTipiToplamlariObj = paketAdisyonlar.reduce((acc, item) => {
+    const raw = item.odemetipi !== undefined ? item.odemetipi : item.odemeTipi;
     const key = normalizeOdemeTipi(raw);
-    const tutar = Number(item.atop) || Number(item.toplamTutar) || 0;
+    const tutar = getAdisyonTutar(item);
     acc[key] = (acc[key] || 0) + tutar;
     return acc;
   }, {});
@@ -617,15 +630,35 @@ const GenelRaporPage = () => {
         </div>
       )}
 
-      {/* Özet Kartları */}
+      {/* Özet Kartları — Masa / Paket / Genel Toplam */}
       <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon primary">
+            <span className="material-icons">table_restaurant</span>
+          </div>
+          <div className="stat-info">
+            <div className="stat-number">₺{calculations.masaSatis.toFixed(2)}</div>
+            <div className="stat-label">Masa Toplam ({masaAdisyonlar.length} adisyon)</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon warning">
+            <span className="material-icons">takeout_dining</span>
+          </div>
+          <div className="stat-info">
+            <div className="stat-number">₺{calculations.paketSatis.toFixed(2)}</div>
+            <div className="stat-label">Paket Toplam ({paketAdisyonlar.length} adisyon)</div>
+          </div>
+        </div>
+
         <div className="stat-card">
           <div className="stat-icon success">
             <span className="material-icons">trending_up</span>
           </div>
           <div className="stat-info">
             <div className="stat-number">₺{calculations.toplamSatis.toFixed(2)}</div>
-            <div className="stat-label">Toplam Satış</div>
+            <div className="stat-label">Genel Toplam ({nonCanceledAdisyonlar.length} adisyon)</div>
           </div>
         </div>
 
@@ -650,7 +683,6 @@ const GenelRaporPage = () => {
             <div className="stat-label">Net Kar/Zarar</div>
           </div>
         </div>
-
       </div>
 
       {/* Detaylı Analizler */}
@@ -676,14 +708,14 @@ const GenelRaporPage = () => {
             ))}
             {nonCanceledAdisyonlar.length > 0 && (
               <div className="metric">
-                <span className="label">Toplam Adisyon:</span>
-                <span className="value">{nonCanceledAdisyonlar.length}</span>
+                <span className="label">Paket Adisyon:</span>
+                <span className="value">{paketAdisyonlar.length}</span>
               </div>
             )}
-            {nonCanceledAdisyonlar.length > 0 && (
+            {paketAdisyonlar.length > 0 && (
               <div className="metric">
-                <span className="label">Ortalama Adisyon:</span>
-                <span className="value">₺{(calculations.toplamSatis / nonCanceledAdisyonlar.length).toFixed(2)}</span>
+                <span className="label">Ort. Paket Adisyon:</span>
+                <span className="value">₺{(calculations.paketSatis / paketAdisyonlar.length).toFixed(2)}</span>
               </div>
             )}
             {/* İptal metrikleri */}
@@ -693,7 +725,7 @@ const GenelRaporPage = () => {
             </div>
             <div className="metric">
               <span className="label">İptal Tutarı:</span>
-              <span className="value">₺{canceledAdisyonlar.reduce((t, a) => t + (Number(a.atop) || Number(a.toplamTutar) || 0), 0).toFixed(2)}</span>
+              <span className="value">₺{canceledAdisyonlar.reduce((t, a) => t + getAdisyonTutar(a), 0).toFixed(2)}</span>
             </div>
           </div>
         </div>

@@ -298,7 +298,7 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
                 <span className="material-icons">payments</span>
                 <div>
                   <span className="info-label">Toplam Tutar</span>
-                  <span className="info-value amount">{formatAmount(adisyon?.atop)}</span>
+                  <span className="info-value amount">{formatAmount(adisyon?.atop || adisyon?.toplamTutar)}</span>
                 </div>
               </div>
             </div>
