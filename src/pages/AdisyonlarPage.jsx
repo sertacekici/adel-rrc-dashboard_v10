@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { toDate } from '../utils/dateUtils';
+import { toDate, todayTR } from '../utils/dateUtils';
 import AdisyonDetailModal from '../components/AdisyonDetailModal';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
@@ -27,14 +27,14 @@ const AdisyonlarPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSube, setSelectedSube] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(todayTR());
   const [orderTypeFilter, setOrderTypeFilter] = useState('all');
   const [reportMode, setReportMode] = useState('daily');
   const todayRef = new Date();
   const yesterdayRef = new Date(todayRef);
   yesterdayRef.setDate(yesterdayRef.getDate() - 1);
-  const [startDate, setStartDate] = useState(yesterdayRef.toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(todayRef.toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(todayTR(yesterdayRef));
+  const [endDate, setEndDate] = useState(todayTR(todayRef));
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('08:00');
   const [dailyStartTime, setDailyStartTime] = useState('00:00');
@@ -382,15 +382,15 @@ const AdisyonlarPage = () => {
             <span className="quick-label-adisyon">Hızlı:</span>
             <button className="quick-btn-adisyon" onClick={() => {
               const t = new Date(); const y = new Date(t); y.setDate(y.getDate() - 1);
-              setStartDate(y.toISOString().split('T')[0]); setEndDate(t.toISOString().split('T')[0]);
+              setStartDate(todayTR(y)); setEndDate(todayTR(t));
               setStartTime('08:00'); setEndTime('08:00');
             }}>Dün 08:00 - Bugün 08:00</button>
             <button className="quick-btn-adisyon" onClick={() => {
-              const t = new Date().toISOString().split('T')[0];
+              const t = todayTR();
               setStartDate(t); setEndDate(t); setStartTime('00:00'); setEndTime('23:59');
             }}>Bugün Tüm Gün</button>
             <button className="quick-btn-adisyon" onClick={() => {
-              const y = new Date(); y.setDate(y.getDate() - 1); const ys = y.toISOString().split('T')[0];
+              const y = new Date(); y.setDate(y.getDate() - 1); const ys = todayTR(y);
               setStartDate(ys); setEndDate(ys); setStartTime('00:00'); setEndTime('23:59');
             }}>Dün Tüm Gün</button>
           </div>

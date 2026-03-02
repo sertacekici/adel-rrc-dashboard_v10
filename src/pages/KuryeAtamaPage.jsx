@@ -1,468 +1,209 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import AdisyonDetailModal from '../components/AdisyonDetailModal';
 import './KuryeAtamaPage.css';
+
+const KAYNAK_MAP = {
+  0: { text: 'Telefon', icon: 'phone_in_talk', color: 'info' },
+  1: { text: 'Yemek Sepeti', icon: 'delivery_dining', color: 'warning' },
+  2: { text: 'Getir', icon: 'motorcycle', color: 'success' },
+  5: { text: 'Trendyol', icon: 'shopping_bag', color: 'danger' },
+  8: { text: 'Migros', icon: 'store', color: 'secondary' },
+};
 
 const KuryeAtamaPage = () => {
   const [adisyonlar, setAdisyonlar] = useState([]);
   const [kuryeler, setKuryeler] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAdisyon, setSelectedAdisyon] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedKurye, setSelectedKurye] = useState('');
   const [atanacakAdisyon, setAtanacakAdisyon] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const { currentUser } = useContext(AuthContext);
+  const [rrcId, setRrcId] = useState(null);
+  const { currentUser } = useAuth();
 
-  // Kuryeleri getir
-  const fetchKuryeler = async () => {
-    try {
-      const kuryeQuery = query(
-        collection(db, 'users'),
-        where('role', '==', 'kurye')
-      );
-      
-      const kuryeSnapshot = await getDocs(kuryeQuery);
-      const kuryeList = kuryeSnapshot.docs.map(doc => ({
-        id: doc.id,
-        uid: doc.data().uid,
-        ...doc.data()
-      }));
-      
-      setKuryeler(kuryeList);
-    } catch (error) {
-      console.error('Kuryeler getirilirken hata:', error);
-    }
+  const isCourier = currentUser?.role === 'kurye';
+  const canAssignCourier = currentUser?.role === 'sube_yoneticisi';
+
+  // Bildirim göster
+  const showNotification = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
   };
 
-  // Motorcu kolonu boş olan adisyonları getir
+  // Şube rrc_restaurant_id'sini al
   useEffect(() => {
-    console.log('🔧 useEffect çalıştı - currentUser:', currentUser);
-    console.log('🔧 currentUser role:', currentUser?.role);
-    console.log('🔧 currentUser subeId:', currentUser?.subeId);
-    console.log('🔧 currentUser tüm bilgileri:', currentUser);
-    
-    const fetchAdisyonlar = () => {
+    if (!currentUser?.subeId) return;
+    const fetchRrcId = async () => {
       try {
-        let adisyonQuery;
-        
-        // Rol kontrolü
-        if (currentUser?.role === 'kurye') {
-          // Kurye sadece motorcu boş olan siparişleri görebilir (kendi üzerine almak için)
-          adisyonQuery = query(
-            collection(db, 'Adisyonlar'),
-            where('motorcu', '==', '')
-          );
-        } else {
-          // Şirket yöneticisi ve şube müdürü motorcu boş olanları görebilir
-          adisyonQuery = query(
-            collection(db, 'Adisyonlar'),
-            where('motorcu', '==', '')
-          );
+        const subeDoc = await getDoc(doc(db, 'subeler', currentUser.subeId));
+        if (subeDoc.exists()) {
+          setRrcId(subeDoc.data().rrc_restaurant_id || currentUser.subeId);
         }
-
-        const unsubscribe = onSnapshot(adisyonQuery, (snapshot) => {
-          let adisyonList = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          
-          // İlk adisyonun anahtarlarını konsola yazdır
-          if (adisyonList.length > 0) {
-            console.log('İlk adisyon verisi:', adisyonList[0]);
-            console.log('İlk adisyon anahtarları:', Object.keys(adisyonList[0]));
-            
-            // Şube ile ilgili alanları özellikle kontrol et
-            const subeAlanlari = Object.keys(adisyonList[0]).filter(key => 
-              key.toLowerCase().includes('sube') || 
-              key.toLowerCase().includes('branch') ||
-              key.toLowerCase().includes('store')
-            );
-            console.log('Şube ile ilgili alanlar:', subeAlanlari);
-            
-            // Şube değerlerini göster
-            subeAlanlari.forEach(alan => {
-              console.log(`${alan}:`, adisyonList[0][alan]);
-            });
-          }
-          
-          // Masa siparişlerini filtrele (siparisnerden !== 88)
-          adisyonList = adisyonList.filter(adisyon => adisyon.siparisnerden !== 88);
-          
-          // Sadece motorcu boş olan siparişleri göster (kurye bekleyen)
-          adisyonList = adisyonList.filter(adisyon => 
-            !adisyon.motorcu || adisyon.motorcu === ''
-          );
-          
-          // Tarihe göre sırala (en yeni önce)
-          adisyonList.sort((a, b) => {
-            const dateA = a.tarih ? new Date(a.tarih) : new Date(0);
-            const dateB = b.tarih ? new Date(b.tarih) : new Date(0);
-            return dateB - dateA;
-          });
-          
-          setAdisyonlar(adisyonList);
-          setLoading(false);
-          
-          console.log('📋 Yüklenen adisyonlar:', adisyonList.length, 'adet');
-          if (adisyonList.length > 0) {
-            console.log('📋 İlk 3 adisyon:', adisyonList.slice(0, 3));
-          }
-        });
-
-        return unsubscribe;
-      } catch (error) {
-        console.error('Adisyonlar getirilirken hata:', error);
-        setLoading(false);
+      } catch (err) {
+        console.error('Şube bilgisi getirilemedi:', err);
       }
     };
-
-    if (currentUser) {
-      const unsubscribe = fetchAdisyonlar();
-      fetchKuryeler();
-      
-      return () => {
-        if (unsubscribe) unsubscribe();
-      };
-    }
+    fetchRrcId();
   }, [currentUser]);
 
-  // Scroll pozisyonu yönetimi - Modal açıldığında scroll kontrolü
+  // Kuryeleri getir
   useEffect(() => {
-    if (showDetailModal) {
-      // Mevcut scroll pozisyonunu kaydet
-      setScrollPosition(window.pageYOffset);
-      // Sayfayı üste kaydır
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      // Body scroll'unu engelle
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Body scroll'unu geri aç
-      document.body.style.overflow = '';
-      // Eski pozisyona geri dön
-      if (scrollPosition > 0) {
-        window.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+    if (!currentUser || isCourier) return;
+    const fetchKuryeler = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'kurye')));
+        setKuryeler(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (err) {
+        console.error('Kuryeler getirilirken hata:', err);
       }
+    };
+    fetchKuryeler();
+  }, [currentUser, isCourier]);
+
+  // PaketAdisyonlar koleksiyonundan realtime dinle (AdisyonlarPage mantığıyla aynı)
+  useEffect(() => {
+    if (!currentUser || !rrcId) return;
+
+    const q = query(
+      collection(db, 'PaketAdisyonlar'),
+      where('rrc_restaurant_id', '==', String(rrcId))
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        // Motorcu boş olanlar
+        .filter(a => !a.motorcu || a.motorcu === '')
+        // kisikod 1000000 olanları çıkar
+        .filter(a => String(a.kisikod) !== '1000000')
+        // Onaylandı ve İptal durumundakileri hariç tut
+        .filter(a => {
+          if (!a.durum) return true;
+          const d = String(a.durum).toUpperCase();
+          return d !== 'ONAYLANDI' && d !== 'İPTAL' && d !== 'IPTAL';
+        })
+        // En yeni önce
+        .sort((a, b) => {
+          const da = a.acilis || a.tarih;
+          const db2 = b.acilis || b.tarih;
+          const dateA = da ? new Date(da) : new Date(0);
+          const dateB = db2 ? new Date(db2) : new Date(0);
+          return dateB - dateA;
+        });
+
+      setAdisyonlar(list);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, rrcId]);
+
+  // Kurye atama (şube müdürü)
+  const handleKuryeAtama = async (adisyonId, kuryeAdi) => {
+    if (!canAssignCourier) {
+      showNotification('Bu işlemi yapma yetkiniz bulunmamaktadır.', 'error');
+      return;
     }
 
-    // Cleanup function
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [showDetailModal, scrollPosition]);
-
-  // Kurye atama
-  const handleKuryeAtama = async (adisyonId, kuryeAdi) => {
     try {
-      // Şirket yöneticisinin kurye ataması yapmasını engelle
-      if (currentUser?.role === 'sirket_yoneticisi') {
-        setNotification({
-          show: true,
-          message: 'Şirket yöneticileri kurye ataması yapamaz. Bu işlem sadece şube müdürleri tarafından yapılabilir.',
-          type: 'error'
-        });
-        
-        setTimeout(() => {
-          setNotification({ show: false, message: '', type: '' });
-        }, 3000);
-        return;
-      }
-      
-      // Sadece şube müdürü kurye ataması yapabilir
-      if (currentUser?.role !== 'sube_yoneticisi') {
-        setNotification({
-          show: true,
-          message: 'Bu işlemi yapma yetkiniz bulunmamaktadır.',
-          type: 'error'
-        });
-        
-        setTimeout(() => {
-          setNotification({ show: false, message: '', type: '' });
-        }, 3000);
-        return;
-      }
-      
-      // Sipariş bilgisini bul
-      const siparis = adisyonlar.find(ad => ad.id === adisyonId);
-      if (!siparis) {
-        throw new Error('Sipariş bulunamadı');
-      }
-      
-      
-      // Şube alanlarını kontrol et
-      const subeAlanlari = Object.keys(siparis).filter(key => 
-        key.toLowerCase().includes('sube') || 
-        key.toLowerCase().includes('branch') ||
-        key.toLowerCase().includes('store')
-      );
-      console.log('Yönetici atama - Şube alanları:', subeAlanlari);
-      subeAlanlari.forEach(alan => {
-        console.log(`${alan}:`, siparis[alan]);
-      });
-      
-      // Şube ID'sini belirle - şube müdürünün şube bilgisini kullan
-      let subeId;
-      let subeAdi;
-      
-      // Şube müdürü kendi şube bilgilerini kullanır
-      subeId = currentUser.subeId || currentUser.sube_id || currentUser.branchId;
-      subeAdi = currentUser.subeAdi || currentUser.sube_adi || currentUser.branchName || 'Bilinmiyor';
-      console.log('Şube müdürü ataması - Şube ID:', subeId, 'Şube Adı:', subeAdi);
-      
-      // Eğer şube müdürünün şube bilgisi yoksa sipariş şube bilgilerini kullan
-      if (!subeId) {
-        subeId = siparis.subeId || siparis.sube_id || siparis.subeID || siparis.branchId || siparis.storeId;
-        subeAdi = siparis.subeAdi || siparis.sube_adi || siparis.subeAd || siparis.sube || siparis.branchName || siparis.storeName || 'Bilinmiyor';
-        console.log('Sipariş şube bilgisi kullanıldı - Şube ID:', subeId, 'Şube Adı:', subeAdi);
-      }
-      
-      // Eğer hala şube bilgisi yoksa varsayılan değer
-      if (!subeId) {
-        subeId = 'SUBE_BILGISI_BULUNAMADI';
-      }
-      
-      // Adisyon güncelle
-      const adisyonRef = doc(db, 'Adisyonlar', adisyonId);
-      await updateDoc(adisyonRef, {
-        motorcu: kuryeAdi
-      });
-      
-      // Kurye atama kaydı oluştur - doğru şube bilgileriyle
-      const atamaKaydi = {
-        adisyonCode: siparis.adisyoncode || siparis.adisyonCode || siparis.padsgnum || siparis.code || siparis.id || 'BILINMIYOR',
-        kuryeAdi: kuryeAdi,
-        kuryeId: null, // Yönetici tarafından atandığında kurye ID'si bilinmiyor
+      const siparis = adisyonlar.find(a => a.id === adisyonId);
+      if (!siparis) throw new Error('Sipariş bulunamadı');
+
+      await updateDoc(doc(db, 'PaketAdisyonlar', adisyonId), { motorcu: kuryeAdi });
+
+      await addDoc(collection(db, 'kuryeatama'), {
+        adisyonCode: siparis.padsgnum || siparis.adisyoncode || siparis.id,
+        kuryeAdi,
+        kuryeId: null,
         atamaTarihi: serverTimestamp(),
-        siparisTarihi: siparis.tarih || siparis.createdAt || new Date().toISOString(),
-        subeId: subeId,
-        subeAdi: subeAdi,
-        toplam: siparis.atop || siparis.toplam || siparis.total || siparis.amount || 0,
+        siparisTarihi: siparis.acilis || siparis.tarih || new Date().toISOString(),
+        subeId: currentUser.subeId || siparis.subeId || '',
+        subeAdi: currentUser.subeAdi || siparis.subeAdi || '',
+        toplam: siparis.atop || 0,
         durum: 'Atandı',
         atayanId: currentUser.uid,
         atayanAdi: currentUser.displayName || currentUser.email,
-        atayanRole: currentUser.role
-      };
-      
-      console.log('Yönetici atama kaydı:', atamaKaydi);
-      
-      console.log('Yönetici atama kaydı oluşturuluyor...');
-      
-      // Kurye atama kaydını bir kez oluştur
-      await addDoc(collection(db, 'kuryeatama'), atamaKaydi);
-      
+        atayanRole: currentUser.role,
+      });
+
       setAtanacakAdisyon(null);
       setSelectedKurye('');
-      console.log('Kurye atama başarılı ve kurye atama kaydı oluşturuldu');
-      
-      // Show success notification
-      setNotification({
-        show: true,
-        message: 'Kurye ataması başarıyla tamamlandı!',
-        type: 'success'
-      });
-      
-      // Auto-hide notification after 3 seconds
-      setTimeout(() => {
-        setNotification({ show: false, message: '', type: '' });
-      }, 3000);
-    } catch (error) {
-      console.error('Kurye atama hatası:', error);
-      
-      // Show error notification
-      setNotification({
-        show: true,
-        message: 'Kurye atama sırasında bir hata oluştu: ' + error.message,
-        type: 'error'
-      });
-      
-      // Auto-hide notification after 3 seconds
-      setTimeout(() => {
-        setNotification({ show: false, message: '', type: '' });
-      }, 3000);
+      showNotification('Kurye ataması başarıyla tamamlandı!');
+    } catch (err) {
+      console.error('Kurye atama hatası:', err);
+      showNotification('Kurye atama sırasında bir hata oluştu: ' + err.message, 'error');
     }
   };
 
   // Kurye kendi üzerine alma
-  const handleKuryeKendiUzerineAl = async (adisyonId) => {
-    console.log('🔥🔥🔥 BUTTON CLICKED! Function called with ID:', adisyonId);
-    
+  const handleKuryeUzerineAl = async (adisyonId) => {
     try {
-      console.log('Debug - Current User:', currentUser);
-      console.log('Debug - Adisyon ID:', adisyonId);
-      console.log('Debug - User Role:', currentUser?.role);
-      console.log('Debug - User UID:', currentUser?.uid);
-      
-      // Sipariş bilgisini bul
-      const siparis = adisyonlar.find(ad => ad.id === adisyonId);
-      if (!siparis) {
-        throw new Error('Sipariş bulunamadı');
-      }
-      
-      // Sipariş verisini console'a yazdır
-      console.log('Sipariş verisi:', siparis);
-      console.log('Sipariş anahtarları:', Object.keys(siparis));
-      
-      // adisyoncode değerlerini kontrol et
-      console.log('ADİSYON CODE DEĞERLERİ:');
-      console.log('- adisyoncode:', siparis.adisyoncode);
-      console.log('- adisyonCode:', siparis.adisyonCode);
-      console.log('- padsgnum:', siparis.padsgnum);
-      console.log('- code:', siparis.code);
-      console.log('- id:', siparis.id);
-      
-      // Şube alanlarını özellikle kontrol et
-      const subeAlanlari = Object.keys(siparis).filter(key => 
-        key.toLowerCase().includes('sube') || 
-        key.toLowerCase().includes('branch') ||
-        key.toLowerCase().includes('store')
-      );
-      console.log('Şube alanları:', subeAlanlari);
-      subeAlanlari.forEach(alan => {
-        console.log(`${alan}:`, siparis[alan]);
-      });
-      
-      // Kurye kullanıcısının şube bilgilerini al
-      console.log('Kurye kullanıcı verisi:', currentUser);
-      const kuryeSubeId = currentUser?.subeId || currentUser?.sube_id || currentUser?.branchId;
-      console.log('Kurye şube ID:', kuryeSubeId);
-      
+      const siparis = adisyonlar.find(a => a.id === adisyonId);
+      if (!siparis) throw new Error('Sipariş bulunamadı');
+
       const kuryeAdi = currentUser.displayName || currentUser.email;
-      
-      // Adisyon güncelle
-      const adisyonRef = doc(db, 'Adisyonlar', adisyonId);
-      await updateDoc(adisyonRef, {
-        motorcu: kuryeAdi
-      });
-      
-      // Kurye atama kaydı oluştur - kurye şube bilgisini kullan
-      const atamaKaydi = {
-        adisyonCode: siparis.adisyoncode || siparis.adisyonCode || siparis.padsgnum || siparis.code || siparis.id || 'BILINMIYOR',
-        kuryeAdi: kuryeAdi,
+
+      await updateDoc(doc(db, 'PaketAdisyonlar', adisyonId), { motorcu: kuryeAdi });
+
+      await addDoc(collection(db, 'kuryeatama'), {
+        adisyonCode: siparis.padsgnum || siparis.adisyoncode || siparis.id,
+        kuryeAdi,
         kuryeId: currentUser.uid,
         atamaTarihi: serverTimestamp(),
-        siparisTarihi: siparis.tarih || siparis.createdAt || new Date().toISOString(),
-        subeId: kuryeSubeId || siparis.subeId || siparis.sube_id || siparis.subeID || 'KURYE_SUBESI_BILINMIYOR',
-        subeAdi: siparis.subeAdi || siparis.sube_adi || siparis.subeAd || siparis.sube || siparis.branchName || siparis.storeName || 'Bilinmiyor',
-        toplam: siparis.atop || siparis.toplam || siparis.total || siparis.amount || 0,
+        siparisTarihi: siparis.acilis || siparis.tarih || new Date().toISOString(),
+        subeId: currentUser.subeId || siparis.subeId || '',
+        subeAdi: siparis.subeAdi || '',
+        toplam: siparis.atop || 0,
         durum: 'Atandı',
-        atayanRole: 'kurye' // Kurye kendi üzerine aldı
-      };
-      
-      console.log('Atama kaydı:', atamaKaydi);
-      
-      await addDoc(collection(db, 'kuryeatama'), atamaKaydi);
-      
-      console.log('Sipariş üzerine alındı ve kurye atama kaydı oluşturuldu');
-      
-      // Show success notification
-      setNotification({
-        show: true,
-        message: 'Sipariş başarıyla üzerinize alındı!',
-        type: 'success'
+        atayanRole: 'kurye',
       });
-      
-      // Auto-hide notification after 3 seconds
-      setTimeout(() => {
-        setNotification({ show: false, message: '', type: '' });
-      }, 3000);
-    } catch (error) {
-      console.error('Sipariş üzerine alma hatası:', error);
-      console.error('Error details:', error.code, error.message);
-      
-      // Show error notification
-      setNotification({
-        show: true,
-        message: 'Sipariş üzerine alma sırasında bir hata oluştu: ' + error.message,
-        type: 'error'
-      });
-      
-      // Auto-hide notification after 3 seconds
-      setTimeout(() => {
-        setNotification({ show: false, message: '', type: '' });
-      }, 3000);
+
+      showNotification('Sipariş başarıyla üzerinize alındı!');
+    } catch (err) {
+      console.error('Sipariş üzerine alma hatası:', err);
+      showNotification('Sipariş üzerine alma sırasında bir hata oluştu: ' + err.message, 'error');
     }
   };
 
-  // Tarih formatla
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Bilinmiyor';
+  // Yardımcılar
+  const formatDate = (dateValue) => {
+    if (!dateValue) return '-';
     try {
       let date;
-      
-      if (dateString.includes('T')) {
-        date = new Date(dateString);
-      } else if (dateString.includes(' ')) {
-        date = new Date(dateString.replace(' ', 'T'));
-      } else {
-        date = new Date(dateString);
+      if (dateValue?.toDate) date = dateValue.toDate();
+      else if (dateValue?.seconds) date = new Date(dateValue.seconds * 1000);
+      else {
+        const s = String(dateValue);
+        date = new Date(s.includes(' ') ? s.replace(' ', 'T') : s);
       }
-      
-      return date.toLocaleString('tr-TR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (err) {
-      console.error('Tarih formatla hatası:', err);
-      return dateString;
-    }
+      return date.toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch { return String(dateValue); }
   };
 
-  // Tutar formatla
   const formatAmount = (amount) => {
     if (!amount) return '0,00 ₺';
-    return Number(amount).toLocaleString('tr-TR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }) + ' ₺';
+    return Number(amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
   };
 
-  // Sipariş tipini belirle
-  const getSiparisTipi = (siparisnerden) => {
-    switch (siparisnerden) {
-      case 0:
-        return { text: 'Telefon', icon: 'phone', color: 'info' };
-      case 1:
-        return { text: 'Yemek Sepeti', icon: 'delivery_dining', color: 'warning' };
-      case 2:
-        return { text: 'Getir', icon: 'motorcycle', color: 'success' };
-      case 5:
-        return { text: 'Trendyol', icon: 'shopping_bag', color: 'danger' };
-      case 8:
-        return { text: 'Migros', icon: 'store', color: 'secondary' };
-      case 88:
-        return { text: 'Masa', icon: 'table_restaurant', color: 'primary' };
-      default:
-        return { text: 'Diğer', icon: 'receipt', color: 'secondary' };
-    }
-  };
+  const getSiparisTipi = (nerden) => KAYNAK_MAP[nerden] || { text: 'Diğer', icon: 'receipt', color: 'secondary' };
 
-  const isCourier = currentUser?.role === 'kurye';
-  const canAssignCourier = currentUser?.role === 'sube_yoneticisi'; // Sadece şube müdürü kurye atayabilir
+  const showDetail = (adisyon) => { setSelectedAdisyon(adisyon); setIsModalOpen(true); };
+  const closeModal = () => { setIsModalOpen(false); setSelectedAdisyon(null); };
 
-  console.log('🎯 isCourier:', isCourier);
-  console.log('🎯 canAssignCourier:', canAssignCourier);
-  console.log('🎯 currentUser?.role:', currentUser?.role);
-
-  // Şirket yöneticisi için erişim engeli
+  // Şirket yöneticisi erişim engeli
   if (currentUser?.role === 'sirket_yoneticisi') {
     return (
       <div className="kurye-atama-container">
-        <div className="page-header">
-          <div className="header-content">
-            <div className="title-section">
-              <h1>
-                <span className="material-icons">block</span>
-                Erişim Engellendi
-              </h1>
-              <p>
-                Şirket yöneticileri kurye atama işlemlerine erişemez. Bu işlemler sadece şube müdürleri ve kuryeler tarafından yapılabilir.
-              </p>
+        <div className="ka-header">
+          <div className="ka-header-content">
+            <span className="material-icons ka-header-icon">block</span>
+            <div>
+              <h1>Erişim Engellendi</h1>
+              <p>Bu sayfa sadece şube müdürleri ve kuryeler tarafından kullanılabilir.</p>
             </div>
           </div>
         </div>
@@ -471,251 +212,203 @@ const KuryeAtamaPage = () => {
   }
 
   return (
-    <div className="kurye-atama-container kurye-atama-page">
-      {/* Success Notification */}
+    <div className="kurye-atama-container">
+      {/* Bildirim */}
       {notification.show && (
-        <div className="notification-backdrop">
-          <div className={`notification-popup ${notification.type}`}>
-            <div className="notification-content">
-              <span className="material-icons">
-                {notification.type === 'success' ? 'check_circle' : 
-                 notification.type === 'error' ? 'error' : 'info'}
-              </span>
-              <span>{notification.message}</span>
+        <div className="ka-notification-backdrop">
+          <div className={`ka-notification ${notification.type}`}>
+            <span className="material-icons">
+              {notification.type === 'success' ? 'check_circle' : 'error'}
+            </span>
+            <span>{notification.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Başlık */}
+      <div className="ka-header">
+        <div className="ka-header-content">
+          <span className="material-icons ka-header-icon">delivery_dining</span>
+          <div>
+            <h1>{isCourier ? 'Teslimat Siparişleri' : 'Kurye Atama'}</h1>
+            <p>{isCourier ? 'Üzerinize alabilceğiniz siparişler' : 'Teslimat bekleyen siparişlere kurye atayın'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Özet */}
+      {!loading && adisyonlar.length > 0 && (
+        <div className="ka-summary">
+          <div className="ka-summary-card">
+            <div className="ka-summary-icon icon-blue"><span className="material-icons">pending_actions</span></div>
+            <div className="ka-summary-body">
+              <span className="ka-summary-label">Bekleyen Sipariş</span>
+              <span className="ka-summary-value">{adisyonlar.length}</span>
             </div>
           </div>
         </div>
       )}
-      
-      <div className="content-area">
+
+      {/* İçerik */}
+      <div className="ka-content">
         {loading ? (
-          <div className="loading-text">Siparişler yükleniyor...</div>
+          <div className="ka-empty">
+            <div className="loading-spinner-adisyon"></div>
+            <p>Siparişler yükleniyor...</p>
+          </div>
         ) : adisyonlar.length === 0 ? (
-          <div className="no-data">
-            {isCourier 
-              ? 'Kurye bekleyen teslimat siparişi bulunmamaktadır.'
-              : 'Kurye bekleyen teslimat siparişi bulunmamaktadır.'
-            }
+          <div className="ka-empty">
+            <span className="material-icons">check_circle_outline</span>
+            <p>Kurye bekleyen teslimat siparişi bulunmamaktadır.</p>
           </div>
         ) : (
-          <div className="adisyonlar-table-container">
-            <div className="table-header">
-              <h3>
-                <span className="material-icons">list</span>
-                Teslimat Bekleyen Siparişler
-              </h3>
-              <div className="table-info">
-                Toplam {adisyonlar.length} teslimat siparişi
-              </div>
+          <>
+            <div className="ka-table-header">
+              <h3><span className="material-icons">list_alt</span> Teslimat Bekleyen Siparişler ({adisyonlar.length})</h3>
             </div>
-            
-            {/* Mobile Cards */}
-            <div className="mobile-cards">
+
+            {/* Kart Listesi */}
+            <div className="ka-card-grid">
               {adisyonlar.map((adisyon) => {
                 const tip = getSiparisTipi(adisyon.siparisnerden);
-                
                 return (
-                  <div 
-                    key={adisyon.id} 
-                    className="mobile-card clickable-card"
-                    onClick={() => {
-                      setSelectedAdisyon(adisyon);
-                      setShowDetailModal(true);
-                    }}
-                  >
-                    <div className="card-header">
-                      <div className="siparis-info">
+                  <div key={adisyon.id} className="ka-card" onClick={() => showDetail(adisyon)}>
+                    <div className="ka-card-top">
+                      <div className="ka-card-no">
                         <span className="material-icons">receipt</span>
-                        <span className="siparis-no">{adisyon.padsgnum || 'Numara Yok'}</span>
+                        <span>#{adisyon.padsgnum || adisyon.adisyoncode?.slice(-6) || '-'}</span>
                       </div>
-                      <span className={`tip-badge ${tip.color}`}>
+                      <span className={`ka-badge ${tip.color}`}>
                         <span className="material-icons">{tip.icon}</span>
                         {tip.text}
                       </span>
                     </div>
-                    
-                    <div className="card-body">
-                      <div className="info-row">
-                        <span className="label">Tarih & Tutar:</span>
-                        <div className="value-combined">
-                          <span className="date-value">{formatDate(adisyon.tarih)}</span>
-                          <span className="amount-value">{formatAmount(adisyon.atop)}</span>
-                        </div>
+
+                    <div className="ka-card-body">
+                      <div className="ka-card-row">
+                        <span className="material-icons">schedule</span>
+                        <span>{formatDate(adisyon.acilis || adisyon.tarih)}</span>
                       </div>
+                      <div className="ka-card-row">
+                        <span className="material-icons">payments</span>
+                        <span className="ka-amount">{formatAmount(adisyon.atop)}</span>
+                      </div>
+                      {(adisyon.ads_siparisadres || adisyon.siparisadres) && (
+                        <div className="ka-card-row">
+                          <span className="material-icons">location_on</span>
+                          <span className="ka-address">{adisyon.ads_siparisadres || adisyon.siparisadres}</span>
+                        </div>
+                      )}
                     </div>
-                    
-                    {!isCourier && canAssignCourier && (
-                      <div className="card-actions">
+
+                    <div className="ka-card-actions">
+                      {isCourier ? (
                         <button
-                          className="action-button assign"
-                          onClick={(e) => {
-                            e.stopPropagation(); // Card click'ini engelle
-                            setAtanacakAdisyon(adisyon);
-                          }}
+                          className="ka-btn ka-btn-take"
+                          onClick={(e) => { e.stopPropagation(); handleKuryeUzerineAl(adisyon.id); }}
+                        >
+                          <span className="material-icons">add_task</span>
+                          Üzerime Al
+                        </button>
+                      ) : canAssignCourier ? (
+                        <button
+                          className="ka-btn ka-btn-assign"
+                          onClick={(e) => { e.stopPropagation(); setAtanacakAdisyon(adisyon); }}
                         >
                           <span className="material-icons">assignment_ind</span>
                           Kurye Ata
                         </button>
-                      </div>
-                    )}
+                      ) : (
+                        <button className="ka-btn ka-btn-detail" onClick={(e) => { e.stopPropagation(); showDetail(adisyon); }}>
+                          <span className="material-icons">visibility</span>
+                          Detay
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
-            
-            {/* Desktop Table - Hidden on mobile */}
-            <table className="adisyonlar-table desktop-only">
-              <thead>
-                <tr>
-                  <th>Sipariş No</th>
-                  <th>Tarih</th>
-                  <th>Tip</th>
-                  <th>Toplam</th>
-                  <th>Durum</th>
-                  <th>İşlemler</th>
-                </tr>
-              </thead>
-              <tbody>
-                {adisyonlar.map((adisyon) => {
-                  const tip = getSiparisTipi(adisyon.siparisnerden);
-                  
-                  return (
-                    <tr key={adisyon.id}>
-                      <td>
-                        <div className="siparis-info">
-                          <span className="material-icons">receipt</span>
-                          {adisyon.padsgnum || 'Numara Yok'}
-                        </div>
-                      </td>
-                      <td>{formatDate(adisyon.tarih)}</td>
-                      <td>
-                        <span className={`tip-badge ${tip.color}`}>
-                          <span className="material-icons">{tip.icon}</span>
-                          {tip.text}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="amount-text">
-                          {formatAmount(adisyon.atop)}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="durum-badge warning">
-                          <span className="material-icons">pending</span>
-                          Kurye Bekliyor
-                        </span>
-                      </td>
-                      <td>
-                        <div className="table-actions">
-                          <button
-                            className="action-button detail"
-                            onClick={() => {
-                              setSelectedAdisyon(adisyon);
-                              setShowDetailModal(true);
-                            }}
-                            title="Detay Görüntüle"
-                          >
-                            <span className="material-icons">visibility</span>
-                          </button>
-                          
-                          {isCourier ? (
-                            // Kurye için - üzerine al
-                            <button
-                              className="action-button take"
-                              onClick={() => {
-                                console.log('🎯 DESKTOP BUTTON CLICKED - Executing function...');
-                                handleKuryeKendiUzerineAl(adisyon.id);
-                              }}
-                              title="Üzerime Al"
-                            >
-                              <span className="material-icons">add_task</span>
+
+            {/* Masaüstü Tablo */}
+            <div className="ka-table-wrapper">
+              <table className="ka-table">
+                <thead>
+                  <tr>
+                    <th>Sipariş No</th>
+                    <th>Tarih</th>
+                    <th>Kaynak</th>
+                    <th className="text-right">Tutar</th>
+                    <th>Durum</th>
+                    <th className="text-center">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adisyonlar.map((adisyon) => {
+                    const tip = getSiparisTipi(adisyon.siparisnerden);
+                    return (
+                      <tr key={adisyon.id} onClick={() => showDetail(adisyon)} style={{ cursor: 'pointer' }}>
+                        <td className="mono">{adisyon.padsgnum || adisyon.adisyoncode?.slice(-6) || '-'}</td>
+                        <td>{formatDate(adisyon.acilis || adisyon.tarih)}</td>
+                        <td><span className={`ka-badge ${tip.color}`}><span className="material-icons">{tip.icon}</span>{tip.text}</span></td>
+                        <td className="text-right bold">{formatAmount(adisyon.atop)}</td>
+                        <td><span className="ka-badge warning"><span className="material-icons">pending</span>Kurye Bekliyor</span></td>
+                        <td className="text-center">
+                          <div className="ka-table-actions">
+                            <button className="ka-action-btn" onClick={(e) => { e.stopPropagation(); showDetail(adisyon); }} title="Detay">
+                              <span className="material-icons">visibility</span>
                             </button>
-                          ) : canAssignCourier ? (
-                            // Yöneticiler için - kurye atama
-                            <button
-                              className="action-button assign"
-                              onClick={() => setAtanacakAdisyon(adisyon)}
-                              title="Kurye Ata"
-                            >
-                              <span className="material-icons">assignment_ind</span>
-                            </button>
-                          ) : (
-                            // Yetki yok
-                            <button
-                              className="action-button info"
-                              title="Yetki Yok"
-                              disabled
-                            >
-                              <span className="material-icons">lock</span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            {isCourier ? (
+                              <button className="ka-action-btn take" onClick={(e) => { e.stopPropagation(); handleKuryeUzerineAl(adisyon.id); }} title="Üzerime Al">
+                                <span className="material-icons">add_task</span>
+                              </button>
+                            ) : canAssignCourier ? (
+                              <button className="ka-action-btn assign" onClick={(e) => { e.stopPropagation(); setAtanacakAdisyon(adisyon); }} title="Kurye Ata">
+                                <span className="material-icons">assignment_ind</span>
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Kurye Atama Modal */}
       {atanacakAdisyon && (
-        <div className="modal-overlay" onClick={() => setAtanacakAdisyon(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>
-                <span className="material-icons">assignment_ind</span>
-                Kurye Atama
-              </h2>
-              <button 
-                className="close-button"
-                onClick={() => setAtanacakAdisyon(null)}
-              >
+        <div className="ka-modal-overlay" onClick={() => setAtanacakAdisyon(null)}>
+          <div className="ka-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ka-modal-header">
+              <h2><span className="material-icons">assignment_ind</span> Kurye Atama</h2>
+              <button className="ka-modal-close" onClick={() => setAtanacakAdisyon(null)}>
                 <span className="material-icons">close</span>
               </button>
             </div>
-            
-            <div className="modal-body">
-              <div className="siparis-bilgi">
-                <h4>Sipariş Bilgileri</h4>
-                <p><strong>Sipariş No:</strong> {atanacakAdisyon.padsgnum}</p>
-                <p><strong>Tarih:</strong> {formatDate(atanacakAdisyon.tarih)}</p>
-                <p><strong>Toplam:</strong> {formatAmount(atanacakAdisyon.atop)}</p>
+            <div className="ka-modal-body">
+              <div className="ka-modal-info">
+                <p><strong>Sipariş No:</strong> {atanacakAdisyon.padsgnum || '-'}</p>
+                <p><strong>Tarih:</strong> {formatDate(atanacakAdisyon.acilis || atanacakAdisyon.tarih)}</p>
+                <p><strong>Tutar:</strong> {formatAmount(atanacakAdisyon.atop)}</p>
               </div>
-              
-              <div className="kurye-secim">
-                <label htmlFor="kurye-select">Kurye Seçin:</label>
-                <select
-                  id="kurye-select"
-                  value={selectedKurye}
-                  onChange={(e) => setSelectedKurye(e.target.value)}
-                >
+              <div className="ka-modal-select">
+                <label htmlFor="ka-kurye-select">Kurye Seçin</label>
+                <select id="ka-kurye-select" value={selectedKurye} onChange={(e) => setSelectedKurye(e.target.value)}>
                   <option value="">Kurye seçin...</option>
-                  {kuryeler.map((kurye) => (
-                    <option key={kurye.id} value={kurye.displayName || kurye.email}>
-                      {kurye.displayName || kurye.email}
-                    </option>
+                  {kuryeler.map((k) => (
+                    <option key={k.id} value={k.displayName || k.email}>{k.displayName || k.email}</option>
                   ))}
                 </select>
               </div>
             </div>
-            
-            <div className="modal-footer">
-              <button 
-                className="btn-secondary"
-                onClick={() => setAtanacakAdisyon(null)}
-              >
-                İptal
-              </button>
-              <button 
-                className="btn-primary"
-                onClick={() => handleKuryeAtama(atanacakAdisyon.id, selectedKurye)}
-                disabled={!selectedKurye}
-              >
-                <span className="material-icons">assignment_ind</span>
-                Kurye Ata
+            <div className="ka-modal-footer">
+              <button className="ka-btn ka-btn-secondary" onClick={() => setAtanacakAdisyon(null)}>İptal</button>
+              <button className="ka-btn ka-btn-assign" onClick={() => handleKuryeAtama(atanacakAdisyon.id, selectedKurye)} disabled={!selectedKurye}>
+                <span className="material-icons">assignment_ind</span> Kurye Ata
               </button>
             </div>
           </div>
@@ -724,14 +417,11 @@ const KuryeAtamaPage = () => {
 
       {/* Adisyon Detay Modal */}
       <AdisyonDetailModal
-        isOpen={showDetailModal}
-        onClose={() => {
-          setShowDetailModal(false);
-          setSelectedAdisyon(null);
-        }}
+        isOpen={isModalOpen}
+        onClose={closeModal}
         adisyon={selectedAdisyon}
         isCourier={isCourier}
-        onKuryeUzerineAl={handleKuryeKendiUzerineAl}
+        onKuryeUzerineAl={handleKuryeUzerineAl}
       />
     </div>
   );

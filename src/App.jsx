@@ -25,6 +25,7 @@ import GiderKalemiKaydiPage from './pages/GiderKalemiKaydiPage';
 import GiderKaydiPage from './pages/GiderKaydiPage';
 import IptalRaporlariPage from './pages/IptalRaporlariPage';
 import CiroRaporPage from './pages/CiroRaporPage';
+import TeslimRaporuPage from './pages/TeslimRaporuPage';
 import './App.css'
 
 // Kurye dışı roller için dashboard erişimi
@@ -123,6 +124,7 @@ function App() {
                   <Route path="/kurye-atama" element={<KuryeAtamaPage />} />
                   <Route path="/kurye-raporu" element={<KuryeRaporuPage />} />
                   <Route path="/detayli-kurye-raporu" element={<DetayliKuryeRaporuPage />} />
+                  <Route path="/teslim-raporu" element={<TeslimRaporuPage />} />
                 </Route>
               </Route>
             </Route>

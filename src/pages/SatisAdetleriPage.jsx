@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '../utils/dateUtils';
+import { formatCurrency, todayTR } from '../utils/dateUtils';
 import { fetchBirlesikUrunSatislari } from '../utils/reportService';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -23,9 +23,9 @@ const SatisAdetleriPage = () => {
   const today = new Date();
   const [filter, setFilter] = useState({
     mode: 'daily',
-    date: today.toISOString().split('T')[0],
-    startDate: new Date(today.getTime() - 86400000).toISOString().split('T')[0],
-    endDate: today.toISOString().split('T')[0],
+    date: todayTR(),
+    startDate: todayTR(new Date(today.getTime() - 86400000)),
+    endDate: todayTR(),
     subeId: currentUser?.role === 'sube_yoneticisi' ? (currentUser.rrc_restaurant_id || currentUser.subeId) : ''
   });
 

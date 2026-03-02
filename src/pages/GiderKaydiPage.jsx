@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { todayTR } from '../utils/dateUtils';
 import './GiderKaydiPage.css';
 
 const GiderKaydiPage = () => {
@@ -20,7 +21,7 @@ const GiderKaydiPage = () => {
     aciklama: '',
     tutar: '',
     odemeKaynagi: 'gunluk_kasa',
-    tarih: new Date().toISOString().split('T')[0],
+    tarih: todayTR(),
     saat: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
   });
 
@@ -262,7 +263,7 @@ const GiderKaydiPage = () => {
         aciklama: '',
         tutar: '',
         odemeKaynagi: 'gunluk_kasa',
-        tarih: new Date().toISOString().split('T')[0],
+        tarih: todayTR(),
         saat: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
       });
       setShowForm(false);
@@ -281,7 +282,7 @@ const GiderKaydiPage = () => {
       aciklama: '',
       tutar: '',
       odemeKaynagi: 'gunluk_kasa',
-      tarih: new Date().toISOString().split('T')[0],
+      tarih: todayTR(),
       saat: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
     });
     setShowForm(false);

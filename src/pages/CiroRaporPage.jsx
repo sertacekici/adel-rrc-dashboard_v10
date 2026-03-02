@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '../utils/dateUtils';
+import { formatCurrency, todayTR } from '../utils/dateUtils';
 import {
   fetchKonsolideRapor,
   fetchMasalar
@@ -38,9 +38,9 @@ const CiroRaporPage = () => {
   const today = new Date();
   const [filter, setFilter] = useState({
     mode: 'daily',
-    date: today.toISOString().split('T')[0],
-    startDate: new Date(today.getTime() - 86400000).toISOString().split('T')[0],
-    endDate: today.toISOString().split('T')[0],
+    date: todayTR(),
+    startDate: todayTR(new Date(today.getTime() - 86400000)),
+    endDate: todayTR(),
     startTime: '00:00',
     endTime: '23:59',
     subeId: currentUser?.role === 'sube_yoneticisi' ? (currentUser.rrc_restaurant_id || currentUser.subeId) : ''
@@ -737,7 +737,7 @@ const CiroRaporPage = () => {
                               const kaynakLabel = nerden === 0 ? 'Telefon Siparişi' : ({ 1: 'Yemek Sepeti', 2: 'Getir', 5: 'Trendyol', 8: 'Migros Yemek' }[nerden] || `Online (${nerden})`);
                               return (
                                 <tr key={d.id || i}>
-                                  <td className="mono">{d.adisyoncode || '-'}</td>
+                                  <td className="mono">{d.padsgnum || '-'}</td>
                                   <td>{d.acilis ? new Date(typeof d.acilis === 'object' && d.acilis.toDate ? d.acilis.toDate() : d.acilis).toLocaleString('tr-TR') : '-'}</td>
                                   <td><span className={`badge ${nerden > 0 ? 'badge-blue' : 'badge-gray'}`}>{kaynakLabel}</span></td>
                                   <td>{d.kisikod || '-'}</td>
@@ -935,7 +935,7 @@ const CiroRaporPage = () => {
                         <tr><td colSpan={6} className="text-center">Kayıt bulunamadı</td></tr>
                       ) : rapor.paketIptal.docs.map((d, i) => (
                         <tr key={d.id || i}>
-                          <td className="mono">{d.adisyoncode || '-'}</td>
+                          <td className="mono">{d.padsgnum || '-'}</td>
                           <td>{d.iptaltarihi ? new Date(typeof d.iptaltarihi === 'object' && d.iptaltarihi.toDate ? d.iptaltarihi.toDate() : d.iptaltarihi).toLocaleString('tr-TR') : '-'}</td>
                           <td>{d.kisikod || '-'}</td>
                           <td>{d.motorcu || '-'}</td>

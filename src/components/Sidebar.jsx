@@ -149,6 +149,11 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       path: '/detayli-kurye-raporu',
       icon: 'insights',
     },
+    {
+      title: 'Teslim Raporu',
+      path: '/teslim-raporu',
+      icon: 'local_shipping',
+    },
   ];
 
   const giderMenuItems = [

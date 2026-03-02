@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
-import { normalizeDateStr, toDate, formatDateTime, formatCurrency } from '../utils/dateUtils';
+import { normalizeDateStr, toDate, formatDateTime, formatCurrency, todayTR } from '../utils/dateUtils';
 import './DetayliKuryeRaporuPage.css';
 
 const DetayliKuryeRaporuPage = () => {
@@ -13,7 +13,7 @@ const DetayliKuryeRaporuPage = () => {
   const [selectedSube, setSelectedSube] = useState('');
   const [selectedKuryeId, setSelectedKuryeId] = useState('');
   const [reportMode, setReportMode] = useState('daily'); // 'daily' | 'range'
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayTR();
   const [selectedDate, setSelectedDate] = useState(today);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -21,6 +21,23 @@ const DetayliKuryeRaporuPage = () => {
   const [enrichedRows, setEnrichedRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [rrcId, setRrcId] = useState(null);
+
+  // Şube rrc_restaurant_id'sini al
+  useEffect(() => {
+    if (!currentUser?.subeId) return;
+    const fetchRrcId = async () => {
+      try {
+        const subeDoc = await getDoc(doc(db, 'subeler', currentUser.subeId));
+        if (subeDoc.exists()) {
+          setRrcId(subeDoc.data().rrc_restaurant_id || currentUser.subeId);
+        }
+      } catch (err) {
+        console.error('Şube bilgisi getirilemedi:', err);
+      }
+    };
+    fetchRrcId();
+  }, [currentUser]);
 
   // Şubeler (şirket yöneticisi ise)
   useEffect(() => {
@@ -60,37 +77,40 @@ const DetayliKuryeRaporuPage = () => {
     setLoading(true);
     setError('');
     try {
-      const activeSubeId = selectedSube || (currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : null);
-      
+      // rrc_restaurant_id belirle
+      let targetRrcId = rrcId;
+      if (currentUser?.role === 'sirket_yoneticisi' && selectedSube) {
+        const subeData = subeler.find(s => s.id === selectedSube);
+        targetRrcId = subeData?.rrc_restaurant_id || selectedSube;
+      }
+
       let startStr, endStr;
       if (reportMode === 'daily') {
-        startStr = `${selectedDate} 00:00:00`;
-        endStr = `${selectedDate} 23:59:59`;
+        startStr = selectedDate;
+        endStr = selectedDate;
       } else {
-        startStr = `${startDate} 00:00:00`;
-        endStr = `${endDate} 23:59:59`;
+        startStr = startDate;
+        endStr = endDate;
       }
 
-      let q;
-      const adisyonCollection = collection(db, 'Adisyonlar');
-      
-      if (activeSubeId) {
-        q = query(
-          adisyonCollection,
-          where('rrc_restaurant_id', '==', activeSubeId),
-          where('tarih', '>=', startStr),
-          where('tarih', '<=', endStr)
-        );
-      } else {
-        q = query(
-          adisyonCollection,
-          where('tarih', '>=', startStr),
-          where('tarih', '<=', endStr)
-        );
+      // PaketAdisyonlar koleksiyonundan sorgula
+      let constraints = [];
+      if (targetRrcId) {
+        constraints.push(where('rrc_restaurant_id', '==', String(targetRrcId)));
       }
 
+      const q = query(collection(db, 'PaketAdisyonlar'), ...constraints);
       const adSnap = await getDocs(q);
       let items = adSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Client-side tarih filtresi (acilis alanı)
+      items = items.filter(x => {
+        const dateVal = x.acilis || x.tarih;
+        if (!dateVal) return false;
+        const normalized = normalizeDateStr(dateVal);
+        if (!normalized) return false;
+        return normalized >= startStr && normalized <= endStr;
+      });
 
       // Kurye ismi belirle (adisyon.motorcu string alanı ile eşleşecek)
       let kuryeName = '';
@@ -111,9 +131,9 @@ const DetayliKuryeRaporuPage = () => {
 
       // Sıralama (tarih + adisyon numarası)
       items.sort((a, b) => {
-        const tA = String(a.tarih || '');
-        const tB = String(b.tarih || '');
-        if (tA !== tB) return tA.localeCompare(tB);
+        const tA = toDate(a.acilis || a.tarih) || new Date(0);
+        const tB = toDate(b.acilis || b.tarih) || new Date(0);
+        if (tA - tB !== 0) return tA - tB;
         return (parseInt(a.padsgnum) || 0) - (parseInt(b.padsgnum) || 0);
       });
 
@@ -122,7 +142,7 @@ const DetayliKuryeRaporuPage = () => {
       // Enrichment: pickup/delivered timings and next pickup wait per courier
       // 1) Map base fields
       const base = items.map((x) => {
-        const orderAt = toDate(x.tarih) || toDate(x.createdAt) || toDate(x.olusturmaTarihi);
+        const orderAt = toDate(x.acilis) || toDate(x.tarih) || toDate(x.createdAt) || toDate(x.olusturmaTarihi);
         const pickupAt = toDate(x['pickup-time'] || x.pickup_time || x.pickupTime || x.alinmaTarihi || x.alimTarihi);
         const deliveredAt = toDate(x['delivered-date'] || x.delivered_date || x.deliveredDate || x.teslimTarihi || x.teslimatTarihi);
         let deliveryMinutes = null;
@@ -319,7 +339,7 @@ const DetayliKuryeRaporuPage = () => {
                 </div>
                 <div className="card-row">
                   <span className="label">Sipariş</span>
-                  <span className="value">{formatDateTime(ad.__orderAt || ad.tarih)}</span>
+                  <span className="value">{formatDateTime(ad.__orderAt || ad.acilis || ad.tarih)}</span>
                 </div>
                 <div className="card-row">
                   <span className="label">Alış (Pickup)</span>

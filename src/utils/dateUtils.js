@@ -1,11 +1,29 @@
 /**
  * Tarih yönetimi için yardımcı fonksiyonlar.
  * Firestore Timestamp, ISO String ve SQL formatlarını güvenli bir şekilde işler.
+ * Tüm tarih hesaplamaları TR saat dilimine (Europe/Istanbul, UTC+3) göre yapılır.
  */
 
 /**
+ * Verilen Date objesini TR saat dilimine göre 'YYYY-MM-DD' stringine çevirir.
+ * Parametre verilmezse şu anki tarihi döner.
+ */
+export const todayTR = (date) => {
+  const d = date || new Date();
+  return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
+};
+
+/**
+ * TR saat diliminde "bugün"den belirtilen gün kadar öncesini 'YYYY-MM-DD' olarak döner.
+ */
+export const daysAgoTR = (n) => {
+  const d = new Date(Date.now() - n * 86400000);
+  return todayTR(d);
+};
+
+/**
  * Herhangi bir tarih formatını ISO 'YYYY-MM-DD' stringine dönüştürür.
- * Safari ve iOS uyumluluğu için boşlukları 'T' ile değiştirir.
+ * TR saat dilimine göre çalışır.
  */
 export const normalizeDateStr = (val) => {
   if (!val) return '';
@@ -13,7 +31,7 @@ export const normalizeDateStr = (val) => {
   // Firestore Timestamp kontrolü
   if (val && typeof val === 'object' && typeof val.toDate === 'function') {
     const d = val.toDate();
-    return isNaN(d?.getTime?.()) ? '' : d.toISOString().split('T')[0];
+    return isNaN(d?.getTime?.()) ? '' : todayTR(d);
   }
   
   const s = String(val);
@@ -25,7 +43,7 @@ export const normalizeDateStr = (val) => {
   
   // Diğer durumlar için parse denemesi
   const d = new Date(s.replace(' ', 'T'));
-  return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+  return isNaN(d.getTime()) ? '' : todayTR(d);
 };
 
 /**

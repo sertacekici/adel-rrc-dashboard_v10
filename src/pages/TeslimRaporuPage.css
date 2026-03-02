@@ -1,0 +1,422 @@
+/* ============================================
+   TESLİM RAPORU PAGE
+   ============================================ */
+.teslim-raporu-container {
+  padding: 14px 16px;
+  min-height: 100vh;
+  background: #1e3884;
+}
+
+/* FİLTRELER */
+.tr-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  padding: 1.25rem 1.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  align-items: flex-end;
+}
+.tr-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.tr-filter-group label {
+  font-size: 0.78rem;
+  color: #B0BEC5;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tr-toggle-group {
+  display: flex;
+  gap: 0.5rem;
+}
+.tr-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.15rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #CBD5E1;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.tr-toggle-btn .material-icons { font-size: 1.1rem; }
+.tr-toggle-btn:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+.tr-toggle-btn.active {
+  background: rgba(96, 165, 250, 0.25);
+  border-color: #60A5FA;
+  color: #60A5FA;
+}
+
+.tr-date-input {
+  padding: 0.55rem 0.85rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #F8FAFC;
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-width: 150px;
+}
+.tr-date-input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+.tr-date-input:focus {
+  outline: none;
+  border-color: #60A5FA;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+}
+
+.tr-quick-btns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tr-select {
+  padding: 0.55rem 0.85rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #F8FAFC;
+  font-size: 0.9rem;
+  min-width: 200px;
+}
+.tr-select option { background: #1e3884; color: #F8FAFC; }
+
+/* HATA */
+.tr-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: rgba(220, 53, 69, 0.15);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: 12px;
+  color: #ff6b6b;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* YÜKLENİYOR */
+.tr-loading {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #B0BEC5;
+}
+.tr-spinner {
+  width: 48px; height: 48px;
+  border: 4px solid rgba(255,255,255,0.15);
+  border-top-color: #60A5FA;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: trSpin 0.8s linear infinite;
+}
+@keyframes trSpin { to { transform: rotate(360deg); } }
+
+/* ÖZET KARTLAR */
+.tr-summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.tr-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  padding: 1.25rem 1.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.tr-summary-icon {
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+}
+.tr-summary-icon .material-icons { font-size: 1.5rem; color: #fff; }
+.tr-summary-icon.icon-blue  { background: rgba(59, 130, 246, 0.25); }
+.tr-summary-icon.icon-green { background: rgba(34, 197, 94, 0.25); }
+.tr-summary-body { display: flex; flex-direction: column; }
+.tr-summary-label { font-size: 0.78rem; color: #B0BEC5; font-weight: 500; }
+.tr-summary-value { font-size: 1.35rem; color: #F8FAFC; font-weight: 700; }
+
+/* SECTION */
+.tr-section {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 1.25rem;
+}
+.tr-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1.25rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e3884;
+}
+.tr-section-title .material-icons { font-size: 1.3rem; color: #2E5BFF; }
+
+/* GÜNLÜK DAĞILIM */
+.tr-day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+.tr-day-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: #f8f9ff;
+  border-radius: 10px;
+  border: 1px solid #e8ecf4;
+}
+.tr-day-date {
+  font-weight: 600;
+  color: #1e3884;
+  font-size: 0.92rem;
+}
+.tr-day-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+.tr-day-total {
+  font-weight: 700;
+  color: #28a745;
+  font-size: 1rem;
+}
+
+/* ÖDEME TİPİ KARTLARI */
+.tr-payment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.tr-payment-card {
+  background: #f8f9ff;
+  border-radius: 12px;
+  padding: 1.15rem;
+  border: 1px solid #e8ecf4;
+}
+.tr-payment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.tr-payment-icon {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+}
+.tr-payment-icon .material-icons { font-size: 1.2rem; color: #fff; }
+.tr-payment-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.tr-payment-name { font-weight: 700; color: #2c3e50; font-size: 0.92rem; }
+.tr-payment-count { font-size: 0.78rem; color: #6c757d; }
+.tr-payment-pct {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1e3884;
+}
+
+.tr-payment-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 3px;
+  margin-bottom: 0.6rem;
+  overflow: hidden;
+}
+.tr-payment-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.tr-payment-total {
+  font-weight: 700;
+  color: #28a745;
+  font-size: 1.1rem;
+  text-align: right;
+}
+
+/* PLATFORM KARTLARI */
+.tr-platform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+.tr-platform-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.15rem;
+  background: #f8f9ff;
+  border-radius: 10px;
+  border: 1px solid #e8ecf4;
+}
+.tr-platform-icon { font-size: 1.5rem; color: #2E5BFF; }
+.tr-platform-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.tr-platform-name { font-weight: 700; color: #2c3e50; font-size: 0.9rem; }
+.tr-platform-count { font-size: 0.78rem; color: #6c757d; }
+.tr-platform-total {
+  font-weight: 700;
+  color: #28a745;
+  font-size: 0.95rem;
+}
+
+/* BOŞ */
+.tr-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6c757d;
+}
+.tr-empty .material-icons {
+  font-size: 3.5rem;
+  color: #b0bec5;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+.tr-empty p { font-size: 1rem; font-weight: 600; }
+
+/* MASAÜSTÜ TABLO */
+.tr-table-wrapper { display: none; }
+.tr-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tr-table th {
+  padding: 0.85rem 1rem;
+  background: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom: 2px solid #e8ecf4;
+  text-align: left;
+}
+.tr-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.9rem;
+  color: #2c3e50;
+}
+.tr-table tbody tr:hover { background: #f8f9ff; }
+.tr-table tfoot td {
+  padding: 1rem;
+  border-top: 2px solid #e8ecf4;
+  font-size: 0.95rem;
+}
+.tr-table .text-right { text-align: right; }
+.tr-table .mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.tr-table .bold { font-weight: 700; color: #28a745; }
+
+/* BADGE */
+.tr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  background: #6c757d;
+  white-space: nowrap;
+}
+.tr-badge .material-icons { font-size: 0.9rem; }
+
+/* MOBİL KARTLAR */
+.tr-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+.tr-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e8ecf4;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+.tr-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1.15rem;
+  background: linear-gradient(135deg, #f8f9ff, #f0f2ff);
+  border-bottom: 1px solid #eef1fa;
+}
+.tr-card-no {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  color: #1e3884;
+  font-size: 0.92rem;
+}
+.tr-card-no .material-icons { font-size: 1.1rem; color: #2E5BFF; }
+.tr-card-amount { font-weight: 700; color: #28a745; font-size: 1rem; }
+
+.tr-card-body {
+  padding: 0.75rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.tr-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: #495057;
+}
+.tr-card-row .material-icons { font-size: 1.05rem; color: #6c757d; }
+
+/* DESKTOP */
+@media (min-width: 769px) {
+  .teslim-raporu-container { padding: 1.75rem 2rem; }
+  .tr-card-grid { display: none; }
+  .tr-table-wrapper { display: block; }
+}
+
+/* MOBİL */
+@media (max-width: 768px) {
+  .teslim-raporu-container { padding: 10px 12px; }
+  .tr-filters { flex-direction: column; }
+  .tr-summary-row { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .tr-payment-grid { grid-template-columns: 1fr; }
+  .tr-platform-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .tr-summary-row { grid-template-columns: 1fr; }
+}

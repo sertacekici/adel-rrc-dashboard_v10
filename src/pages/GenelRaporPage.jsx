@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { todayTR } from '../utils/dateUtils';
 import './GenelRaporPage.css';
 
 const GenelRaporPage = () => {
@@ -20,8 +21,8 @@ const GenelRaporPage = () => {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  const defaultStartDate = yesterday.toISOString().split('T')[0];
-  const defaultEndDate = today.toISOString().split('T')[0];
+  const defaultStartDate = todayTR(yesterday);
+  const defaultEndDate = todayTR(today);
 
   // Saat seçimi için state - varsayılan 08:00 (24 saat çalışan işletmeler için)
   const [startTime, setStartTime] = useState('08:00');
@@ -36,7 +37,7 @@ const GenelRaporPage = () => {
   // Filter state
   const [filter, setFilter] = useState({
     mode: 'daily', // 'daily' | 'range'
-    date: new Date().toISOString().split('T')[0],
+    date: todayTR(),
     startDate: defaultStartDate,
     endDate: defaultEndDate,
     subeId: currentUser?.role === 'sube_yoneticisi' ? currentUser.subeId : ''
@@ -548,7 +549,7 @@ const GenelRaporPage = () => {
                     const t = new Date();
                     const y = new Date(t);
                     y.setDate(y.getDate() - 1);
-                    setFilter({ ...filter, startDate: y.toISOString().split('T')[0], endDate: t.toISOString().split('T')[0] });
+                    setFilter({ ...filter, startDate: todayTR(y), endDate: todayTR(t) });
                     setStartTime('08:00');
                     setEndTime('08:00');
                   }}
@@ -561,7 +562,7 @@ const GenelRaporPage = () => {
                   className="quick-btn"
                   onClick={() => {
                     const t = new Date();
-                    setFilter({ ...filter, startDate: t.toISOString().split('T')[0], endDate: t.toISOString().split('T')[0] });
+                    setFilter({ ...filter, startDate: todayTR(t), endDate: todayTR(t) });
                     setStartTime('00:00');
                     setEndTime('23:59');
                   }}
@@ -576,7 +577,7 @@ const GenelRaporPage = () => {
                     const t = new Date();
                     const y = new Date(t);
                     y.setDate(y.getDate() - 1);
-                    setFilter({ ...filter, startDate: y.toISOString().split('T')[0], endDate: y.toISOString().split('T')[0] });
+                    setFilter({ ...filter, startDate: todayTR(y), endDate: todayTR(y) });
                     setStartTime('00:00');
                     setEndTime('23:59');
                   }}

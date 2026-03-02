@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import { toDate, normalizeDateStr, todayTR } from '../utils/dateUtils';
 import './KuryeRaporuPage.css';
 
 const KuryeRaporuPage = () => {
@@ -19,12 +20,13 @@ const KuryeRaporuPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   
   // Bugünün tarihini varsayılan olarak ayarla (günlük rapor)
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayTR();
   const [selectedDate, setSelectedDate] = useState(today);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   
-  const { currentUser } = useContext(AuthContext);
+  const { currentUser } = useAuth();
+  const [rrcId, setRrcId] = useState(null);
 
   // Hızlı tarih seçimi fonksiyonları
   const setDateRange = (type) => {
@@ -41,27 +43,27 @@ const KuryeRaporuPage = () => {
     
     switch (type) {
       case 'today':
-        newStartDate = today.toISOString().split('T')[0];
-        newEndDate = today.toISOString().split('T')[0];
+        newStartDate = todayTR(today);
+        newEndDate = todayTR(today);
         setReportMode('daily');
         setSelectedDate(newStartDate);
         break;
       case 'yesterday':
-        newStartDate = yesterday.toISOString().split('T')[0];
-        newEndDate = yesterday.toISOString().split('T')[0];
+        newStartDate = todayTR(yesterday);
+        newEndDate = todayTR(yesterday);
         setReportMode('daily');
         setSelectedDate(newStartDate);
         break;
       case 'thisWeek':
-        newStartDate = weekStart.toISOString().split('T')[0];
-        newEndDate = today.toISOString().split('T')[0];
+        newStartDate = todayTR(weekStart);
+        newEndDate = todayTR(today);
         setReportMode('range');
         setStartDate(newStartDate);
         setEndDate(newEndDate);
         break;
       case 'thisMonth':
-        newStartDate = monthStart.toISOString().split('T')[0];
-        newEndDate = today.toISOString().split('T')[0];
+        newStartDate = todayTR(monthStart);
+        newEndDate = todayTR(today);
         setReportMode('range');
         setStartDate(newStartDate);
         setEndDate(newEndDate);
@@ -77,6 +79,22 @@ const KuryeRaporuPage = () => {
       }, 100);
     }
   };
+
+  // Şube rrc_restaurant_id'sini al
+  useEffect(() => {
+    if (!currentUser?.subeId) return;
+    const fetchRrcId = async () => {
+      try {
+        const subeDoc = await getDoc(doc(db, 'subeler', currentUser.subeId));
+        if (subeDoc.exists()) {
+          setRrcId(subeDoc.data().rrc_restaurant_id || currentUser.subeId);
+        }
+      } catch (err) {
+        console.error('Şube bilgisi getirilemedi:', err);
+      }
+    };
+    fetchRrcId();
+  }, [currentUser]);
 
   // Şubeleri getir
   const fetchSubeler = async () => {
@@ -153,101 +171,58 @@ const KuryeRaporuPage = () => {
         kuryeAdi = selectedKuryeData?.displayName || selectedKuryeData?.email;
       }
 
-      console.log('Aranan kurye adı:', kuryeAdi);
+      // PaketAdisyonlar koleksiyonundan sorgula (rrc_restaurant_id ile)
+      let targetRrcId = rrcId;
+      
+      // Şirket yöneticisi ise seçili şubenin rrc_restaurant_id'sini al
+      if (currentUser?.role === 'sirket_yoneticisi' && selectedSube) {
+        const subeData = subeler.find(s => s.id === selectedSube);
+        targetRrcId = subeData?.rrc_restaurant_id || selectedSube;
+      } else if (currentUser?.role === 'sube_yoneticisi') {
+        // rrcId zaten useEffect'te set edildi
+      }
 
-      // Tüm adisyonları getir ve daha sonra filtrele (case-insensitive)
-      let adisyonQuery = query(collection(db, 'Adisyonlar'));
+      let constraints = [];
+      if (targetRrcId) {
+        constraints.push(where('rrc_restaurant_id', '==', String(targetRrcId)));
+      }
+
+      const adisyonQuery = query(collection(db, 'PaketAdisyonlar'), ...constraints);
       const adisyonSnapshot = await getDocs(adisyonQuery);
       
       let adisyonList = adisyonSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-
-      console.log('Toplam adisyon sayısı:', adisyonList.length);
       
       // Kurye adı ile eşleşenleri filtrele (case-insensitive)
       adisyonList = adisyonList.filter(adisyon => {
         if (!adisyon.motorcu) return false;
-        
-        const motorcuLower = adisyon.motorcu.toLowerCase();
-        const kuryeAdiLower = kuryeAdi.toLowerCase();
-        
-        console.log('Motorcu:', adisyon.motorcu, 'Aranan:', kuryeAdi, 'Eşleşme:', motorcuLower === kuryeAdiLower);
-        
-        return motorcuLower === kuryeAdiLower;
+        return adisyon.motorcu.toLowerCase() === kuryeAdi.toLowerCase();
       });
 
-      console.log('Kurye ile eşleşen adisyon sayısı:', adisyonList.length);
-
-      // Masa siparişlerini filtrele (siparisnerden !== 88)
-      adisyonList = adisyonList.filter(adisyon => adisyon.siparisnerden !== 88);
-
-      console.log('Masa siparişleri filtrelendikten sonra:', adisyonList.length);
-
-      // Tarih filtreleme
+      // Tarih filtreleme (acilis alanı üzerinden)
       adisyonList = adisyonList.filter(adisyon => {
-        if (!adisyon.tarih) return false;
+        const dateVal = adisyon.acilis || adisyon.tarih;
+        if (!dateVal) return false;
+        const adisyonTarih = normalizeDateStr(dateVal);
+        if (!adisyonTarih) return false;
         
-        try {
-          // Tarih formatını kontrol et - ISO formatında: "2025-08-04T10:45:47"
-          const adisyonTarihStr = String(adisyon.tarih);
-          let adisyonTarih;
-          
-          if (adisyonTarihStr.includes('T')) {
-            // ISO format: "2025-08-04T10:45:47" -> "2025-08-04"
-            adisyonTarih = adisyonTarihStr.split('T')[0];
-          } else if (adisyonTarihStr.includes(' ')) {
-            // SQL format: "2025-08-04 10:45:47" -> "2025-08-04"
-            adisyonTarih = adisyonTarihStr.split(' ')[0];
-          } else {
-            // Sadece tarih: "2025-08-04"
-            adisyonTarih = adisyonTarihStr;
-          }
-          
-          if (reportMode === 'daily') {
-            console.log('Günlük filtre - Adisyon tarihi:', adisyonTarih, 'Hedef tarih:', selectedDate);
-            return adisyonTarih === selectedDate;
-          } else if (reportMode === 'range') {
-            console.log('Aralık filtre - Adisyon tarihi:', adisyonTarih, 'Başlangıç:', startDate, 'Bitiş:', endDate);
-            return adisyonTarih >= startDate && adisyonTarih <= endDate;
-          }
-          
-          return false;
-        } catch (err) {
-          console.error('Tarih karşılaştırma hatası:', err, 'Adisyon tarihi:', adisyon.tarih);
-          return false;
+        if (reportMode === 'daily') {
+          return adisyonTarih === selectedDate;
+        } else if (reportMode === 'range') {
+          return adisyonTarih >= startDate && adisyonTarih <= endDate;
         }
+        return false;
       });
-
-      console.log('Tarih filtrelendikten sonra:', adisyonList.length);
 
       // Tarihe göre sırala (eskiden yeniye)
       adisyonList.sort((a, b) => {
         try {
-          let dateA, dateB;
-          
-          // ISO formatını Date objesine çevir
-          if (a.tarih && a.tarih.includes('T')) {
-            dateA = new Date(a.tarih);
-          } else if (a.tarih && a.tarih.includes(' ')) {
-            dateA = new Date(a.tarih.replace(' ', 'T'));
-          } else {
-            dateA = new Date(a.tarih || 0);
-          }
-          
-          if (b.tarih && b.tarih.includes('T')) {
-            dateB = new Date(b.tarih);
-          } else if (b.tarih && b.tarih.includes(' ')) {
-            dateB = new Date(b.tarih.replace(' ', 'T'));
-          } else {
-            dateB = new Date(b.tarih || 0);
-          }
-          
-          // Tarih karşılaştırması - eskiden yeniye (A - B)
+          const dateA = toDate(a.acilis || a.tarih) || new Date(0);
+          const dateB = toDate(b.acilis || b.tarih) || new Date(0);
           if (dateA - dateB !== 0) return dateA - dateB;
         } catch (err) {
-          console.error('Tarih sıralama hatası:', err);
         }
         
         // Sonra adisyon numarasına göre (küçükten büyüğe)
@@ -257,8 +232,10 @@ const KuryeRaporuPage = () => {
       });
 
       setRaporData(adisyonList);
-      setSuccess(`${adisyonList.length} teslimat raporu başarıyla yüklendi!`);
-      setTimeout(() => setSuccess(''), 3000);
+      if (adisyonList.length > 0) {
+        setSuccess(`${adisyonList.length} teslimat raporu başarıyla yüklendi!`);
+        setTimeout(() => setSuccess(''), 3000);
+      }
     } catch (error) {
       console.error('Kurye raporu getirilirken hata:', error);
       setError('Rapor getirilirken bir hata oluştu: ' + error.message);
@@ -293,20 +270,17 @@ const KuryeRaporuPage = () => {
   }, [raporData]);
 
   // Tarih formatla
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Bilinmiyor';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString('tr-TR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (err) {
-      return dateString;
-    }
+  const formatDate = (dateValue) => {
+    if (!dateValue) return 'Bilinmiyor';
+    const d = toDate(dateValue);
+    if (!d) return String(dateValue);
+    return d.toLocaleString('tr-TR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   // Tutar formatla
@@ -972,7 +946,7 @@ const KuryeRaporuPage = () => {
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Tarih:</span>
-                      <span className="detail-value">{formatDate(adisyon.tarih)}</span>
+                      <span className="detail-value">{formatDate(adisyon.acilis || adisyon.tarih)}</span>
                     </div>
                     {adisyon.motorcu && (
                       <div className="detail-row">

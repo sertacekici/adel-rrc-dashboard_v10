@@ -88,6 +88,45 @@
   font-size: 18px;
 }
 
+/* Ana Ekrana Ekle Butonu */
+.install-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+  white-space: nowrap;
+  animation: installPulse 2s ease-in-out infinite;
+}
+.install-btn:active {
+  transform: scale(0.95);
+}
+.install-btn .material-icons {
+  font-size: 20px;
+}
+@keyframes installPulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3); }
+  50% { box-shadow: 0 4px 20px rgba(40, 167, 69, 0.6); }
+}
+
+@media (max-width: 480px) {
+  .install-btn span:not(.material-icons) {
+    display: none;
+  }
+  .install-btn {
+    padding: 8px 10px;
+  }
+}
+
 .topbar-search {
   position: relative;
   margin-right: 1rem;
