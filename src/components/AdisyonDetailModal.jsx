@@ -324,17 +324,17 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
 
         <div className="modal-body">
           {/* Teslimat Bilgileri */}
-          {(adisyon?.siparisadres || adisyon?.adres || adisyon?.address || adisyon?.teslimat_adresi || 
+          {(adisyon?.ads_siparisadres || adisyon?.siparisadres || adisyon?.adres || adisyon?.address || adisyon?.teslimat_adresi || 
             (adisyon && adisyon.siparisnerden !== 88)) && (
             <div className="delivery-info-section">
               <div className="delivery-content">
-                {(adisyon?.siparisadres || adisyon?.adres || adisyon?.address || adisyon?.teslimat_adresi) ? (
+                {(adisyon?.ads_siparisadres || adisyon?.siparisadres || adisyon?.adres || adisyon?.address || adisyon?.teslimat_adresi) ? (
                   <div className="address-info enlarged-address">
                     <div className="address-icon">
                       <span className="material-icons">location_on</span>
                     </div>
                     <div className="address-details">
-                      <span className="address-text">{adisyon.siparisadres || adisyon.adres || adisyon.address || adisyon.teslimat_adresi}</span>
+                      <span className="address-text">{adisyon.ads_siparisadres || adisyon.siparisadres || adisyon.adres || adisyon.address || adisyon.teslimat_adresi}</span>
                     </div>
                     {hasValidCoordinates(adisyon) && (
                       <button 
