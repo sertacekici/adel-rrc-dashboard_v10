@@ -1,581 +1,409 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { formatCurrency } from '../utils/dateUtils';
+import { fetchBirlesikUrunSatislari } from '../utils/reportService';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  PieChart, Pie, Cell, ResponsiveContainer
+} from 'recharts';
 import './SatisAdetleriPage.css';
 
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+
 const SatisAdetleriPage = () => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedSube, setSelectedSube] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [reportMode, setReportMode] = useState('daily'); // 'daily', 'range'
-  // Tarih aralığı varsayılanları: başlangıç = dün, bitiş = bugün
-  const todayRef = new Date();
-  const yesterdayRef = new Date(todayRef);
-  yesterdayRef.setDate(yesterdayRef.getDate() - 1);
-  const [startDate, setStartDate] = useState(yesterdayRef.toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(todayRef.toISOString().split('T')[0]);
-  // Saat seçimi için state - varsayılan 08:00 (24 saat çalışan işletmeler için)
-  const [startTime, setStartTime] = useState('08:00');
-  const [endTime, setEndTime] = useState('08:00');
-  // Günlük mod için saat seçimi
-  const [dailyStartTime, setDailyStartTime] = useState('00:00');
-  const [dailyEndTime, setDailyEndTime] = useState('23:59');
-  const [useDailyTimeFilter, setUseDailyTimeFilter] = useState(false);
-  // Rapor getir butonu için tetikleyici
-  const [reportTrigger, setReportTrigger] = useState(0);
-  const [subeler, setSubeler] = useState([]);
-  const [adisyonIcerik, setAdisyonIcerik] = useState([]);
-  const [satisAdetleri, setSatisAdetleri] = useState([]);
   const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [subeler, setSubeler] = useState([]);
+  const [data, setData] = useState(null); // fetchBirlesikUrunSatislari sonucu
+  const [filterKaynak, setFilterKaynak] = useState('all'); // all | paket | salon
+
+  const today = new Date();
+  const [filter, setFilter] = useState({
+    mode: 'daily',
+    date: today.toISOString().split('T')[0],
+    startDate: new Date(today.getTime() - 86400000).toISOString().split('T')[0],
+    endDate: today.toISOString().split('T')[0],
+    subeId: currentUser?.role === 'sube_yoneticisi' ? (currentUser.rrc_restaurant_id || currentUser.subeId) : ''
+  });
 
   // Şubeleri getir
   useEffect(() => {
-    const getSubeler = async () => {
-      try {
-        console.log('currentUser:', currentUser);
-        
-        let subeQuery;
-        
-        if (currentUser?.role === 'sirket_yoneticisi') {
-          // Şirket yöneticisi tüm şubeleri görebilir
-          console.log('Şirket yöneticisi - tüm şubeleri getiriliyor');
-          subeQuery = query(collection(db, 'subeler'));
-        } else if (currentUser?.subeId) {
-          // Diğer kullanıcılar sadece kendi şubelerini görebilir
-          console.log('Şube kullanıcısı - sadece kendi şubesini getiriliyor:', currentUser.subeId);
-          subeQuery = query(
-            collection(db, 'subeler'), 
-            where('__name__', '==', currentUser.subeId)
-          );
-        } else {
-          console.log('Kullanıcı rolü bulunamadı veya şube ID yok');
-          return;
+    const fetchSubeler = async () => {
+      if (currentUser?.role === 'sirket_yoneticisi') {
+        const snapshot = await getDocs(query(collection(db, 'subeler')));
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        list.sort((a, b) => (a.subeAdi || '').localeCompare(b.subeAdi || ''));
+        setSubeler(list);
+      } else if (currentUser?.subeId) {
+        const snapshot = await getDocs(query(collection(db, 'subeler'), where('__name__', '==', currentUser.subeId)));
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSubeler(list);
+        if (list.length > 0 && !filter.subeId) {
+          setFilter(f => ({ ...f, subeId: list[0].rrc_restaurant_id || list[0].id }));
         }
-
-        const unsubscribe = onSnapshot(subeQuery, (snapshot) => {
-          const subeList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          console.log('Şubeler:', subeList);
-          setSubeler(subeList);
-          
-          // Şirket yöneticisi değilse otomatik olarak kullanıcının şubesini seç
-          if (currentUser?.role !== 'sirket_yoneticisi' && subeList.length > 0) {
-            const autoId = subeList[0].rrc_restaurant_id || subeList[0].id;
-            console.log('Otomatik şube seçimi yapılıyor:', autoId);
-            setSelectedSube(autoId);
-          }
-        }, (error) => {
-          console.error('Şubeler alınırken hata:', error);
-          setError('Şubeler yüklenirken bir hata oluştu: ' + error.message);
-        });
-
-        return () => unsubscribe();
-      } catch (err) {
-        console.error('Şubeler alınırken hata:', err);
-        setError('Şubeler yüklenirken bir hata oluştu: ' + err.message);
       }
     };
-
-    if (currentUser) {
-      console.log('currentUser mevcut, şubeler yükleniyor...');
-      getSubeler();
-    } else {
-      console.log('currentUser henüz yüklenmedi');
-    }
+    if (currentUser) fetchSubeler();
   }, [currentUser]);
 
-  // AdisyonIcerik verilerini getir
-  useEffect(() => {
-    if (!selectedSube) {
-      setAdisyonIcerik([]);
-      setLoading(false);
-      return;
-    }
-
-    // Günlük modda selectedDate, tarih aralığı modunda startDate ve endDate kontrol et
-    if (reportMode === 'daily' && !selectedDate) {
-      setAdisyonIcerik([]);
-      setLoading(false);
-      return;
-    }
-
-    if (reportMode === 'range' && (!startDate || !endDate)) {
-      setAdisyonIcerik([]);
-      setLoading(false);
-      return;
-    }
+  // Rapor getir
+  const handleFetchReport = async () => {
+    const rrcId = filter.subeId || currentUser?.rrc_restaurant_id || currentUser?.subeId;
+    if (!rrcId) { setError('Lütfen bir şube seçin.'); return; }
 
     setLoading(true);
     setError(null);
 
     try {
-      console.log('AdisyonIcerik sorgulanıyor, selectedSube:', selectedSube, 'reportMode:', reportMode);
-      
-      // Performans için sunucu tarafında filtreleme
-      let startStr, endStr;
-      if (reportMode === 'daily') {
-        const datePart = selectedDate; // YYYY-MM-DD
-        if (useDailyTimeFilter) {
-          startStr = `${datePart} ${dailyStartTime}:00`;
-          endStr = `${datePart} ${dailyEndTime}:59`;
-        } else {
-          startStr = `${datePart}`;
-          endStr = `${datePart}\uf8ff`;
-        }
+      let startDate, endDate;
+      if (filter.mode === 'daily') {
+        startDate = new Date(filter.date + 'T00:00:00');
+        endDate = new Date(filter.date + 'T23:59:59');
       } else {
-        startStr = `${startDate} ${startTime}:00`;
-        // Eğer bitiş saati 23:59 ise gün sonuna kadar (tüm stringleri) kapsasın
-        endStr = (endTime === '23:59') ? `${endDate}\uf8ff` : `${endDate} ${endTime}:59`;
+        startDate = new Date(filter.startDate + 'T00:00:00');
+        endDate = new Date(filter.endDate + 'T23:59:59');
       }
 
-      // AdisyonIcerik sorgusu - Sunucu tarafı filtreleme
-      // Composite Index Gerekli: rrc_restaurant_id (ASC) + tarih (ASC)
-      const adisyonIcerikQuery = query(
-        collection(db, 'AdisyonIcerik'),
-        where('rrc_restaurant_id', '==', selectedSube),
-        where('tarih', '>=', startStr),
-        where('tarih', '<=', endStr)
-      );
-
-      const unsubscribe = onSnapshot(adisyonIcerikQuery, 
-        (snapshot) => {
-          console.log('AdisyonIcerik snapshot alındı, doküman sayısı:', snapshot.docs.length);
-          const icerikList = snapshot.docs.map(doc => {
-            const data = { id: doc.id, ...doc.data() };
-            return data;
-          });
-          
-          // Sunucudan zaten filtrelenmiş geldiği için client-side filtreye gerek yok
-          setAdisyonIcerik(icerikList);
-          setLoading(false);
-        },
-        (err) => {
-          console.error('AdisyonIcerik alınırken hata:', err);
-          if (err.code === 'failed-precondition') {
-            setError('Bu rapor için "AdisyonIcerik" koleksiyonunda index oluşturulması gerekiyor. Lütfen konsolu açıp Firebase linkine tıklayın.');
-          } else {
-            setError('Satış verileri yüklenirken bir hata oluştu: ' + err.message);
-          }
-          setLoading(false);
-        }
-      );
-
-      return () => unsubscribe();
+      const result = await fetchBirlesikUrunSatislari(rrcId, startDate, endDate);
+      setData(result);
     } catch (err) {
-      console.error('AdisyonIcerik sorgulanırken hata:', err);
-      setError('Satış verileri sorgulanırken bir hata oluştu: ' + err.message);
+      setError('Satış verileri alınırken hata: ' + err.message);
+    } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSube, reportTrigger]);
-
-  // Satış adetlerini hesapla
-  useEffect(() => {
-    if (!adisyonIcerik.length) {
-      setSatisAdetleri([]);
-      return;
-    }
-
-    // Ürünleri grupla ve adetleri topla
-    const urunGruplari = {};
-    
-    adisyonIcerik.forEach(icerik => {
-      const urunAdi = icerik.urunadi || 'Bilinmeyen Ürün';
-      const boyut = icerik.selectedsizename || 'Standart';
-      const miktar = parseInt(icerik.miktar) || parseInt(icerik.adet) || 1;
-      const fiyat = parseFloat(icerik.birimfiyat) || parseFloat(icerik.fiyat) || 0;
-      
-      // Ürün adı + boyut kombinasyonu ile grupla
-      const anahtar = `${urunAdi} - ${boyut}`;
-      
-      if (urunGruplari[anahtar]) {
-        urunGruplari[anahtar].miktar += miktar;
-        urunGruplari[anahtar].toplamTutar += (miktar * fiyat);
-      } else {
-        urunGruplari[anahtar] = {
-          urunAdi,
-          boyut,
-          miktar,
-          toplamTutar: miktar * fiyat
-        };
-      }
-    });
-
-    // Objeden array'e çevir, birim fiyatı toplam/miktar olarak hesapla ve miktar bazında sırala
-    const satisListesi = Object.keys(urunGruplari).map(anahtar => {
-      const grup = urunGruplari[anahtar];
-      return {
-        anahtar,
-        ...grup,
-        birimFiyat: grup.miktar > 0 ? grup.toplamTutar / grup.miktar : 0
-      };
-    }).sort((a, b) => b.miktar - a.miktar);
-
-    console.log('Hesaplanan satış adetleri:', satisListesi);
-    setSatisAdetleri(satisListesi);
-  }, [adisyonIcerik]);
-
-  // Tutar formatlama
-  const formatAmount = (amount) => {
-    return new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
   };
+
+  // İlk yüklemede otomatik rapor getir
+  useEffect(() => {
+    const rrcId = filter.subeId || currentUser?.rrc_restaurant_id || currentUser?.subeId;
+    if (rrcId) handleFetchReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
+
+  // Filtrelenmiş liste
+  const getFilteredList = () => {
+    if (!data) return [];
+    if (filterKaynak === 'paket') {
+      return data.paket.urunListesi.map(u => ({ ...u, paketMiktar: u.miktar, salonMiktar: 0 }));
+    }
+    if (filterKaynak === 'salon') {
+      return data.salon.urunListesi.map(u => ({ ...u, paketMiktar: 0, salonMiktar: u.miktar }));
+    }
+    return data.birlesikListe;
+  };
+
+  const filteredList = getFilteredList();
+
+  // İstatistikler
+  const stats = data ? {
+    cesit: filteredList.length,
+    toplamMiktar: filteredList.reduce((s, u) => s + u.miktar, 0),
+    toplamCiro: filteredList.reduce((s, u) => s + u.ciro, 0),
+    paketMiktar: data.paket.toplamMiktar,
+    salonMiktar: data.salon.toplamMiktar,
+  } : null;
+
+  // Top 10 bar chart
+  const barData = filteredList.slice(0, 10).map(u => ({
+    name: u.urunadi.length > 18 ? u.urunadi.substring(0, 18) + '...' : u.urunadi,
+    Adet: u.miktar,
+    Ciro: Number(u.ciro.toFixed(2)),
+  }));
+
+  // Kaynak dağılım pie
+  const kaynakPie = data ? [
+    { name: 'Paket', value: data.paket.toplamMiktar, color: '#3B82F6' },
+    { name: 'Salon', value: data.salon.toplamMiktar, color: '#10B981' },
+  ].filter(d => d.value > 0) : [];
 
   return (
     <div className="satis-adetleri-container">
-      <div className="page-header">
-        <div className="header-content">
-          <div className="title-section">
-            <h1>
-              <span className="material-icons">trending_up</span>
-              Satış Adetleri
-            </h1>
-            <p>Ürün satış adetleri ve performans analizi</p>
+      {/* HEADER */}
+      <div className="sa-header">
+        <div className="sa-header-content">
+          <div className="sa-header-left">
+            <span className="material-icons sa-header-icon">trending_up</span>
+            <div>
+              <h1>Satış Adetleri</h1>
+              <p>Ürün bazlı satış adetleri ve performans analizi</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Filtre Bölümü */}
-      <div className="filters-section">
-        <div className="filter-group">
-          <label htmlFor="sube-select">Şube Seçin:</label>
-          <select
-            id="sube-select"
-            value={selectedSube}
-            onChange={(e) => setSelectedSube(e.target.value)}
-            disabled={currentUser?.role !== 'sirket_yoneticisi'}
-          >
-            <option value="">Şube seçin...</option>
-            {subeler.map((sube) => {
-              const rrcId = sube.rrc_restaurant_id || sube.id;
-              return (
-                <option key={sube.id} value={rrcId}>
-                  {sube.subeAdi} (RRC ID: {rrcId})
-                </option>
-              );
-            })}
-          </select>
-        </div>
+      {/* FİLTRELER */}
+      <div className="sa-filter-section">
+        <div className="sa-filter-row">
+          {currentUser?.role === 'sirket_yoneticisi' && (
+            <div className="sa-filter-group">
+              <label>Şube</label>
+              <select
+                value={filter.subeId}
+                onChange={e => setFilter(f => ({ ...f, subeId: e.target.value }))}
+              >
+                <option value="">Şube Seçin</option>
+                {subeler.map(s => (
+                  <option key={s.id} value={s.rrc_restaurant_id || s.id}>
+                    {s.subeAdi || s.ad}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-        <div className="filter-group">
-          <label>Rapor Tipi:</label>
-          <div className="report-mode-buttons">
-            <button
-              className={`filter-btn ${reportMode === 'daily' ? 'active' : ''}`}
-              onClick={() => setReportMode('daily')}
-            >
-              <span className="material-icons">today</span>
-              Günlük
-            </button>
-            <button
-              className={`filter-btn ${reportMode === 'range' ? 'active' : ''}`}
-              onClick={() => setReportMode('range')}
-            >
-              <span className="material-icons">date_range</span>
-              Tarih Aralığı
-            </button>
+          <div className="sa-filter-group">
+            <label>Rapor Tipi</label>
+            <div className="sa-mode-btns">
+              <button
+                className={`sa-mode-btn ${filter.mode === 'daily' ? 'active' : ''}`}
+                onClick={() => setFilter(f => ({ ...f, mode: 'daily' }))}
+              >
+                <span className="material-icons">today</span> Günlük
+              </button>
+              <button
+                className={`sa-mode-btn ${filter.mode === 'range' ? 'active' : ''}`}
+                onClick={() => setFilter(f => ({ ...f, mode: 'range' }))}
+              >
+                <span className="material-icons">date_range</span> Tarih Aralığı
+              </button>
+            </div>
           </div>
-        </div>
 
-        {reportMode === 'daily' ? (
-          <div className="filter-group daily-filter-group">
-            <label htmlFor="date-select">Tarih Seçin:</label>
-            <input
-              type="date"
-              id="date-select"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-            
-            <div className="time-filter-toggle">
-              <label className="toggle-label">
+          {filter.mode === 'daily' ? (
+            <div className="sa-filter-group">
+              <label>Tarih</label>
+              <input
+                type="date"
+                value={filter.date}
+                onChange={e => setFilter(f => ({ ...f, date: e.target.value }))}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="sa-filter-group">
+                <label>Başlangıç</label>
                 <input
-                  type="checkbox"
-                  checked={useDailyTimeFilter}
-                  onChange={(e) => setUseDailyTimeFilter(e.target.checked)}
+                  type="date"
+                  value={filter.startDate}
+                  onChange={e => setFilter(f => ({ ...f, startDate: e.target.value }))}
                 />
-                <span className="toggle-switch"></span>
-                <span className="toggle-text">Saat Filtresi</span>
-              </label>
-            </div>
-            
-            {useDailyTimeFilter && (
-              <div className="daily-time-inputs">
-                <div className="time-input-wrapper">
-                  <label>Başlangıç Saati:</label>
-                  <input
-                    type="time"
-                    value={dailyStartTime}
-                    onChange={(e) => setDailyStartTime(e.target.value)}
-                  />
-                </div>
-                <div className="time-input-wrapper">
-                  <label>Bitiş Saati:</label>
-                  <input
-                    type="time"
-                    value={dailyEndTime}
-                    onChange={(e) => setDailyEndTime(e.target.value)}
-                  />
-                </div>
-                <div className="quick-daily-buttons">
-                  <button
-                    type="button"
-                    className="quick-btn small"
-                    onClick={() => {
-                      setDailyStartTime('08:00');
-                      setDailyEndTime('23:59');
-                    }}
-                  >
-                    08:00 - 23:59
-                  </button>
-                  <button
-                    type="button"
-                    className="quick-btn small"
-                    onClick={() => {
-                      setDailyStartTime('00:00');
-                      setDailyEndTime('08:00');
-                    }}
-                  >
-                    00:00 - 08:00
-                  </button>
-                  <button
-                    type="button"
-                    className="quick-btn small"
-                    onClick={() => {
-                      setDailyStartTime('12:00');
-                      setDailyEndTime('23:59');
-                    }}
-                  >
-                    12:00 - 23:59
-                  </button>
-                </div>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="filter-group date-range-group">
-            <div className="date-range-info">
-              <span className="material-icons">info</span>
-              <span>24 saat çalışan işletmeler için saat seçimi yapabilirsiniz. Örn: Dün 08:00 - Bugün 08:00</span>
-            </div>
-            <div className="date-range-inputs">
-              <div className="date-time-input-wrapper">
-                <label>Başlangıç Tarihi ve Saati:</label>
-                <div className="date-time-inputs">
-                  <input
-                    type="date"
-                    id="start-date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    id="start-time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
+              <div className="sa-filter-group">
+                <label>Bitiş</label>
+                <input
+                  type="date"
+                  value={filter.endDate}
+                  onChange={e => setFilter(f => ({ ...f, endDate: e.target.value }))}
+                />
               </div>
-              <div className="date-time-input-wrapper">
-                <label>Bitiş Tarihi ve Saati:</label>
-                <div className="date-time-inputs">
-                  <input
-                    type="date"
-                    id="end-date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    id="end-time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="quick-time-buttons">
-              <span className="quick-label">Hızlı Seçim:</span>
-              <button
-                type="button"
-                className="quick-btn"
-                onClick={() => {
-                  const today = new Date();
-                  const yesterday = new Date(today);
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  setStartDate(yesterday.toISOString().split('T')[0]);
-                  setEndDate(today.toISOString().split('T')[0]);
-                  setStartTime('08:00');
-                  setEndTime('08:00');
-                }}
-              >
-                <span className="material-icons">schedule</span>
-                Dün 08:00 - Bugün 08:00
-              </button>
-              <button
-                type="button"
-                className="quick-btn"
-                onClick={() => {
-                  const today = new Date();
-                  setStartDate(today.toISOString().split('T')[0]);
-                  setEndDate(today.toISOString().split('T')[0]);
-                  setStartTime('00:00');
-                  setEndTime('23:59');
-                }}
-              >
-                <span className="material-icons">today</span>
-                Bugün Tüm Gün
-              </button>
-              <button
-                type="button"
-                className="quick-btn"
-                onClick={() => {
-                  const today = new Date();
-                  const yesterday = new Date(today);
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  setStartDate(yesterday.toISOString().split('T')[0]);
-                  setEndDate(yesterday.toISOString().split('T')[0]);
-                  setStartTime('00:00');
-                  setEndTime('23:59');
-                }}
-              >
-                <span className="material-icons">history</span>
-                Dün Tüm Gün
-              </button>
-            </div>
-          </div>
-        )}
+            </>
+          )}
 
-        {/* Rapor Getir Butonu */}
-        <div className="filter-group report-action-group">
-          <button
-            className="report-fetch-btn"
-            onClick={() => setReportTrigger(prev => prev + 1)}
-            disabled={!selectedSube || (reportMode === 'daily' && !selectedDate) || (reportMode === 'range' && (!startDate || !endDate))}
-          >
-            <span className="material-icons">search</span>
-            Rapor Getir
-          </button>
+          <div className="sa-filter-group sa-filter-action">
+            <button
+              className="sa-fetch-btn"
+              onClick={handleFetchReport}
+              disabled={loading || !filter.subeId}
+            >
+              <span className="material-icons">{loading ? 'hourglass_empty' : 'search'}</span>
+              {loading ? 'Yükleniyor...' : 'Rapor Getir'}
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* HATA */}
       {error && (
-        <div className="error-message">
-          <span className="material-icons">error</span>
-          {error}
+        <div className="sa-error">
+          <span className="material-icons">error_outline</span>
+          <p>{error}</p>
         </div>
       )}
 
-      {(!selectedSube || (reportMode === 'daily' && !selectedDate) || (reportMode === 'range' && (!startDate || !endDate))) && !loading && (
-        <div className="empty-state">
-          <span className="material-icons">trending_up</span>
-          <h3>Filtre Seçin</h3>
-          <p>Satış verilerini görüntülemek için yukarıdan şube ve tarih seçin.</p>
-        </div>
-      )}
-
-      {selectedSube && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate)) && loading && (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
+      {/* LOADING */}
+      {loading && (
+        <div className="sa-loading">
+          <div className="sa-spinner"></div>
           <p>Satış verileri yükleniyor...</p>
         </div>
       )}
 
-      {selectedSube && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate)) && !loading && satisAdetleri.length === 0 && !error && (
-        <div className="empty-state">
+      {/* BOŞ */}
+      {!loading && !data && !error && (
+        <div className="sa-empty">
           <span className="material-icons">trending_up</span>
-          <h3>Satış Verisi Bulunamadı</h3>
-          <p>Seçilen {reportMode === 'daily' ? 'tarih' : 'tarih aralığı'} ve şubede satış verisi bulunmuyor.</p>
+          <p>Satış verilerini görüntülemek için şube ve tarih seçip &quot;Rapor Getir&quot; butonuna tıklayın.</p>
         </div>
       )}
 
-      {selectedSube && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate)) && !loading && satisAdetleri.length > 0 && (
+      {/* VERİ VAR */}
+      {!loading && data && (
         <>
-          {/* İstatistikler */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon primary">
+          {/* İSTATİSTİK KARTLARI */}
+          <div className="sa-stats">
+            <div className="sa-stat-card">
+              <div className="sa-stat-icon si-blue">
                 <span className="material-icons">inventory</span>
               </div>
-              <div className="stat-info">
-                <div className="stat-number">{satisAdetleri.length}</div>
-                <div className="stat-label">Farklı Ürün</div>
+              <div className="sa-stat-body">
+                <span className="sa-stat-label">Ürün Çeşidi</span>
+                <span className="sa-stat-value">{stats.cesit}</span>
               </div>
             </div>
-
-            <div className="stat-card">
-              <div className="stat-icon success">
+            <div className="sa-stat-card">
+              <div className="sa-stat-icon si-green">
                 <span className="material-icons">shopping_cart</span>
               </div>
-              <div className="stat-info">
-                <div className="stat-number">
-                  {satisAdetleri.reduce((total, item) => total + item.miktar, 0)}
-                </div>
-                <div className="stat-label">Toplam Adet</div>
+              <div className="sa-stat-body">
+                <span className="sa-stat-label">Toplam Adet</span>
+                <span className="sa-stat-value">{stats.toplamMiktar}</span>
               </div>
             </div>
-
-            <div className="stat-card">
-              <div className="stat-icon warning">
-                <span className="material-icons">monetization_on</span>
+            <div className="sa-stat-card">
+              <div className="sa-stat-icon si-purple">
+                <span className="material-icons">delivery_dining</span>
               </div>
-              <div className="stat-info">
-                <div className="stat-number">
-                  {formatAmount(satisAdetleri.reduce((total, item) => total + item.toplamTutar, 0))}
-                </div>
-                <div className="stat-label">Toplam Tutar</div>
+              <div className="sa-stat-body">
+                <span className="sa-stat-label">Paket Satış</span>
+                <span className="sa-stat-value">{stats.paketMiktar} adet</span>
+              </div>
+            </div>
+            <div className="sa-stat-card">
+              <div className="sa-stat-icon si-teal">
+                <span className="material-icons">table_restaurant</span>
+              </div>
+              <div className="sa-stat-body">
+                <span className="sa-stat-label">Salon Satış</span>
+                <span className="sa-stat-value">{stats.salonMiktar} adet</span>
               </div>
             </div>
           </div>
 
-          {/* Ürün Satış Detayları - Kart Tasarım */}
-          <div className="product-sales-card">
-            <div className="product-sales-header">
-              <div className="header-icon">
+          {/* KAYNAK FİLTRE */}
+          <div className="sa-kaynak-filter">
+            {[
+              { key: 'all', label: 'Tümü', icon: 'select_all' },
+              { key: 'paket', label: 'Paket', icon: 'delivery_dining' },
+              { key: 'salon', label: 'Salon', icon: 'table_restaurant' },
+            ].map(k => (
+              <button
+                key={k.key}
+                className={`sa-kaynak-btn ${filterKaynak === k.key ? 'active' : ''}`}
+                onClick={() => setFilterKaynak(k.key)}
+              >
+                <span className="material-icons">{k.icon}</span>
+                {k.label}
+              </button>
+            ))}
+          </div>
+
+          {/* GRAFİKLER */}
+          <div className="sa-charts-grid">
+            {/* Top 10 Bar Chart */}
+            {barData.length > 0 && (
+              <div className="sa-chart-card">
+                <h3><span className="material-icons">bar_chart</span> En Çok Satan 10 Ürün</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis type="number" tick={{ fill: '#64748B', fontSize: 12 }} />
+                    <YAxis dataKey="name" type="category" width={130} tick={{ fill: '#334155', fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(v, n) => [n === 'Ciro' ? formatCurrency(v) : v, n]}
+                      contentStyle={{ borderRadius: 8, border: '1px solid #E2E8F0' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="Adet" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="Ciro" fill="#10B981" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Kaynak Dağılım Pie */}
+            {kaynakPie.length > 1 && filterKaynak === 'all' && (
+              <div className="sa-chart-card">
+                <h3><span className="material-icons">donut_large</span> Paket / Salon Dağılımı</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={kaynakPie}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {kaynakPie.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v, n) => [`${v} adet`, n]} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* ÜRÜN LİSTESİ */}
+          {filteredList.length === 0 ? (
+            <div className="sa-empty">
+              <span className="material-icons">trending_up</span>
+              <p>Seçilen filtre için satış verisi bulunamadı.</p>
+            </div>
+          ) : (
+            <div className="sa-table-card">
+              <div className="sa-table-header">
                 <span className="material-icons">list_alt</span>
-              </div>
-              <div>
                 <h3>Ürün Satış Detayları</h3>
-                <p>En çok satan ürünler, adetler ve toplam tutarlar</p>
+                <span className="sa-table-count">{filteredList.length} ürün</span>
+              </div>
+              <div className="sa-table-wrapper">
+                <table className="sa-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Ürün Adı</th>
+                      <th className="text-right">Adet</th>
+                      {filterKaynak === 'all' && <th className="text-right">Paket</th>}
+                      {filterKaynak === 'all' && <th className="text-right">Salon</th>}
+                      <th className="text-right">Tahmini Ciro</th>
+                      <th className="text-right">Birim Fiyat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredList.map((item, index) => (
+                      <tr key={item.urunadi + index}>
+                        <td className="rank-cell">{index + 1}</td>
+                        <td className="urun-cell">{item.urunadi}</td>
+                        <td className="text-right adet-cell">{item.miktar}</td>
+                        {filterKaynak === 'all' && <td className="text-right paket-cell">{item.paketMiktar || 0}</td>}
+                        {filterKaynak === 'all' && <td className="text-right salon-cell">{item.salonMiktar || 0}</td>}
+                        <td className="text-right ciro-cell">{formatCurrency(item.ciro)}</td>
+                        <td className="text-right birim-cell">{formatCurrency(item.miktar > 0 ? item.ciro / item.miktar : 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td></td>
+                      <td><strong>TOPLAM</strong></td>
+                      <td className="text-right"><strong>{stats.toplamMiktar}</strong></td>
+                      {filterKaynak === 'all' && <td className="text-right"><strong>{stats.paketMiktar}</strong></td>}
+                      {filterKaynak === 'all' && <td className="text-right"><strong>{stats.salonMiktar}</strong></td>}
+                      <td className="text-right"><strong>{formatCurrency(stats.toplamCiro)}</strong></td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
-
-            <div className="product-sales-body">
-              <div className="product-sales-grid">
-                {satisAdetleri.map((item, index) => (
-                  <div key={item.anahtar} className="sale-card">
-                    <div className="sale-card-header">
-                      <div className="rank">#{index + 1}</div>
-                      <div className="urun">{item.urunAdi}</div>
-                    </div>
-                    <div className="sale-card-body">
-                      <div className="row">
-                        <span className="label">Boyut</span>
-                        <span className="value size">{item.boyut}</span>
-                      </div>
-                      <div className="row quantity">
-                        <span className="label">Adet</span>
-                        <span className="value adet">{item.miktar}</span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Birim</span>
-                        <span className="value">{formatAmount(item.birimFiyat)}</span>
-                      </div>
-                      <div className="row total">
-                        <span className="label">Toplam</span>
-                        <span className="value tutar">{formatAmount(item.toplamTutar)}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          )}
         </>
       )}
     </div>

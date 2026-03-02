@@ -1,852 +1,395 @@
+/* ═══════════════════════════════════════════════════
+   MasalarPage - Koyu Glass Tema (CiroRapor uyumlu)
+   ═══════════════════════════════════════════════════ */
+
 .masalar-container {
-  padding: 20px;
+  padding: 14px 16px;
   margin: 0;
   background: #1e3884 !important;
   min-height: 100vh;
   box-sizing: border-box;
-  max-width: 100%;
-  overflow-x: hidden;
 }
 
-/* Center inner blocks with a consistent max width on large screens */
-.masalar-container .page-header,
-.masalar-container .filters-section,
-.masalar-container .stats-grid,
-.masalar-container .masalar-grid,
-.masalar-container .empty-state,
-.masalar-container .loading-container,
-.masalar-container .error-message {
-  max-width: 1180px; /* central content width */
-  margin-left: 0;
-  margin-right: auto;
-  width: 100%;
+/* --- HEADER --- */
+.masalar-header {
+  margin-bottom: 1.25rem;
 }
 
-
-/* Provide subtle horizontal padding on smaller screens only */
-@media (max-width: 1200px) {
-  .masalar-container .page-header,
-  .masalar-container .filters-section,
-  .masalar-container .stats-grid,
-  .masalar-container .masalar-grid {
-    padding-left: clamp(0.75rem, 2vw, 1.25rem);
-    padding-right: clamp(0.75rem, 2vw, 1.25rem);
-  }
-}
-
-/* Sayfa Başlığı */
-.page-header {
-  margin-bottom: 1.5rem;
-}
-
-.header-content {
+.masalar-header-content {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(25px);
-  padding: 1.75rem;
+  padding: 1.5rem 2rem;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.title-section h1 {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: white;
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.title-section h1 .material-icons {
-  font-size: 2.5rem;
-  background: linear-gradient(135deg, #60A5FA, #3B82F6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.title-section p {
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 1.1rem;
-  margin: 0.5rem 0 0 0;
-  font-weight: 400;
-  line-height: 1.6;
-}
-
-/* Filtreler */
-.filters-section {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.filter-group label {
-  font-weight: 600;
-  color: #1E3A8A;
-  font-size: 0.95rem;
-}
-
-.filter-group select {
-  padding: 0.875rem 1rem;
-  border: 1px solid rgba(46, 91, 255, 0.2);
-  border-radius: 8px;
-  font-size: 1rem;
-  background: rgba(255, 255, 255, 0.9);
-  transition: all 0.3s ease;
-  max-width: 300px;
-  color: #1E3A8A;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-}
-
-.filter-group select:focus {
-  outline: none;
-  border-color: #2E5BFF;
-  box-shadow: 0 0 0 3px rgba(46, 91, 255, 0.15);
-}
-
-.filter-group select:disabled {
-  background-color: rgba(247, 250, 252, 0.8);
-  cursor: not-allowed;
-  color: #64748B;
-}
-
-/* İstatistik Kartları */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.stat-card {
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(20px);
-  padding: 1.25rem; /* ~1/1.2 smaller */
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.08);
-  border: 1px solid rgba(46, 91, 255, 0.12);
+.masalar-header-left {
   display: flex;
   align-items: center;
   gap: 1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+}
+
+.masalar-header-icon {
+  font-size: 2.5rem;
+  color: #60A5FA;
+  background: rgba(96, 165, 250, 0.15);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.masalar-header-left h1 {
+  color: #F8FAFC;
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.masalar-header-left p {
+  color: #B0BEC5;
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+}
+
+/* --- FILTRELER --- */
+.masalar-filter-section {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.masalar-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.masalar-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.masalar-filter-group label {
+  color: #CBD5E1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.masalar-filter-group select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #F1F5F9;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  min-width: 160px;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.masalar-filter-group select:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.masalar-filter-group select option {
+  background: #1E293B;
+  color: #F1F5F9;
+}
+
+/* --- HATA / BOS / YUKLEME --- */
+.masalar-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #FCA5A5;
+}
+
+.masalar-error .material-icons { font-size: 1.25rem; }
+.masalar-error p { margin: 0; font-size: 0.9rem; }
+
+.masalar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.masalar-empty .material-icons {
+  font-size: 3.5rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 1rem;
+}
+
+.masalar-empty p {
+  color: #CBD5E1;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.masalar-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+}
+
+.masalar-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid rgba(96, 165, 250, 0.2);
+  border-left-color: #60A5FA;
+  border-radius: 50%;
+  animation: masalar-spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes masalar-spin {
+  to { transform: rotate(360deg); }
+}
+
+.masalar-loading p {
+  color: #CBD5E1;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* --- ISTATISTIK KARTLARI --- */
+.masalar-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.masalar-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  min-width: 0;
   overflow: hidden;
 }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
+.masalar-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-.stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.2);
-  border-color: rgba(46, 91, 255, 0.25);
-}
-
-.stat-icon {
-  width: 50px; /* ~1/1.2 smaller */
-  height: 50px; /* ~1/1.2 smaller */
-  border-radius: 12px;
+.masalar-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.stat-card:hover .stat-icon {
-  transform: scale(1.05);
+.masalar-stat-icon .material-icons {
+  font-size: 1.3rem;
+  color: #fff;
 }
 
-.stat-icon.success {
-  background: linear-gradient(135deg, #10B981, #059669);
-  color: white;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+.stat-total { background: linear-gradient(135deg, #3B82F6, #1D4ED8); }
+.stat-bos { background: linear-gradient(135deg, #64748B, #475569); }
+.stat-dolu { background: linear-gradient(135deg, #10B981, #059669); }
+.stat-odeme { background: linear-gradient(135deg, #F59E0B, #D97706); }
+
+.masalar-stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.stat-icon.danger {
-  background: linear-gradient(135deg, #EF4444, #DC2626);
-  color: white;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-}
-
-.stat-icon.warning {
-  background: linear-gradient(135deg, #F59E0B, #D97706);
-  color: white;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-}
-
-.stat-icon.primary {
-  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
-  color: white;
-  box-shadow: 0 4px 12px rgba(46, 91, 255, 0.3);
-}
-
-.stat-icon.secondary {
-  background: linear-gradient(135deg, #64748B, #475569);
-  color: white;
-  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
-}
-
-.stat-icon .material-icons {
-  font-size: 1.6rem; /* ~1/1.2 smaller */
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 1.67rem; /* ~1/1.2 smaller */
-  font-weight: 700;
-  color: #1E3A8A;
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 0.85rem; /* ~1/1.2 smaller */
+.masalar-stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
   color: #64748B;
-  margin-top: 0.25rem;
-  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
-/* Masa Kartları */
+.masalar-stat-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1E293B;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* --- GRAFIK --- */
+.masalar-chart-card {
+  background: #FFFFFF;
+  border-radius: 14px;
+  padding: 1.5rem;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1.25rem;
+}
+
+.masalar-chart-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #1E293B;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.masalar-chart-card h3 .material-icons {
+  font-size: 1.2rem;
+  color: #3B82F6;
+}
+
+/* --- MASA GRID --- */
 .masalar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
 }
 
 .masa-card {
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.08);
-  border: 1px solid rgba(46, 91, 255, 0.12);
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  border-radius: 14px;
+  overflow: hidden;
   aspect-ratio: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.masa-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
-  opacity: 0.8;
+  flex-direction: column;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
 }
 
 .masa-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.2);
-  border-color: rgba(46, 91, 255, 0.25);
+  transform: translateY(-4px) scale(1.03);
 }
 
 .masa-card.clickable {
   cursor: pointer;
 }
 
-.masa-content {
+.masa-top-bar {
+  height: 5px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.masa-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 0.75rem;
+  gap: 0.35rem;
+}
+
+.masa-durum-icon {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.masa-adi {
+  font-size: 0.9rem;
+  font-weight: 700;
   text-align: center;
-  padding: 1.25rem;
-  height: 100%;
-  width: 100%;
+  line-height: 1.2;
 }
 
-.masa-icon {
-  margin-bottom: 0.75rem;
-  transition: all 0.3s ease;
-}
-
-.masa-icon .material-icons {
-  font-size: 2.25rem;
-  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.masa-card:hover .masa-icon {
-  transform: scale(1.1);
-}
-
-.masa-name {
+.masa-durum-badge {
+  font-size: 0.68rem;
   font-weight: 600;
-  color: #1E3A8A;
-  font-size: 0.95rem;
-  margin-bottom: 0.75rem;
-  line-height: 1.3;
-}
-
-.masa-status-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  margin-top: auto;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.masa-card:hover .masa-status-icon {
-  transform: scale(1.1);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-.masa-status-icon .material-icons {
-  font-size: 18px;
-  color: white;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: white;
-}
-
-.masa-status-icon.success {
-  background: linear-gradient(135deg, #10B981, #059669);
-}
-
-.masa-status-icon.warning {
-  background: linear-gradient(135deg, #F59E0B, #D97706);
-}
-
-.masa-status-icon.secondary {
-  background: linear-gradient(135deg, #64748B, #475569);
-}
-
-.masa-card.clickable:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(46, 91, 255, 0.25);
-}
-
-/* Masa durumuna göre özel stiller */
-.masa-card.success {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: rgba(255, 255, 255, 0.98);
-}
-
-.masa-card.success::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #10B981, #059669);
-}
-
-.masa-card.secondary {
-  border-color: rgba(100, 116, 139, 0.3);
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.masa-card.secondary::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #64748B, #475569);
-}
-
-.masa-card.warning {
-  border-color: rgba(245, 158, 11, 0.3);
-  background: rgba(255, 255, 255, 0.98);
-}
-
-.masa-card.warning::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #F59E0B, #D97706);
-}
-
-.masa-card.danger {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(255, 255, 255, 0.98);
-}
-
-.masa-card.danger::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #EF4444, #DC2626);
-}
-
-.masa-card.info {
-  border-color: rgba(46, 91, 255, 0.3);
-  background: rgba(255, 255, 255, 0.98);
-}
-
-.masa-card.info::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #2E5BFF, #1E3A8A);
-}
-
-.masa-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-  z-index: 1;
-}
-
-.masa-name {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-weight: 700;
-  font-size: 1.2rem;
-  color: #1a202c;
-  flex: 1;
-}
-
-.masa-name .material-icons {
-  color: #718096;
-  font-size: 1.5rem;
-}
-
-.masa-status {
-  padding: 0.5rem 1rem;
-  border-radius: 25px;
-  font-size: 0.85rem;
-  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border: 2px solid transparent;
-  min-width: 120px;
-  text-align: center;
-  position: relative;
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-top: auto;
 }
 
-.masa-status.success {
-  background: linear-gradient(135deg, #38a169, #48bb78);
-  color: white;
-  box-shadow: 0 2px 8px rgba(56, 161, 105, 0.3);
-  border-color: #38a169;
+/* ===== BOS MASA ===== */
+.masa-bos {
+  background: linear-gradient(160deg, #e2e8f0, #cbd5e1);
+  border: 2px solid #94a3b8;
+  box-shadow: 0 3px 12px rgba(100, 116, 139, 0.15);
 }
 
-.masa-status.success::before {
-  content: '●';
-  margin-right: 0.5rem;
-  animation: pulse-green 2s infinite;
+.masa-bos .masa-top-bar { background: linear-gradient(90deg, #94a3b8, #64748B); }
+.masa-bos .masa-durum-icon { color: #475569; }
+.masa-bos .masa-adi { color: #334155; }
+.masa-bos .masa-durum-badge { background: rgba(71, 85, 105, 0.15); color: #475569; }
+.masa-bos:hover { box-shadow: 0 8px 24px rgba(100, 116, 139, 0.25); }
+
+/* ===== DOLU MASA ===== */
+.masa-dolu {
+  background: linear-gradient(160deg, #16a34a 0%, #15803d 60%, #166534 100%);
+  border: 2px solid #15803d;
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.3);
 }
 
-.masa-status.secondary {
-  background: linear-gradient(135deg, #718096, #a0aec0);
-  color: white;
-  box-shadow: 0 2px 8px rgba(113, 128, 150, 0.3);
-  border-color: #718096;
+.masa-dolu .masa-top-bar { background: linear-gradient(90deg, #4ade80, #22c55e); }
+.masa-dolu .masa-durum-icon { color: rgba(255, 255, 255, 0.9); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+.masa-dolu .masa-adi { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.masa-dolu .masa-durum-badge { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.masa-dolu:hover { box-shadow: 0 10px 28px rgba(22, 163, 74, 0.4); }
+
+/* ===== ODEME BEKLEYEN MASA ===== */
+.masa-odeme {
+  background: linear-gradient(160deg, #f59e0b 0%, #d97706 60%, #b45309 100%);
+  border: 2px solid #d97706;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
 }
 
-.masa-status.secondary::before {
-  content: '●';
-  margin-right: 0.5rem;
-  opacity: 0.7;
-}
+.masa-odeme .masa-top-bar { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.masa-odeme .masa-durum-icon { color: rgba(255, 255, 255, 0.9); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+.masa-odeme .masa-adi { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.masa-odeme .masa-durum-badge { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.masa-odeme:hover { box-shadow: 0 10px 28px rgba(245, 158, 11, 0.4); }
 
-.masa-status.warning {
-  background: linear-gradient(135deg, #dd6b20, #ed8936);
-  color: white;
-  box-shadow: 0 2px 8px rgba(221, 107, 32, 0.3);
-  border-color: #dd6b20;
-}
-
-.masa-status.warning::before {
-  content: '●';
-  margin-right: 0.5rem;
-  animation: pulse-orange 2s infinite;
-}
-
-.masa-status.danger {
-  background: linear-gradient(135deg, #e53e3e, #f56565);
-  color: white;
-  box-shadow: 0 2px 8px rgba(229, 62, 62, 0.3);
-  border-color: #e53e3e;
-}
-
-.masa-status.info {
-  background: linear-gradient(135deg, #3182ce, #4299e1);
-  color: white;
-  box-shadow: 0 2px 8px rgba(49, 130, 206, 0.3);
-  border-color: #3182ce;
-}
-
-/* Animasyonlar */
-@keyframes pulse-green {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes pulse-orange {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.masa-details {
-  padding: 1.5rem;
-  position: relative;
-  z-index: 1;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.detail-row:last-child {
-  margin-bottom: 0;
-}
-
-.detail-label {
-  font-size: 0.9rem;
-  color: #718096;
-  font-weight: 500;
-}
-
-.detail-value {
-  font-size: 0.9rem;
-  color: #1a202c;
-  font-weight: 600;
-}
-
-/* Loading ve Error States */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 2rem;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  margin: 1.5rem auto;
-  max-width: 400px;
-}
-
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(46, 91, 255, 0.2);
-  border-left: 4px solid #2E5BFF;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1.25rem;
-}
-
-.loading-container p {
-  color: #1E3A8A;
-  font-size: 1.1rem;
-  font-weight: 500;
-  margin: 0;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.error-message {
-  background-color: rgba(239, 68, 68, 0.15);
-  color: #fff;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-  margin-bottom: 1.5rem;
-}
-
-.error-message .material-icons {
-  font-size: 1.25rem;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3.5rem 2rem;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.empty-state .material-icons {
-  font-size: 4rem;
-  background: linear-gradient(135deg, #2E5BFF, #1E3A8A);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 1.25rem;
-  opacity: 0.7;
-}
-
-.empty-state h3 {
-  font-size: 1.5rem;
-  color: #1E3A8A;
-  margin-bottom: 0.75rem;
-  font-weight: 600;
-}
-
-.empty-state p {
-  color: #64748B;
-  font-size: 1.05rem;
-  max-width: 400px;
-  line-height: 1.5;
-}
-
-/* Responsive Design */
-@media (max-width: 1200px) {
-  .masalar-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  }
-  
-  .title-section h1 {
-    font-size: 2.2rem;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
+/* --- RESPONSIVE --- */
 @media (max-width: 768px) {
-  .masalar-container {
-    padding: 0;
-    margin: 0;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  .masalar-container .page-header,
-  .masalar-container .filters-section,
-  .masalar-container .stats-grid,
-  .masalar-container .masalar-grid,
-  .masalar-container .empty-state,
-  .masalar-container .loading-container {
-    max-width: 100%;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-  
-  .page-header {
-    margin: 0 0 1rem 0;
-  }
-  
-  .header-content {
-    flex-direction: column;
-    text-align: center;
-    padding: 1rem;
-    border-radius: 12px;
-  }
-  
-  .title-section h1 {
-    font-size: 1.6rem;
-    line-height: 1.3;
-    justify-content: center;
-  }
-  
-  .title-section h1 .material-icons {
-    font-size: 1.6rem;
-  }
-  
-  .title-section p {
-    text-align: center;
-  }
-  
-  .filters-section {
-    margin: 0.75rem;
-    padding: 1rem;
-    border-radius: 12px;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-    margin: 0.75rem;
-    gap: 0.75rem;
-  }
-  
-  .masalar-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 0.75rem;
-    margin: 0.75rem;
-    width: calc(100% - 1.5rem);
-  }
-  
-  .masa-content {
-    padding: 0.75rem;
-  }
-  
-  .masa-icon .material-icons {
-    font-size: 1.75rem;
-  }
-  
-  .masa-name {
-    font-size: 0.85rem;
-  }
-  
-  .masa-status-icon {
-    width: 28px;
-    height: 28px;
-  }
-  
-  .masa-status-icon .material-icons {
-    font-size: 16px;
-  }
-  
-  .empty-state {
-    margin: 0.75rem;
-    padding: 2rem 1rem;
-  }
-  
-  .loading-container {
-    margin: 0.75rem;
-    padding: 2rem 1rem;
-  }
-  
-  .error-message {
-    margin: 0.75rem;
-  }
+  .masalar-container { padding: 10px; }
+  .masalar-header-content { padding: 1rem 1.25rem; flex-direction: column; text-align: center; }
+  .masalar-header-left { flex-direction: column; }
+  .masalar-header-icon { font-size: 2rem; padding: 8px; }
+  .masalar-header-left h1 { font-size: 1.25rem; }
+  .masalar-stats { grid-template-columns: repeat(2, 1fr); }
+  .masalar-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; }
+  .masa-durum-icon { font-size: 1.5rem; }
+  .masa-adi { font-size: 0.8rem; }
 }
 
 @media (max-width: 480px) {
-  .masalar-container {
-    padding: 0.5rem;
-  }
-  
-  .header-content {
-    padding: 1rem;
-  }
-  
-  .title-section h1 {
-    font-size: 1.5rem;
-  }
-  
-  .title-section p {
-    font-size: 0.9rem;
-  }
-  
-  .masalar-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 0.5rem;
-    margin: 0.5rem;
-    width: calc(100% - 1rem);
-  }
-  
-  .masa-content {
-    padding: 0.5rem;
-  }
-  
-  .masa-icon .material-icons {
-    font-size: 1.5rem;
-  }
-  
-  .masa-name {
-    font-size: 0.8rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .masa-status-icon {
-    width: 24px;
-    height: 24px;
-  }
-  
-  .masa-status-icon .material-icons {
-    font-size: 14px;
-  }
-  
-  .stat-card {
-    flex-direction: column;
-    text-align: center;
-    padding: 0.9rem; /* tighter on very small screens */
-  }
-  
-  .stat-icon {
-    width: 44px;
-    height: 44px;
-    margin-bottom: 0.5rem;
-  }
-  
-  .stat-icon .material-icons {
-    font-size: 1.35rem;
-  }
-  
-  .stat-number {
-    font-size: 1.45rem;
-  }
-}
-
-/* Extra-narrow phones like 390px width */
-@media (max-width: 400px) {
-  .header-content { padding: 0.75rem; }
-  .filters-section { margin: 0.5rem; padding: 0.75rem; }
-  .stats-grid { margin: 0.5rem; gap: 0.5rem; }
-  .empty-state { margin: 0.5rem; padding: 1.5rem 0.75rem; }
-  .loading-container { margin: 0.5rem; padding: 1.5rem 0.75rem; }
-  .title-section h1 { font-size: 1.4rem; }
+  .masalar-stats { grid-template-columns: repeat(2, 1fr); }
+  .masalar-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+  .masa-body { padding: 0.5rem; }
+  .masa-durum-icon { font-size: 1.3rem; }
+  .masa-adi { font-size: 0.75rem; }
+  .masa-durum-badge { font-size: 0.6rem; padding: 1px 6px; }
 }

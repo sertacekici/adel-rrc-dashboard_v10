@@ -166,14 +166,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
   const raporMenuItems = [
     {
-      title: 'Genel Rapor',
-      path: '/genel-rapor',
-      icon: 'analytics',
-    },
-    {
       title: 'İptal Raporları',
       path: '/iptal-raporlari',
       icon: 'block',
+    },
+    {
+      title: 'Ciro & Analiz',
+      path: '/ciro-rapor',
+      icon: 'insights',
     },
   ];
 

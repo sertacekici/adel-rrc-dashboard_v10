@@ -1,0 +1,838 @@
+/* ═══════════════════════════════════════════════════
+   CiroRaporPage - Ciro & Raporlama Dashboard
+   ═══════════════════════════════════════════════════ */
+
+.ciro-rapor-container {
+  padding: 14px 16px;
+  margin: 0;
+  background: #1e3884 !important;
+  min-height: 100vh;
+}
+
+/* ─── HEADER ───────────────────────────────────── */
+.ciro-rapor-container .page-header {
+  margin-bottom: 1.5rem;
+}
+
+.ciro-rapor-container .header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(25px);
+  padding: 1.5rem 2rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ciro-rapor-container .header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ciro-rapor-container .header-icon {
+  font-size: 2.5rem;
+  color: #60A5FA;
+  background: rgba(96, 165, 250, 0.15);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.ciro-rapor-container .header-left h1 {
+  color: #F8FAFC;
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.ciro-rapor-container .header-left p {
+  color: #B0BEC5;
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+}
+
+/* ─── FİLTRELER ────────────────────────────────── */
+.ciro-rapor-container .filter-section {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ciro-rapor-container .filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ciro-rapor-container .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ciro-rapor-container .filter-group label {
+  color: #CBD5E1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ciro-rapor-container .filter-group select,
+.ciro-rapor-container .filter-group input[type="date"],
+.ciro-rapor-container .filter-group input[type="time"] {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #F1F5F9;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  min-width: 160px;
+  transition: all 0.2s;
+}
+
+.ciro-rapor-container .filter-group select:focus,
+.ciro-rapor-container .filter-group input[type="date"]:focus,
+.ciro-rapor-container .filter-group input[type="time"]:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.ciro-rapor-container .filter-group select option {
+  background: #1E293B;
+  color: #F1F5F9;
+}
+
+.ciro-rapor-container .filter-action {
+  justify-content: flex-end;
+}
+
+.ciro-rapor-container .btn-fetch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  color: #FFFFFF;
+  border: 2px solid rgba(96, 165, 250, 0.5);
+  padding: 0.6rem 1.5rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.3px;
+}
+
+.ciro-rapor-container .btn-fetch:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+  background: linear-gradient(135deg, #60A5FA, #2563EB);
+  border-color: rgba(96, 165, 250, 0.8);
+}
+
+.ciro-rapor-container .btn-fetch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ciro-rapor-container .btn-fetch .material-icons {
+  font-size: 1.1rem;
+}
+
+/* ─── TAB NAVİGASYON ──────────────────────────── */
+.ciro-rapor-container .tab-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 0.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ciro-rapor-container .tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: #CBD5E1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.65rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.ciro-rapor-container .tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #F1F5F9;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ciro-rapor-container .tab-btn.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(37, 99, 235, 0.25));
+  color: #93C5FD;
+  font-weight: 700;
+  border: 1.5px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.ciro-rapor-container .tab-btn .material-icons {
+  font-size: 1.1rem;
+}
+
+/* ─── YÜKLEME / HATA / BOŞ ────────────────────── */
+.ciro-rapor-container .loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  margin: 2rem auto;
+  max-width: 450px;
+}
+
+.ciro-rapor-container .loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(59, 130, 246, 0.15);
+  border-left: 4px solid #3B82F6;
+  border-radius: 50%;
+  animation: ciro-spin 1s linear infinite;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes ciro-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.ciro-rapor-container .loading-container p {
+  color: #1E3A8A;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.ciro-rapor-container .error-container,
+.ciro-rapor-container .empty-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  margin: 1rem 0;
+}
+
+.ciro-rapor-container .error-container {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #FCA5A5;
+}
+
+.ciro-rapor-container .empty-container {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #93C5FD;
+}
+
+.ciro-rapor-container .error-container .material-icons {
+  font-size: 1.5rem;
+  color: #EF4444;
+}
+
+.ciro-rapor-container .empty-container .material-icons {
+  font-size: 1.5rem;
+  color: #3B82F6;
+}
+
+/* ─── ÖZET KARTLAR ─────────────────────────────── */
+.ciro-rapor-container .summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.ciro-rapor-container .summary-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ciro-rapor-container .summary-card:hover {
+  transform: translateY(-2px);
+}
+
+.ciro-rapor-container .card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.ciro-rapor-container .card-icon .material-icons {
+  font-size: 1.5rem;
+}
+
+.ciro-rapor-container .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ciro-rapor-container .card-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748B;
+}
+
+.ciro-rapor-container .card-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: visible;
+  color: #1E293B;
+}
+
+.ciro-rapor-container .card-sub {
+  font-size: 0.72rem;
+  color: #94A3B8;
+}
+
+/* Kart Renkleri - İkon arka planları */
+.ciro-rapor-container .card-green .card-icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+}
+
+.ciro-rapor-container .card-blue .card-icon {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3B82F6;
+}
+
+.ciro-rapor-container .card-purple .card-icon {
+  background: rgba(139, 92, 246, 0.15);
+  color: #8B5CF6;
+}
+
+.ciro-rapor-container .card-red .card-icon {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+}
+
+.ciro-rapor-container .card-orange .card-icon {
+  background: rgba(245, 158, 11, 0.15);
+  color: #F59E0B;
+}
+
+/* ─── KAYNAK FİLTRE ────────────────────────────── */
+.ciro-rapor-container .kaynak-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.ciro-rapor-container .kaynak-filter-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+}
+
+.ciro-rapor-container .kaynak-filter-buttons {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.ciro-rapor-container .kaynak-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #CBD5E1;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ciro-rapor-container .kaynak-btn .material-icons {
+  font-size: 1rem;
+}
+
+.ciro-rapor-container .kaynak-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.ciro-rapor-container .kaynak-btn.active {
+  background: #3B82F6;
+  border-color: #3B82F6;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Kaynak Kırılım Kartları */
+.ciro-rapor-container .kaynak-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ciro-rapor-container .kaynak-card {
+  background: #FFFFFF;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #3B82F6;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.ciro-rapor-container .kaynak-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ciro-rapor-container .kaynak-ciro {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.ciro-rapor-container .kaynak-adet {
+  font-size: 0.7rem;
+  color: #94A3B8;
+}
+
+.ciro-rapor-container .badge-blue {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563EB;
+}
+
+.ciro-rapor-container .badge-gray {
+  background: rgba(100, 116, 139, 0.15);
+  color: #475569;
+}
+
+/* ─── GRAFİKLER ────────────────────────────────── */
+.ciro-rapor-container .charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.ciro-rapor-container .chart-card {
+  background: #FFFFFF;
+  border-radius: 14px;
+  padding: 1.5rem;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ciro-rapor-container .chart-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.ciro-rapor-container .chart-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #1E293B;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 1.25rem;
+}
+
+.ciro-rapor-container .chart-card h3 .material-icons {
+  font-size: 1.2rem;
+  color: #3B82F6;
+}
+
+.ciro-rapor-container .custom-tooltip {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.ciro-rapor-container .tooltip-label {
+  color: #1E293B;
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin: 0 0 4px;
+}
+
+.ciro-rapor-container .custom-tooltip p {
+  margin: 2px 0;
+  font-size: 0.78rem;
+  color: #334155;
+}
+
+.ciro-rapor-container .no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #CBD5E1;
+  font-size: 0.9rem;
+}
+
+/* Pie chart legend list */
+.ciro-rapor-container .pie-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.5rem 0;
+  border-top: 1px solid #E2E8F0;
+  margin-top: 0.75rem;
+}
+
+.ciro-rapor-container .pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.ciro-rapor-container .pie-legend-item:hover {
+  background: #F1F5F9;
+}
+
+.ciro-rapor-container .pie-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ciro-rapor-container .pie-legend-name {
+  flex: 1;
+  font-size: 0.8rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.ciro-rapor-container .pie-legend-value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1E293B;
+  white-space: nowrap;
+}
+
+/* ─── TABLOLAR ─────────────────────────────────── */
+.ciro-rapor-container .table-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(15px);
+  border-radius: 14px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1.25rem;
+}
+
+.ciro-rapor-container .table-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #E2E8F0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.ciro-rapor-container .table-card h3 .material-icons {
+  font-size: 1.2rem;
+  color: #60A5FA;
+}
+
+.ciro-rapor-container .table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ciro-rapor-container table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.ciro-rapor-container table thead th {
+  background: rgba(255, 255, 255, 0.06);
+  color: #B0BEC5;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ciro-rapor-container table tbody td {
+  padding: 0.65rem 1rem;
+  color: #CBD5E1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+}
+
+.ciro-rapor-container table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ciro-rapor-container .text-right {
+  text-align: right;
+}
+
+.ciro-rapor-container .text-center {
+  text-align: center;
+}
+
+.ciro-rapor-container .bold {
+  font-weight: 600;
+  color: #F1F5F9;
+}
+
+.ciro-rapor-container .mono {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.78rem;
+  color: #818CF8;
+}
+
+/* Badge */
+.ciro-rapor-container .badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.ciro-rapor-container .badge-green {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6EE7B7;
+}
+
+.ciro-rapor-container .badge-blue {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93C5FD;
+}
+
+.ciro-rapor-container .badge-orange {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FCD34D;
+}
+
+/* ─── ÖDEME TİPLERİ GRID ──────────────────────── */
+.ciro-rapor-container .payment-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.ciro-rapor-container .payment-type-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-left: 3px solid;
+  transition: transform 0.2s;
+}
+
+.ciro-rapor-container .payment-type-card:hover {
+  transform: translateY(-2px);
+}
+
+.ciro-rapor-container .payment-label {
+  font-size: 0.75rem;
+  color: #CBD5E1;
+  font-weight: 500;
+}
+
+.ciro-rapor-container .payment-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #F1F5F9;
+}
+
+/* ─── MASA GRID ────────────────────────────────── */
+.ciro-rapor-container .masa-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.ciro-rapor-container .masa-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 1rem;
+  border-radius: 12px;
+  text-align: center;
+  transition: transform 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ciro-rapor-container .masa-card:hover {
+  transform: translateY(-2px);
+}
+
+.ciro-rapor-container .masa-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #F1F5F9;
+}
+
+.ciro-rapor-container .masa-status {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.ciro-rapor-container .masa-bos {
+  background: rgba(16, 185, 129, 0.12);
+}
+.ciro-rapor-container .masa-bos .masa-status {
+  color: #6EE7B7;
+}
+
+.ciro-rapor-container .masa-dolu {
+  background: rgba(239, 68, 68, 0.12);
+}
+.ciro-rapor-container .masa-dolu .masa-status {
+  color: #FCA5A5;
+}
+
+.ciro-rapor-container .masa-rezerve {
+  background: rgba(245, 158, 11, 0.12);
+}
+.ciro-rapor-container .masa-rezerve .masa-status {
+  color: #FCD34D;
+}
+
+/* ─── MOBİL UYUMLULUK ─────────────────────────── */
+@media (max-width: 768px) {
+  .ciro-rapor-container {
+    padding: 12px;
+  }
+
+  .ciro-rapor-container .header-content {
+    padding: 1rem 1.25rem;
+  }
+
+  .ciro-rapor-container .header-icon {
+    font-size: 1.8rem;
+    padding: 8px;
+  }
+
+  .ciro-rapor-container .header-left h1 {
+    font-size: 1.1rem;
+  }
+
+  .ciro-rapor-container .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ciro-rapor-container .filter-group select,
+  .ciro-rapor-container .filter-group input[type="date"],
+  .ciro-rapor-container .filter-group input[type="time"] {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .ciro-rapor-container .tab-nav {
+    gap: 0.25rem;
+    padding: 0.35rem;
+  }
+
+  .ciro-rapor-container .tab-btn {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .ciro-rapor-container .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .ciro-rapor-container .summary-card {
+    padding: 0.75rem;
+  }
+
+  .ciro-rapor-container .card-value {
+    font-size: 0.95rem;
+  }
+
+  .ciro-rapor-container .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ciro-rapor-container .masa-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .ciro-rapor-container .payment-types-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .ciro-rapor-container .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ciro-rapor-container .tab-btn .material-icons {
+    display: none;
+  }
+}

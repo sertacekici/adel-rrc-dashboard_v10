@@ -1,454 +1,325 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import AdisyonDetailModal from '../components/AdisyonDetailModal';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend
+} from 'recharts';
 import './MasalarPage.css';
 
+const DURUM_MAP = {
+  0: { label: 'Boş', color: 'bos', icon: 'event_seat', gradient: '#64748B' },
+  1: { label: 'Dolu', color: 'dolu', icon: 'restaurant', gradient: '#10B981' },
+  2: { label: 'Ödeme Bekliyor', color: 'odeme', icon: 'payments', gradient: '#F59E0B' },
+};
+
+const getDurum = (durumid) => DURUM_MAP[Number(durumid)] || DURUM_MAP[0];
+
 const MasalarPage = () => {
+  const { currentUser } = useAuth();
   const [masalar, setMasalar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSube, setSelectedSube] = useState('');
   const [subeler, setSubeler] = useState([]);
+  const [filterDurum, setFilterDurum] = useState('all'); // all | 0 | 1 | 2
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAdisyon, setSelectedAdisyon] = useState(null);
   const [selectedMasa, setSelectedMasa] = useState(null);
-  const { currentUser } = useAuth();
 
   // Şubeleri getir
   useEffect(() => {
-    const getSubeler = async () => {
+    if (!currentUser) return;
+    const fetchSubeler = async () => {
       try {
-        console.log('currentUser:', currentUser);
-        console.log('currentUser role:', currentUser?.role);
-        console.log('currentUser subeId:', currentUser?.subeId);
-        
-        let subeQuery;
-        
-        if (currentUser?.role === 'sirket_yoneticisi') {
-          // Şirket yöneticisi tüm şubeleri görebilir
-          console.log('Şirket yöneticisi - tüm şubeleri getiriliyor');
-          subeQuery = query(collection(db, 'subeler'));
-        } else if (currentUser?.subeId) {
-          // Diğer kullanıcılar sadece kendi şubelerini görebilir
-          console.log('Şube kullanıcısı - sadece kendi şubesini getiriliyor:', currentUser.subeId);
-          subeQuery = query(
-            collection(db, 'subeler'), 
-            where('__name__', '==', currentUser.subeId)
-          );
-        } else {
-          console.log('Kullanıcı rolü bulunamadı veya şube ID yok');
-          return;
-        }
+        let q;
+        if (currentUser.role === 'sirket_yoneticisi') {
+          q = query(collection(db, 'subeler'));
+        } else if (currentUser.subeId) {
+          q = query(collection(db, 'subeler'), where('__name__', '==', currentUser.subeId));
+        } else return;
 
-        if (subeQuery) {
-          console.log('Şubeler sorgusu oluşturuldu, Firestore\'dan veri bekleniyor...');
-          const unsubscribe = onSnapshot(subeQuery, (snapshot) => {
-            console.log('Şubeler snapshot alındı, doküman sayısı:', snapshot.docs.length);
-            const subeList = snapshot.docs.map(doc => {
-              const data = { id: doc.id, ...doc.data() };
-              console.log('Şube verisi:', data);
-              return data;
-            });
-            setSubeler(subeList);
-            console.log('Şubeler state\'e kaydedildi:', subeList);
-            
-            // Eğer kullanıcı şirket yöneticisi değilse, otomatik olarak kendi şubesini seç
-            if (currentUser?.role !== 'sirket_yoneticisi' && subeList.length > 0) {
-              console.log('Otomatik şube seçimi yapılıyor:', subeList[0].id);
-              setSelectedSube(subeList[0].id);
-            }
-          }, (error) => {
-            console.error('Şubeler alınırken hata:', error);
-            setError('Şubeler yüklenirken bir hata oluştu: ' + error.message);
-          });
-
-          return () => unsubscribe();
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        list.sort((a, b) => (a.subeAdi || a.ad || '').localeCompare(b.subeAdi || b.ad || ''));
+        setSubeler(list);
+        if (list.length > 0 && !selectedSube) {
+          setSelectedSube(list[0].id);
         }
       } catch (err) {
-        console.error('Şubeler alınırken hata:', err);
-        setError('Şubeler yüklenirken bir hata oluştu: ' + err.message);
+        setError('Şubeler yüklenirken hata: ' + err.message);
       }
     };
-
-    if (currentUser) {
-      console.log('currentUser mevcut, şubeler yükleniyor...');
-      getSubeler();
-    } else {
-      console.log('currentUser henüz yüklenmedi');
-    }
+    fetchSubeler();
   }, [currentUser]);
 
-  // Masaları getir
+  // Masaları getir (realtime)
   useEffect(() => {
     if (!selectedSube) {
       setMasalar([]);
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
 
-    try {
-      console.log('Masalar sorgulanıyor, selectedSube:', selectedSube);
-      
-      // Önce orderBy ile deneyelim, hata alırsak sadece where kullanacağız
-      const masalarQuery = query(
-        collection(db, 'Masalar'),
-        where('rrc_restaurant_id', '==', selectedSube),
-        orderBy('masa_id', 'asc')
-      );
+    const q = query(
+      collection(db, 'Masalar'),
+      where('rrc_restaurant_id', '==', selectedSube)
+    );
 
-      const unsubscribe = onSnapshot(masalarQuery, 
-        (snapshot) => {
-          console.log('Masalar snapshot alındı, doküman sayısı:', snapshot.docs.length);
-          const masaList = snapshot.docs.map(doc => {
-            const data = { id: doc.id, ...doc.data() };
-            console.log('Masa verisi:', data);
-            console.log('masa_durum değeri:', data.masa_durum, '(0: Kapalı, 1: Açık, 2: Ödeme Bekleniyor)');
-            return data;
-          });
-          
-          // Masa ID'ye göre sıralama (sayısal sıralama)
-          const sortedMasaList = masaList.sort((a, b) => {
-            const masaIdA = Number(a.masa_id) || 0;
-            const masaIdB = Number(b.masa_id) || 0;
-            return masaIdA - masaIdB;
-          });
-          
-          console.log('Sıralanmış masa listesi:', sortedMasaList);
-          setMasalar(sortedMasaList);
-          setLoading(false);
-        },
-        (err) => {
-          console.error('Masalar alınırken hata:', err);
-          
-          // Eğer index hatası varsa, orderBy olmadan tekrar deneyelim
-          if (err.code === 'failed-precondition' || err.message.includes('index')) {
-            console.log('Index hatası, orderBy olmadan tekrar deneniyor...');
-            
-            const fallbackQuery = query(
-              collection(db, 'Masalar'),
-              where('rrc_restaurant_id', '==', selectedSube)
-            );
-            
-            const fallbackUnsubscribe = onSnapshot(fallbackQuery,
-              (snapshot) => {
-                console.log('Fallback sorgu - Masalar snapshot alındı, doküman sayısı:', snapshot.docs.length);
-                const masaList = snapshot.docs.map(doc => {
-                  const data = { id: doc.id, ...doc.data() };
-                  return data;
-                });
-                
-                // Client-side sıralama
-                const sortedMasaList = masaList.sort((a, b) => {
-                  const masaIdA = Number(a.masa_id) || 0;
-                  const masaIdB = Number(b.masa_id) || 0;
-                  return masaIdA - masaIdB;
-                });
-                
-                setMasalar(sortedMasaList);
-                setLoading(false);
-              },
-              (fallbackErr) => {
-                console.error('Fallback sorgu hatası:', fallbackErr);
-                setError('Masalar yüklenirken bir hata oluştu: ' + fallbackErr.message);
-                setLoading(false);
-              }
-            );
-            
-            return () => fallbackUnsubscribe();
-          } else {
-            setError('Masalar yüklenirken bir hata oluştu: ' + err.message);
-            setLoading(false);
-          }
-        }
-      );
+    const unsubscribe = onSnapshot(q,
+      (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // masaadi'ye göre doğal sırala
+        list.sort((a, b) => {
+          const na = a.masaadi || a.masa_adi || '';
+          const nb = b.masaadi || b.masa_adi || '';
+          return na.localeCompare(nb, 'tr', { numeric: true });
+        });
+        setMasalar(list);
+        setLoading(false);
+      },
+      (err) => {
+        setError('Masalar yüklenirken hata: ' + err.message);
+        setLoading(false);
+      }
+    );
 
-      return () => unsubscribe();
-    } catch (err) {
-      console.error('Masalar sorgulanırken hata:', err);
-      setError('Masalar sorgulanırken bir hata oluştu: ' + err.message);
-      setLoading(false);
-    }
+    return () => unsubscribe();
   }, [selectedSube]);
 
-  // Masa durumu için renk belirleme
-  const getMasaDurumColor = (durum) => {
-    const durumNum = Number(durum);
-    switch (durumNum) {
-      case 0:
-        return 'secondary'; // Masa kapalı - gri
-      case 1:
-        return 'success'; // Masa açık - yeşil
-      case 2:
-        return 'warning'; // Ödeme bekleniyor - sarı
-      default:
-        return 'secondary';
-    }
-  };
-
-  // Masa durumu için ikon belirleme
-  const getMasaDurumIcon = (durum) => {
-    const durumNum = Number(durum);
-    switch (durumNum) {
-      case 0:
-        return 'lock'; // Masa kapalı
-      case 1:
-        return 'check_circle'; // Masa açık
-      case 2:
-        return 'schedule'; // Ödeme bekleniyor
-      default:
-        return 'help_outline';
-    }
-  };
-
-  // Masa durumu için Türkçe metin (tooltip için)
-  const getMasaDurumText = (durum) => {
-    const durumNum = Number(durum);
-    switch (durumNum) {
-      case 0:
-        return 'Kapalı';
-      case 1:
-        return 'Açık';
-      case 2:
-        return 'Ödeme Bekleniyor';
-      default:
-        return durum !== null && durum !== undefined ? String(durum) : 'Bilinmiyor';
-    }
-  };
-
-  // Masaya tıklandığında adisyonu getir ve modal aç
+  // Masaya tıklayınca adisyonu bul
   const handleMasaClick = async (masa) => {
-    console.log('Masa tıklandı:', masa);
-    console.log('Selected Sube:', selectedSube);
-    console.log('Masa adscode:', masa.masa_adscode);
-    
-    // masa_adscode yoksa işlem yapma
-    if (!masa.masa_adscode) {
-      console.log('Bu masanın adscode\'u yok');
-      return;
-    }
-    
+    const adsCode = masa.ads_code || masa.masa_adscode;
+    if (!adsCode) return; // Adisyon kodu yoksa tıklama yok
+
     try {
-      // masa_adscode ile adisyoncode eşleşen adisyonu bul
-      const adisyonQuery = query(
-        collection(db, 'Adisyonlar'),
+      // SalonAdisyonlari'ndan adisyonu bul
+      const q = query(
+        collection(db, 'SalonAdisyonlari'),
         where('rrc_restaurant_id', '==', selectedSube),
-        where('adisyoncode', '==', masa.masa_adscode)
+        where('ad_code', '==', adsCode)
       );
-      
-      const querySnapshot = await getDocs(adisyonQuery);
-      console.log('Adisyon sorgusu sonucu:', querySnapshot.docs.length, 'adisyon bulundu');
-      
-      if (!querySnapshot.empty) {
-        const adisyon = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
-        console.log('Bulunan adisyon:', adisyon);
+      const snap = await getDocs(q);
+
+      if (!snap.empty) {
+        const doc = snap.docs[0];
+        const data = doc.data();
+        // AdisyonDetailModal'ın beklediği formata normalize et
+        const adisyon = {
+          id: doc.id,
+          ...data,
+          adisyoncode: data.ad_code,
+          acilis: data.ad_open,
+          atop: data.ad_total,
+          _kaynak: 'masa',
+          siparisnerden: 88,
+        };
         setSelectedAdisyon(adisyon);
         setSelectedMasa(masa);
         setIsModalOpen(true);
-      } else {
-        console.log('Bu masa için adisyon bulunamadı. Aranan adisyoncode:', masa.masa_adscode);
-        
-        // Debug için tüm adisyonları listeleyelim
-        const allAdisyonQuery = query(
-          collection(db, 'Adisyonlar'),
-          where('rrc_restaurant_id', '==', selectedSube)
-        );
-        const allQuerySnapshot = await getDocs(allAdisyonQuery);
-        const allAdisyonlar = allQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('Şubedeki tüm adisyonlar:', allAdisyonlar);
-        console.log('Adisyon kodları:', allAdisyonlar.map(a => a.adisyoncode));
       }
     } catch (err) {
-      console.error('Masa adisyonu getirilirken hata:', err);
-      setError('Masa bilgileri alınırken bir hata oluştu: ' + err.message);
+      setError('Adisyon bilgisi alınırken hata: ' + err.message);
     }
   };
 
-  // Modal'ı kapat
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedAdisyon(null);
     setSelectedMasa(null);
   };
 
-  if (loading && !selectedSube) {
-    return (
-      <div className="masalar-container">
-        <div className="page-header">
-          <div className="header-content">
-            <div className="title-section">
-              <h1>
-                <span className="material-icons">table_restaurant</span>
-                Masalar
-              </h1>
-            </div>
-          </div>
-        </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Şubeler yükleniyor...</p>
-        </div>
-      </div>
-    );
-  }
+  // Filtrelenmiş masalar
+  const filteredMasalar = filterDurum === 'all'
+    ? masalar
+    : masalar.filter(m => Number(m.durumid) === Number(filterDurum));
+
+  // İstatistikler
+  const stats = {
+    toplam: masalar.length,
+    bos: masalar.filter(m => Number(m.durumid) === 0).length,
+    dolu: masalar.filter(m => Number(m.durumid) === 1).length,
+    odeme: masalar.filter(m => Number(m.durumid) === 2).length,
+  };
+
+  // Pie chart data
+  const pieData = [
+    stats.bos > 0 && { name: 'Boş', value: stats.bos, color: '#64748B' },
+    stats.dolu > 0 && { name: 'Dolu', value: stats.dolu, color: '#10B981' },
+    stats.odeme > 0 && { name: 'Ödeme Bekliyor', value: stats.odeme, color: '#F59E0B' },
+  ].filter(Boolean);
 
   return (
     <div className="masalar-container">
-      <div className="page-header">
-        <div className="header-content">
-          <div className="title-section">
-            <h1>
-              <span className="material-icons">table_restaurant</span>
-              Masalar
-            </h1>
-            <p>Şube bazlı masa durumlarını gerçek zamanlı olarak görüntüleyin</p>
+      {/* HEADER */}
+      <div className="masalar-header">
+        <div className="masalar-header-content">
+          <div className="masalar-header-left">
+            <span className="material-icons masalar-header-icon">table_restaurant</span>
+            <div>
+              <h1>Masalar</h1>
+              <p>Şube bazlı masa durumlarını görüntüleyin</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Şube Seçici */}
-      <div className="filters-section">
-        <div className="filter-group">
-          <label htmlFor="sube-select">Şube Seçin:</label>
-          <select
-            id="sube-select"
-            value={selectedSube}
-            onChange={(e) => setSelectedSube(e.target.value)}
-            disabled={currentUser?.role !== 'sirket_yoneticisi'}
-          >
-            <option value="">Şube seçin...</option>
-            {subeler.map((sube) => (
-              <option key={sube.id} value={sube.id}>
-                {sube.subeAdi} (ID: {sube.id})
-              </option>
-            ))}
-          </select>
+      {/* FİLTRELER */}
+      <div className="masalar-filter-section">
+        <div className="masalar-filter-row">
+          {currentUser?.role === 'sirket_yoneticisi' && (
+            <div className="masalar-filter-group">
+              <label>Şube</label>
+              <select
+                value={selectedSube}
+                onChange={e => setSelectedSube(e.target.value)}
+              >
+                <option value="">Şube Seçin</option>
+                {subeler.map(s => (
+                  <option key={s.id} value={s.id}>{s.subeAdi || s.ad}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="masalar-filter-group">
+            <label>Durum</label>
+            <select value={filterDurum} onChange={e => setFilterDurum(e.target.value)}>
+              <option value="all">Tümü</option>
+              <option value="0">Boş</option>
+              <option value="1">Dolu</option>
+              <option value="2">Ödeme Bekliyor</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="error-message">
+        <div className="masalar-error">
           <span className="material-icons">error_outline</span>
-          {error}
+          <p>{error}</p>
         </div>
       )}
 
       {!selectedSube && !loading && (
-        <div className="empty-state">
+        <div className="masalar-empty">
           <span className="material-icons">table_restaurant</span>
-          <h3>Şube Seçin</h3>
-          <p>Masaları görüntülemek için yukarıdan bir şube seçin.</p>
+          <p>Masaları görüntülemek için bir şube seçin</p>
         </div>
       )}
 
       {selectedSube && loading && (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
+        <div className="masalar-loading">
+          <div className="masalar-spinner"></div>
           <p>Masalar yükleniyor...</p>
-        </div>
-      )}
-
-      {selectedSube && !loading && masalar.length === 0 && !error && (
-        <div className="empty-state">
-          <span className="material-icons">table_restaurant</span>
-          <h3>Masa Bulunamadı</h3>
-          <p>Seçilen şubede henüz masa bulunmuyor.</p>
         </div>
       )}
 
       {selectedSube && !loading && masalar.length > 0 && (
         <>
-          {/* İstatistikler */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon secondary">
-                <span className="material-icons">close</span>
+          {/* İSTATİSTİKLER */}
+          <div className="masalar-stats">
+            <div className="masalar-stat-card" onClick={() => setFilterDurum('all')}>
+              <div className="masalar-stat-icon stat-total">
+                <span className="material-icons">grid_view</span>
               </div>
-              <div className="stat-info">
-                <div className="stat-number">
-                  {masalar.filter(masa => Number(masa.masa_durum) === 0).length}
-                </div>
-                <div className="stat-label">Kapalı Masalar</div>
+              <div className="masalar-stat-body">
+                <span className="masalar-stat-label">Toplam</span>
+                <span className="masalar-stat-value">{stats.toplam}</span>
               </div>
             </div>
-            
-            <div className="stat-card">
-              <div className="stat-icon success">
-                <span className="material-icons">check_circle</span>
+            <div className="masalar-stat-card" onClick={() => setFilterDurum('0')}>
+              <div className="masalar-stat-icon stat-bos">
+                <span className="material-icons">event_seat</span>
               </div>
-              <div className="stat-info">
-                <div className="stat-number">
-                  {masalar.filter(masa => Number(masa.masa_durum) === 1).length}
-                </div>
-                <div className="stat-label">Açık Masalar</div>
+              <div className="masalar-stat-body">
+                <span className="masalar-stat-label">Boş</span>
+                <span className="masalar-stat-value">{stats.bos}</span>
               </div>
             </div>
-
-            <div className="stat-card">
-              <div className="stat-icon warning">
-                <span className="material-icons">payment</span>
+            <div className="masalar-stat-card" onClick={() => setFilterDurum('1')}>
+              <div className="masalar-stat-icon stat-dolu">
+                <span className="material-icons">restaurant</span>
               </div>
-              <div className="stat-info">
-                <div className="stat-number">
-                  {masalar.filter(masa => Number(masa.masa_durum) === 2).length}
-                </div>
-                <div className="stat-label">Ödeme Bekleyen</div>
+              <div className="masalar-stat-body">
+                <span className="masalar-stat-label">Dolu</span>
+                <span className="masalar-stat-value">{stats.dolu}</span>
               </div>
             </div>
-
-            <div className="stat-card">
-              <div className="stat-icon primary">
-                <span className="material-icons">table_restaurant</span>
+            <div className="masalar-stat-card" onClick={() => setFilterDurum('2')}>
+              <div className="masalar-stat-icon stat-odeme">
+                <span className="material-icons">payments</span>
               </div>
-              <div className="stat-info">
-                <div className="stat-number">{masalar.length}</div>
-                <div className="stat-label">Toplam Masa</div>
+              <div className="masalar-stat-body">
+                <span className="masalar-stat-label">Ödeme Bekliyor</span>
+                <span className="masalar-stat-value">{stats.odeme}</span>
               </div>
             </div>
           </div>
 
-          {/* Masa Listesi */}
-          <div className="masalar-grid">
-            {masalar.map((masa) => (
-              <div 
-                key={masa.id} 
-                className={`masa-card ${getMasaDurumColor(masa.masa_durum)} ${masa.masa_adscode ? 'clickable' : ''}`}
-                onClick={() => {
-                  console.log('Masa kartına tıklandı!', masa);
-                  if (masa.masa_adscode) {
-                    handleMasaClick(masa);
-                  }
-                }}
-                style={{ cursor: masa.masa_adscode ? 'pointer' : 'default' }}
-              >
-                <div className="masa-content">
-                  <div className="masa-icon">
-                    <span className="material-icons">table_restaurant</span>
-                  </div>
-                  <div className="masa-name">
-                    {masa.masa_adi || `Masa ${masa.masa_id}`}
-                  </div>
-                  <div 
-                    className={`masa-status-icon ${getMasaDurumColor(masa.masa_durum)}`}
-                    title={getMasaDurumText(masa.masa_durum)}
+          {/* GRAFİK */}
+          {pieData.length > 1 && (
+            <div className="masalar-chart-card">
+              <h3><span className="material-icons">donut_large</span> Masa Durumu Dağılımı</h3>
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={4}
+                    dataKey="value"
                   >
-                    <span className="material-icons">{getMasaDurumIcon(masa.masa_durum)}</span>
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name) => [`${value} masa`, name]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* MASA GRID */}
+          <div className="masalar-grid">
+            {filteredMasalar.map(masa => {
+              const durum = getDurum(masa.durumid);
+              const hasAdisyon = !!(masa.ads_code || masa.masa_adscode);
+              return (
+                <div
+                  key={masa.id}
+                  className={`masa-card masa-${durum.color} ${hasAdisyon ? 'clickable' : ''}`}
+                  onClick={() => hasAdisyon && handleMasaClick(masa)}
+                >
+                  <div className="masa-top-bar"></div>
+                  <div className="masa-body">
+                    <span className={`material-icons masa-durum-icon`}>{durum.icon}</span>
+                    <span className="masa-adi">{masa.masaadi || masa.masa_adi || 'Masa'}</span>
+                    <span className="masa-durum-badge">{durum.label}</span>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
 
-      {/* Adisyon Detay Modal */}
-      <AdisyonDetailModal 
-        isOpen={isModalOpen} 
-        onClose={closeModal} 
+      {selectedSube && !loading && masalar.length === 0 && !error && (
+        <div className="masalar-empty">
+          <span className="material-icons">table_restaurant</span>
+          <p>Bu şubede henüz masa bulunmuyor</p>
+        </div>
+      )}
+
+      {/* MODAL */}
+      <AdisyonDetailModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
         adisyon={selectedAdisyon}
         masa={selectedMasa}
       />

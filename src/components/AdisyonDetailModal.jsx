@@ -5,13 +5,21 @@ import './AdisyonDetailModal.css';
 
 const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKuryeUzerineAl }) => {
   const [adisyonIcerik, setAdisyonIcerik] = useState([]);
+  const [odemeBilgisi, setOdemeBilgisi] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Modal açıldığında adisyon içeriğini getir
   useEffect(() => {
-    if (isOpen && adisyon?.adisyoncode) {
+    if (isOpen && adisyon) {
       fetchAdisyonIcerik();
+      // Masa adisyonları için MasaOdemeleri'nden ödeme bilgisi çek
+      const isMasa = adisyon._kaynak === 'masa' || Number(adisyon.siparisnerden) === 88;
+      if (isMasa) {
+        fetchMasaOdemeBilgisi();
+      } else {
+        setOdemeBilgisi(null);
+      }
     }
   }, [isOpen, adisyon]);
 
@@ -43,23 +51,95 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
     setError(null);
     
     try {
-      console.log('Adisyon içeriği getiriliyor, adisyoncode:', adisyon.adisyoncode);
-      
-      const icerikQuery = query(
-        collection(db, 'AdisyonIcerik'),
-        where('adisyoncode', '==', adisyon.adisyoncode)
-      );
-      
-      const querySnapshot = await getDocs(icerikQuery);
-      const icerikList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const isMasa = adisyon._kaynak === 'masa' || Number(adisyon.siparisnerden) === 88;
+      let icerikList = [];
+
+      if (!isMasa && adisyon.adisyoncode) {
+        // Paket adisyon → PaketAdisyonIcerik koleksiyonundan çek
+        console.log('PaketAdisyonIcerik sorgulanıyor, adisyoncode:', adisyon.adisyoncode);
+        const q = query(
+          collection(db, 'PaketAdisyonIcerik'),
+          where('adisyoncode', '==', adisyon.adisyoncode)
+        );
+        const snap = await getDocs(q);
+        icerikList = snap.docs.map(doc => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            urunadi: d.urunadi,
+            miktar: Number(d.miktar) || 0,
+            birimfiyat: Number(d.fiyat) || 0,
+            toplam: (Number(d.miktar) || 0) * (Number(d.fiyat) || 0),
+            aciklama: d.aciklama || d.not || '',
+            ...d
+          };
+        });
+      } else if (isMasa) {
+        // Masa adisyon → SalonAdisyonIcerik koleksiyonundan çek
+        // ad_code (adisyoncode olarak normalize edilmiş) ile eşleştir
+        const adCode = adisyon.adisyoncode || adisyon.ad_code;
+        console.log('SalonAdisyonIcerik sorgulanıyor, adisyoncode:', adCode);
+
+        if (adCode) {
+          const q = query(
+            collection(db, 'SalonAdisyonIcerik'),
+            where('adisyoncode', '==', adCode)
+          );
+          const snap = await getDocs(q);
+          icerikList = snap.docs.map(doc => {
+            const d = doc.data();
+            return {
+              id: doc.id,
+              urunadi: d.urunadi,
+              miktar: Number(d.miktar) || 0,
+              birimfiyat: Number(d.fiyati) || Number(d.fiyat) || 0,
+              toplam: (Number(d.miktar) || 0) * (Number(d.fiyati) || Number(d.fiyat) || 0),
+              aciklama: d.aciklama || '',
+              garson: d.garson_name || '',
+              ...d
+            };
+          });
+        }
+      }
       
       console.log('Getirilen adisyon içeriği:', icerikList);
       setAdisyonIcerik(icerikList);
     } catch (err) {
       console.error('Adisyon içeriği getirilirken hata:', err);
+      setError('Adisyon içeriği yüklenirken bir hata oluştu: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Masa adisyonları için MasaOdemeleri koleksiyonundan ödeme bilgisi çek
+  const fetchMasaOdemeBilgisi = async () => {
+    try {
+      // ads_code alanı ile eşleştir (SalonAdisyonlari.ad_code == MasaOdemeleri.ads_code)
+      const adCode = adisyon.adisyoncode || adisyon.ad_code;
+      console.log('MasaOdemeleri sorgulanıyor, ads_code:', adCode);
+
+      if (!adCode) {
+        setOdemeBilgisi(null);
+        return;
+      }
+
+      const q = query(
+        collection(db, 'MasaOdemeleri'),
+        where('ads_code', '==', adCode)
+      );
+      const snap = await getDocs(q);
+      const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      if (docs.length > 0) {
+        console.log('Masa ödeme bilgileri:', docs);
+        // Tüm ödemeleri sakla (birden fazla ödeme olabilir)
+        setOdemeBilgisi(docs);
+      } else {
+        setOdemeBilgisi(null);
+      }
+    } catch (err) {
+      console.error('Masa ödeme bilgisi getirilirken hata:', err);
       setError('Adisyon içeriği yüklenirken bir hata oluştu: ' + err.message);
     } finally {
       setLoading(false);
@@ -234,7 +314,7 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
           <div className="modal-title">
             <span className="material-icons">receipt_long</span>
             <div>
-              <h2>Sipariş #{adisyon?.padsgnum || 'Numara Yok'}</h2>
+              <h2>Sipariş #{adisyon?.padsgnum || adisyon?.ads_no || adisyon?.adisyoncode || 'Numara Yok'}</h2>
             </div>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -242,84 +322,116 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
           </button>
         </div>
 
-        {/* Teslimat Bilgileri - Başlığın Hemen Altında */}
-        {(adisyon?.siparisadres || adisyon?.adres || adisyon?.address || adisyon?.teslimat_adresi || 
-          (adisyon && adisyon.siparisnerden !== 88)) && (
-          <div className="delivery-info-section">
-            <div className="delivery-content">
-              {(adisyon?.siparisadres || adisyon?.adres || adisyon?.address || adisyon?.teslimat_adresi) ? (
-                <div className="address-info enlarged-address">
-                  <div className="address-icon">
-                    <span className="material-icons">location_on</span>
-                  </div>
-                  <div className="address-details">
-                    <span className="address-text">{adisyon.siparisadres || adisyon.adres || adisyon.address || adisyon.teslimat_adresi}</span>
-                  </div>
-                  {hasValidCoordinates(adisyon) && (
-                    <button 
-                      className="btn-map-small" 
-                      onClick={() => {
-                        const lat = adisyon.lat || adisyon.latitude;
-                        const lng = adisyon.lng || adisyon.longitude;
-                        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                        const mapUrl = isMobile 
-                          ? `https://maps.google.com/maps?q=${lat},${lng}&navigate=yes`
-                          : `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-                        window.open(mapUrl, '_blank');
-                      }}
-                      title="Haritada Göster"
-                    >
-                      <span className="material-icons">map</span>
-                    </button>
-                  )}
-                </div>
-              ) : adisyon && adisyon.siparisnerden !== 88 && (
-                <div className="address-info enlarged-address">
-                  <span className="material-icons">location_on</span>
-                  <span className="address-text">Teslimat adresi bilgisi bekleniyor...</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Sipariş Bilgileri */}
-        <div className="order-info-section">
-          <div className="order-info-grid">
-            <div className="info-item date-amount-row">
-              <div className="date-info-container">
-                <span className="material-icons">schedule</span>
-                <div>
-                  <span className="info-label">Tarih</span>
-                  <span className="info-value">{formatDate(adisyon?.tarih)}</span>
-                </div>
-              </div>
-              <div className="amount-info-container">
-                <span className="material-icons">payments</span>
-                <div>
-                  <span className="info-label">Toplam Tutar</span>
-                  <span className="info-value amount">{formatAmount(adisyon?.atop || adisyon?.toplamTutar)}</span>
-                </div>
-              </div>
-            </div>
-            {(adisyon?.odemetipi !== undefined && adisyon?.odemetipi !== null && adisyon?.odemetipi !== '') || 
-             (adisyon?.odemeTipi !== undefined && adisyon?.odemeTipi !== null && adisyon?.odemeTipi !== '') || 
-             (adisyon?.payment_type !== undefined && adisyon?.payment_type !== null && adisyon?.payment_type !== '') ||
-             (adisyon?.odeme_tipi !== undefined && adisyon?.odeme_tipi !== null && adisyon?.odeme_tipi !== '') ? (
-              <div className="info-item">
-                <span className="material-icons">{getOdemeTipi(adisyon.odemetipi || adisyon.odemeTipi || adisyon.payment_type || adisyon.odeme_tipi).icon}</span>
-                <div>
-                  <span className="info-label">Ödeme Tipi</span>
-                  <span className={`info-value payment-${getOdemeTipi(adisyon.odemetipi || adisyon.odemeTipi || adisyon.payment_type || adisyon.odeme_tipi).color}`}>
-                    {getOdemeTipi(adisyon.odemetipi || adisyon.odemeTipi || adisyon.payment_type || adisyon.odeme_tipi).text}
-                  </span>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
         <div className="modal-body">
+          {/* Teslimat Bilgileri */}
+          {(adisyon?.siparisadres || adisyon?.adres || adisyon?.address || adisyon?.teslimat_adresi || 
+            (adisyon && adisyon.siparisnerden !== 88)) && (
+            <div className="delivery-info-section">
+              <div className="delivery-content">
+                {(adisyon?.siparisadres || adisyon?.adres || adisyon?.address || adisyon?.teslimat_adresi) ? (
+                  <div className="address-info enlarged-address">
+                    <div className="address-icon">
+                      <span className="material-icons">location_on</span>
+                    </div>
+                    <div className="address-details">
+                      <span className="address-text">{adisyon.siparisadres || adisyon.adres || adisyon.address || adisyon.teslimat_adresi}</span>
+                    </div>
+                    {hasValidCoordinates(adisyon) && (
+                      <button 
+                        className="btn-map-small" 
+                        onClick={() => {
+                          const lat = adisyon.lat || adisyon.latitude;
+                          const lng = adisyon.lng || adisyon.longitude;
+                          const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                          const mapUrl = isMobile 
+                            ? `https://maps.google.com/maps?q=${lat},${lng}&navigate=yes`
+                            : `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                          window.open(mapUrl, '_blank');
+                        }}
+                        title="Haritada Göster"
+                      >
+                        <span className="material-icons">map</span>
+                      </button>
+                    )}
+                  </div>
+                ) : adisyon && adisyon.siparisnerden !== 88 && (
+                  <div className="address-info enlarged-address">
+                    <span className="material-icons">location_on</span>
+                    <span className="address-text">Teslimat adresi bilgisi bekleniyor...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Sipariş Bilgileri */}
+          <div className="order-info-section">
+            <div className="order-info-grid">
+              <div className="info-item date-amount-row">
+                <div className="date-info-container">
+                  <span className="material-icons">schedule</span>
+                  <div>
+                    <span className="info-label">Tarih</span>
+                    <span className="info-value">{formatDate(adisyon?.acilis || adisyon?.ad_open || adisyon?.tarih)}</span>
+                  </div>
+                </div>
+                <div className="amount-info-container">
+                  <span className="material-icons">payments</span>
+                  <div>
+                    <span className="info-label">Toplam Tutar</span>
+                    <span className="info-value amount">{formatAmount(adisyon?.atop || adisyon?.ad_total || adisyon?.toplamTutar)}</span>
+                  </div>
+                </div>
+              </div>
+              {/* Paket ödeme tipi */}
+              {(adisyon?.odemetipi !== undefined && adisyon?.odemetipi !== null && adisyon?.odemetipi !== '') || 
+               (adisyon?.odemeTipi !== undefined && adisyon?.odemeTipi !== null && adisyon?.odemeTipi !== '') || 
+               (adisyon?.payment_type !== undefined && adisyon?.payment_type !== null && adisyon?.payment_type !== '') ||
+               (adisyon?.odeme_tipi !== undefined && adisyon?.odeme_tipi !== null && adisyon?.odeme_tipi !== '') ? (
+                <div className="info-item">
+                  <span className="material-icons">{getOdemeTipi(adisyon.odemetipi || adisyon.odemeTipi || adisyon.payment_type || adisyon.odeme_tipi).icon}</span>
+                  <div>
+                    <span className="info-label">Ödeme Tipi</span>
+                    <span className={`info-value payment-${getOdemeTipi(adisyon.odemetipi || adisyon.odemeTipi || adisyon.payment_type || adisyon.odeme_tipi).color}`}>
+                      {getOdemeTipi(adisyon.odemetipi || adisyon.odemeTipi || adisyon.payment_type || adisyon.odeme_tipi).text}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Masa Ödeme Bilgileri */}
+          {odemeBilgisi && Array.isArray(odemeBilgisi) && odemeBilgisi.length > 0 && (
+            <div className="odeme-bilgileri-section">
+              <h3>
+                <span className="material-icons">payments</span>
+                Ödeme Bilgileri
+              </h3>
+              <div className="odeme-list">
+                {odemeBilgisi.map((odeme, idx) => (
+                  <div key={odeme.id || idx} className="odeme-item">
+                    <div className="odeme-item-left">
+                      <span className="material-icons">credit_card</span>
+                      <div>
+                        <span className="odeme-sekli">{odeme.odemesekli || 'Bilinmiyor'}</span>
+                        {odeme.masa_no && <span className="odeme-masa">Masa: {odeme.masa_no}</span>}
+                        {odeme.tarih && <span className="odeme-tarih">{formatDate(odeme.tarih)}</span>}
+                      </div>
+                    </div>
+                    <span className="odeme-tutar">{formatAmount(odeme.tutar)}</span>
+                  </div>
+                ))}
+                {odemeBilgisi.length > 1 && (
+                  <div className="odeme-toplam">
+                    <span>Toplam Ödeme</span>
+                    <span className="odeme-tutar">{formatAmount(odemeBilgisi.reduce((t, o) => t + (Number(o.tutar) || 0), 0))}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Adisyon İçeriği */}
           <div className="adisyon-content-section">
             <h3>
@@ -382,8 +494,6 @@ const AdisyonDetailModal = ({ isOpen, onClose, adisyon, masa, isCourier, onKurye
                     </div>
                   );
                 })}
-
-                {/* Genel toplam bölümü kaldırıldı */}
               </div>
             )}
           </div>

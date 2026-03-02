@@ -1,36 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { toDate } from '../utils/dateUtils';
 import AdisyonDetailModal from '../components/AdisyonDetailModal';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from 'recharts';
 import './AdisyonlarPage.css';
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+
+const KAYNAK_MAP = {
+  0: { text: 'Telefon Siparişi', icon: 'phone_in_talk' },
+  1: { text: 'Yemek Sepeti', icon: 'restaurant' },
+  2: { text: 'Getir', icon: 'pedal_bike' },
+  5: { text: 'Trendyol', icon: 'shopping_bag' },
+  8: { text: 'Migros Yemek', icon: 'local_grocery_store' },
+  88: { text: 'Masa Siparişi', icon: 'table_restaurant' }
+};
 
 const AdisyonlarPage = () => {
   const [adisyonlar, setAdisyonlar] = useState([]);
   const [filteredAdisyonlar, setFilteredAdisyonlar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Seçilen şube (rrc_restaurant_id ile aynı olacak şekilde tutulur)
   const [selectedSube, setSelectedSube] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [orderTypeFilter, setOrderTypeFilter] = useState('all'); // 'all', 'masa', 'online', 'canceled'
-  const [reportMode, setReportMode] = useState('daily'); // 'daily', 'range'
-  // Tarih aralığı varsayılanları: başlangıç = dün, bitiş = bugün
+  const [orderTypeFilter, setOrderTypeFilter] = useState('all');
+  const [reportMode, setReportMode] = useState('daily');
   const todayRef = new Date();
   const yesterdayRef = new Date(todayRef);
   yesterdayRef.setDate(yesterdayRef.getDate() - 1);
-  const defaultRangeStart = yesterdayRef.toISOString().split('T')[0];
-  const defaultRangeEnd = todayRef.toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState(defaultRangeStart);
-  const [endDate, setEndDate] = useState(defaultRangeEnd);
-  // Saat seçimi için state - varsayılan 08:00 (24 saat çalışan işletmeler için)
+  const [startDate, setStartDate] = useState(yesterdayRef.toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(todayRef.toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('08:00');
-  // Günlük mod için saat seçimi
   const [dailyStartTime, setDailyStartTime] = useState('00:00');
   const [dailyEndTime, setDailyEndTime] = useState('23:59');
   const [useDailyTimeFilter, setUseDailyTimeFilter] = useState(false);
-  // Rapor getir butonu için tetikleyici - bu değiştiğinde rapor getirilir
   const [reportTrigger, setReportTrigger] = useState(0);
   const [subeler, setSubeler] = useState([]);
   const [success, setSuccess] = useState('');
@@ -44,959 +53,565 @@ const AdisyonlarPage = () => {
   useEffect(() => {
     const getSubeler = async () => {
       try {
-        console.log('currentUser:', currentUser);
-        
         let subeQuery;
-        
         if (currentUser?.role === 'sirket_yoneticisi') {
-          // Şirket yöneticisi tüm şubeleri görebilir
-          console.log('Şirket yöneticisi - tüm şubeleri getiriliyor');
           subeQuery = query(collection(db, 'subeler'));
         } else if (currentUser?.subeId) {
-          // Diğer kullanıcılar sadece kendi şubelerini görebilir
-          console.log('Şube kullanıcısı - sadece kendi şubesini getiriliyor:', currentUser.subeId);
-          subeQuery = query(
-            collection(db, 'subeler'), 
-            where('__name__', '==', currentUser.subeId)
-          );
+          subeQuery = query(collection(db, 'subeler'), where('__name__', '==', currentUser.subeId));
         } else {
-          console.log('Kullanıcı rolü bulunamadı veya şube ID yok');
           return;
         }
 
         if (subeQuery) {
-          console.log('Şubeler sorgusu oluşturuldu, Firestore\'dan veri bekleniyor...');
           const unsubscribe = onSnapshot(subeQuery, (snapshot) => {
-            console.log('Şubeler snapshot alındı, doküman sayısı:', snapshot.docs.length);
-            const subeList = snapshot.docs.map(doc => {
-              const data = { id: doc.id, ...doc.data() };
-              console.log('Şube verisi:', data);
-              return data;
-            });
+            const subeList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setSubeler(subeList);
-            console.log('Şubeler state\'e kaydedildi:', subeList);
-            
-            // Eğer kullanıcı şirket yöneticisi değilse, otomatik olarak kendi şubesini seç
             if (currentUser?.role !== 'sirket_yoneticisi' && subeList.length > 0) {
-              const autoId = subeList[0].rrc_restaurant_id || subeList[0].id;
-              console.log('Otomatik şube (rrc_restaurant_id) seçimi yapılıyor:', autoId);
-              setSelectedSube(autoId);
+              setSelectedSube(subeList[0].rrc_restaurant_id || subeList[0].id);
             }
           }, (error) => {
-            console.error('Şubeler alınırken hata:', error);
             setError('Şubeler yüklenirken bir hata oluştu: ' + error.message);
           });
-
           return () => unsubscribe();
         }
       } catch (err) {
-        console.error('Şubeler alınırken hata:', err);
         setError('Şubeler yüklenirken bir hata oluştu: ' + err.message);
       }
     };
-
-    if (currentUser) {
-      console.log('currentUser mevcut, şubeler yükleniyor...');
-      getSubeler();
-    } else {
-      console.log('currentUser henüz yüklenmedi');
-    }
+    if (currentUser) getSubeler();
   }, [currentUser]);
 
-  // Adisyonları getir
-  useEffect(() => {
-    if (!selectedSube) {
-      setAdisyonlar([]);
-      setLoading(false);
-      return;
-    }
-
-    // Günlük modda selectedDate, tarih aralığı modunda startDate ve endDate kontrol et
-    if (reportMode === 'daily' && !selectedDate) {
-      setAdisyonlar([]);
-      setLoading(false);
-      return;
-    }
-
-    if (reportMode === 'range' && (!startDate || !endDate)) {
-      setAdisyonlar([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      console.log('Adisyonlar sorgulanıyor, selectedSube:', selectedSube, 'reportMode:', reportMode);
-      
-      // Performans için sunucu tarafında filtreleme
-      let startStr, endStr;
-      if (reportMode === 'daily') {
-        const datePart = selectedDate;
-        if (useDailyTimeFilter) {
-          startStr = `${datePart} ${dailyStartTime}:00`;
-          endStr = `${datePart} ${dailyEndTime}:59`;
-        } else {
-          startStr = `${datePart}`;
-          endStr = `${datePart}\uf8ff`;
-        }
+  // Tarih aralığı oluştur
+  const buildDateFilters = () => {
+    let start, end;
+    if (reportMode === 'daily') {
+      if (useDailyTimeFilter) {
+        start = new Date(selectedDate + 'T' + dailyStartTime + ':00');
+        end = new Date(selectedDate + 'T' + dailyEndTime + ':59');
       } else {
-        startStr = `${startDate} ${startTime}:00`;
-        endStr = (endTime === '23:59') ? `${endDate}\uf8ff` : `${endDate} ${endTime}:59`;
+        start = new Date(selectedDate + 'T00:00:00');
+        end = new Date(selectedDate + 'T23:59:59');
       }
-
-      // Not: Veritabanında tarihler hem 'YYYY-MM-DD HH:mm:ss' hem de ISO formatında olabilir.
-      // String karşılaştırması ' ' ve 'T' karakterleri arasındaki ASCII farkından dolayı 
-      // her iki formatı da (YYYY-MM-DD...) doğru şekilde yakalar.
-      const adisyonlarQuery = query(
-        collection(db, 'Adisyonlar'),
-        where('rrc_restaurant_id', '==', selectedSube),
-        where('tarih', '>=', startStr),
-        where('tarih', '<=', endStr),
-        orderBy('tarih', 'asc')
-      );
-
-      const unsubscribe = onSnapshot(adisyonlarQuery, 
-        (snapshot) => {
-          console.log('Adisyonlar snapshot alındı, doküman sayısı:', snapshot.docs.length);
-          const adisyonList = snapshot.docs.map(doc => {
-            const data = { id: doc.id, ...doc.data() };
-            return data;
-          });
-          
-          // adisyoncode bazında tekilleştirme - aynı adisyon koduna sahip
-          // birden fazla doküman varsa sadece sonuncusunu (en güncel) tut
-          const seen = new Map();
-          for (const adisyon of adisyonList) {
-            const key = adisyon.adisyoncode;
-            if (key != null && key !== '') {
-              seen.set(key, adisyon);
-            } else {
-              // adisyoncode yoksa doc id ile ekle (tekil kalır)
-              seen.set(adisyon.id, adisyon);
-            }
-          }
-          const dedupedList = Array.from(seen.values());
-          
-          if (dedupedList.length < adisyonList.length) {
-            console.warn(`Tekilleştirme: ${adisyonList.length} -> ${dedupedList.length} (${adisyonList.length - dedupedList.length} duplike kaldırıldı)`);
-          }
-          
-          setAdisyonlar(dedupedList);
-          setLoading(false);
-        },
-        (err) => {
-          console.error('Adisyonlar alınırken hata:', err);
-          // Eğer index hatası alınırsa kullanıcıya bilgi ver
-          if (err.code === 'failed-precondition') {
-            setError('Bu raporu görüntülemek için gerekli Firestore Index henüz oluşturulmamış. Lütfen konsol üzerinden oluşturun.');
-          } else {
-            setError('Adisyonlar yüklenirken bir hata oluştu: ' + err.message);
-          }
-          setLoading(false);
-        }
-      );
-
-      return () => unsubscribe();
-    } catch (err) {
-      console.error('Adisyonlar sorgulanırken hata:', err);
-      setError('Adisyonlar sorgulanırken bir hata oluştu: ' + err.message);
-      setLoading(false);
+    } else {
+      start = new Date(startDate + 'T' + startTime + ':00');
+      end = new Date(endDate + 'T' + endTime + ':59');
     }
+    return { start, end };
+  };
+
+  // Client-side tarih filtresi (reportService mantığı)
+  const isInDateRange = (dateValue, rangeStart, rangeEnd) => {
+    const d = toDate(dateValue);
+    if (!d) return false;
+    return d >= rangeStart && d <= rangeEnd;
+  };
+
+  // Adisyonları getir (PaketAdisyonlar + MasaOdemeleri)
+  useEffect(() => {
+    if (!selectedSube) { setAdisyonlar([]); setLoading(false); return; }
+    if (reportMode === 'daily' && !selectedDate) { setAdisyonlar([]); setLoading(false); return; }
+    if (reportMode === 'range' && (!startDate || !endDate)) { setAdisyonlar([]); setLoading(false); return; }
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { start, end } = buildDateFilters();
+        const rrcId = String(selectedSube);
+
+        // İki koleksiyonu paralel çek (PaketAdisyonlar + SalonAdisyonlari)
+        const [paketSnap, salonSnap] = await Promise.all([
+          getDocs(query(collection(db, 'PaketAdisyonlar'), where('rrc_restaurant_id', '==', rrcId))),
+          getDocs(query(collection(db, 'SalonAdisyonlari'), where('rrc_restaurant_id', '==', rrcId)))
+        ]);
+
+        // PaketAdisyonlar → client-side tarih filtresi (acilis alanı)
+        const paketDocs = paketSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data(), _kaynak: 'paket' }))
+          .filter(d => isInDateRange(d.acilis, start, end));
+
+        // SalonAdisyonlari → client-side tarih filtresi (ad_open alanı)
+        const masaDocs = salonSnap.docs
+          .map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              _kaynak: 'masa',
+              siparisnerden: 88,
+              adisyoncode: data.ad_code,
+              acilis: data.ad_open,
+              atop: Number(data.ad_total) || 0,
+              ads_durum: data.ads_durum,
+              ads_no: data.ads_no,
+              tableid: data.tableid,
+              ad_pmedhod: data.ad_pmedhod,
+            };
+          })
+          .filter(d => isInDateRange(d.acilis, start, end));
+
+        // Birleştir
+        const allDocs = [...paketDocs, ...masaDocs];
+
+        // Deduplication (adisyoncode bazında)
+        const seen = new Map();
+        for (const adisyon of allDocs) {
+          const key = adisyon.adisyoncode;
+          if (key != null && key !== '') { seen.set(key, adisyon); }
+          else { seen.set(adisyon.id, adisyon); }
+        }
+
+        // Tarihe göre sırala
+        const result = Array.from(seen.values()).sort((a, b) => {
+          const da = toDate(a.acilis || a.tarih);
+          const db2 = toDate(b.acilis || b.tarih);
+          if (!da) return 1;
+          if (!db2) return -1;
+          return da - db2;
+        });
+
+        setAdisyonlar(result);
+      } catch (err) {
+        console.error('Adisyon fetch hatası:', err);
+        setError('Adisyonlar yüklenirken bir hata oluştu: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSube, reportTrigger]);
 
   // Sipariş tipi filtreleme
   useEffect(() => {
     let filtered = adisyonlar;
-    
     if (orderTypeFilter === 'masa') {
-      filtered = adisyonlar.filter(adisyon => Number(adisyon.siparisnerden) === 88);
+      filtered = adisyonlar.filter(a => Number(a.siparisnerden) === 88);
     } else if (orderTypeFilter === 'online') {
-      filtered = adisyonlar.filter(adisyon => Number(adisyon.siparisnerden) !== 88);
+      filtered = adisyonlar.filter(a => Number(a.siparisnerden) !== 88);
     }
-    // 'all' durumunda tüm adisyonları göster
-    
     setFilteredAdisyonlar(filtered);
-    setCurrentPage(1); // Filtre değiştiğinde ilk sayfaya dön
+    setCurrentPage(1);
   }, [adisyonlar, orderTypeFilter]);
 
-  // Adisyonun tipini belirle
-  const getAdisyonTipi = (siparisnerden) => {
-    switch (siparisnerden) {
-      case 0:
-        return { text: 'Telefon Siparişi', icon: 'phone', color: 'info' };
-      case 1:
-        return { text: 'Yemek Sepeti', icon: 'delivery_dining', color: 'warning' };
-      case 2:
-        return { text: 'Getir', icon: 'motorcycle', color: 'success' };
-      case 5:
-        return { text: 'Trendyol', icon: 'shopping_bag', color: 'danger' };
-      case 8:
-        return { text: 'Migros', icon: 'store', color: 'secondary' };
-      case 88:
-        return { text: 'Masa Siparişi', icon: 'table_restaurant', color: 'primary' };
-      default:
-        return { text: 'Diğer', icon: 'receipt', color: 'secondary' };
-    }
-  };
-
-  // Adisyon durumunu belirle
-  const getAdisyonDurum = (adisyon_durum, durum) => {
-    // Önce string durum kontrolü (paket siparişler için)
-    if (durum) {
-      const durumUpper = durum.toUpperCase();
-      switch (durumUpper) {
-        case 'YENİ':
-        case 'YENI':
-          return { text: 'Yeni Sipariş', icon: 'fiber_new', color: 'info', bgColor: 'info' };
-        case 'ONAYLANDI':
-          return { text: 'Onaylandı', icon: 'check_circle', color: 'success', bgColor: 'success' };
-        case 'GÖNDERİLDİ':
-        case 'GONDERILDI':
-          return { text: 'Gönderildi', icon: 'local_shipping', color: 'primary', bgColor: 'primary' };
-        case 'İPTAL':
-        case 'IPTAL':
-          return { text: 'İptal Edildi', icon: 'cancel', color: 'danger', bgColor: 'danger' };
-        default:
-          return { text: durum, icon: 'info', color: 'secondary', bgColor: 'secondary' };
-      }
-    }
-    
-    // Sayısal durum kontrolü (masa siparişleri için)
-    switch (adisyon_durum) {
-      case 1:
-        return { text: 'Aktif Adisyon', icon: 'pending', color: 'warning', bgColor: 'warning' };
-      case 4:
-        return { text: 'Ödemesi Alınmış', icon: 'paid', color: 'success', bgColor: 'success' };
-      default:
-        return { text: 'Bilinmiyor', icon: 'help', color: 'secondary', bgColor: 'secondary' };
-    }
-  };
-
-  // İptal kontrolü (paket siparişler için string durum üzerinden)
   const isCanceled = (adisyon) => {
     if (!adisyon || !adisyon.durum) return false;
     try {
       const s = String(adisyon.durum).toUpperCase();
-      // Türkçe büyük İ harfi ve ASCII I ile olası yazımlar
-      return s.includes('İPTAL') || s.includes('IPTAL');
-    } catch (e) {
-      return false;
+      return s.includes('\u0130PTAL') || s.includes('IPTAL');
+    } catch (e) { return false; }
+  };
+
+  const getAdisyonTipi = (siparisnerden) => {
+    const k = KAYNAK_MAP[siparisnerden];
+    if (k) return k.text;
+    return siparisnerden > 0 ? 'Online (' + siparisnerden + ')' : 'Diğer';
+  };
+
+  const getAdisyonDurum = (adisyon_durum, durum) => {
+    if (durum) {
+      const d = String(durum).toUpperCase();
+      if (d === 'YEN\u0130' || d === 'YENI') return { text: 'Yeni', badge: 'badge-blue' };
+      if (d === 'ONAYLANDI') return { text: 'Onaylandı', badge: 'badge-green' };
+      if (d === 'G\u00D6NDER\u0130LD\u0130' || d === 'GONDERILDI') return { text: 'Gönderildi', badge: 'badge-blue' };
+      if (d.includes('\u0130PTAL') || d.includes('IPTAL')) return { text: '\u0130ptal', badge: 'badge-red' };
+      return { text: durum, badge: 'badge-gray' };
     }
+    const durumNum = Number(adisyon_durum);
+    if (durumNum === 1) return { text: 'Açık', badge: 'badge-orange' };
+    if (durumNum === 4) return { text: 'Ödendi', badge: 'badge-green' };
+    return { text: 'Bilinmiyor', badge: 'badge-gray' };
   };
 
-  // JSON kopyalama fonksiyonu
-  const copyJsonToClipboard = (adisyon) => {
-    const jsonString = JSON.stringify(adisyon, null, 2);
-    navigator.clipboard.writeText(jsonString).then(() => {
-      setSuccess('Adisyon JSON verisi başarıyla kopyalandı!');
-      setTimeout(() => setSuccess(''), 3000);
-    }).catch(err => {
-      console.error('Kopyalama hatası:', err);
-      setError('Kopyalama işlemi başarısız oldu');
-      setTimeout(() => setError(''), 3000);
-    });
-  };
-
-  // Adisyon detayını göster
-  const showAdisyonDetail = (adisyon) => {
-    setSelectedAdisyon(adisyon);
-    setIsModalOpen(true);
-  };
-
-  // Modal'ı kapat
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedAdisyon(null);
-  };
-
-  // Tarih formatla
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    try {
-      // ISO formatını Date objesine çevir: "2025-08-04T10:45:47" -> Date
-      let date;
-      
-      if (dateString.includes('T')) {
-        // ISO format: "2025-08-04T10:45:47"
-        date = new Date(dateString);
-      } else if (dateString.includes(' ')) {
-        // SQL format: "2025-08-04 10:45:47"
-        date = new Date(dateString.replace(' ', 'T'));
-      } else {
-        // Sadece tarih: "2025-08-04"
-        date = new Date(dateString);
-      }
-      
-      // Türkçe format
-      return date.toLocaleString('tr-TR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-    } catch (err) {
-      console.error('Tarih formatla hatası:', err, 'Tarih:', dateString);
-      return dateString;
-    }
-  };
-
-  // Tutar formatla
+  const getAdisyonTutar = (a) => Number(a.atop) || Number(a.tutar) || Number(a.toplamTutar) || 0;
   const formatAmount = (amount) => {
     if (!amount) return '0,00 ₺';
-    return Number(amount).toLocaleString('tr-TR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }) + ' ₺';
+    return Number(amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
   };
 
-  // Adisyon tutarını al (atop veya toplamTutar fallback)
-  const getAdisyonTutar = (a) => Number(a.atop) || Number(a.toplamTutar) || 0;
+  const formatDate = (dateValue) => {
+    if (!dateValue) return '-';
+    const d = toDate(dateValue);
+    if (!d) return String(dateValue);
+    return d.toLocaleString('tr-TR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
 
-  // Pagination hesaplamaları
+  const showAdisyonDetail = (adisyon) => { setSelectedAdisyon(adisyon); setIsModalOpen(true); };
+  const closeModal = () => { setIsModalOpen(false); setSelectedAdisyon(null); };
+
   const totalPages = Math.ceil(filteredAdisyonlar.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedAdisyonlar = filteredAdisyonlar.slice(startIndex, endIndex);
+  const handlePageChange = (page) => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
-  // Sayfa değişimi
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const getStats = () => {
+    const canceled = adisyonlar.filter(isCanceled);
+    const active = adisyonlar.filter(a => !isCanceled(a));
+    const toplamCiro = active.reduce((t, a) => t + getAdisyonTutar(a), 0);
+    const toplamIptal = canceled.reduce((t, a) => t + getAdisyonTutar(a), 0);
+    const masaList = active.filter(a => Number(a.siparisnerden) === 88);
+    const paketList = active.filter(a => Number(a.siparisnerden) !== 88);
+    const masaCiro = masaList.reduce((t, a) => t + getAdisyonTutar(a), 0);
+    const paketCiro = paketList.reduce((t, a) => t + getAdisyonTutar(a), 0);
+    const kaynakGruplari = {};
+    active.forEach(a => {
+      const nerden = Number(a.siparisnerden) || 0;
+      const k = KAYNAK_MAP[nerden];
+      const label = k ? k.text : 'Diğer (' + nerden + ')';
+      if (!kaynakGruplari[label]) kaynakGruplari[label] = { ciro: 0, adet: 0 };
+      kaynakGruplari[label].ciro += getAdisyonTutar(a);
+      kaynakGruplari[label].adet += 1;
+    });
+    return { active, canceled, toplamCiro, toplamIptal, masaList, paketList, masaCiro, paketCiro, kaynakGruplari };
   };
 
-  // Sayfa başına öğe sayısı değişimi
-  const handleItemsPerPageChange = (newItemsPerPage) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // İlk sayfaya dön
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="adisyon-tooltip">
+          <p className="tooltip-label">{label || payload[0]?.name}</p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ color: entry.color }}>
+              {entry.name}: {typeof entry.value === 'number' && entry.value > 100 ? formatAmount(entry.value) : entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
   };
 
-  if (loading && !selectedSube) {
-    return (
-      <div className="adisyonlar-page">
-        <div className="page-header">
-          <h1>Adisyonlar</h1>
-        </div>
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Şubeler yükleniyor...</p>
-        </div>
-      </div>
-    );
-  }
+  const hasData = selectedSube && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate));
 
   return (
     <div className="adisyonlar-container">
-      <div className="page-header">
-        <div className="header-content">
-          <div className="title-section">
-            <h1>
-              <span className="material-icons">receipt_long</span>
-              Adisyonlar
-            </h1>
-            <p>Şube bazlı günlük adisyon listesini görüntüleyin</p>
+      <div className="page-header-adisyon">
+        <div className="header-content-adisyon">
+          <div className="header-left">
+            <span className="material-icons header-icon">receipt_long</span>
+            <div>
+              <h1>Adisyonlar</h1>
+              <p>Şube bazlı adisyon listesi ve analiz</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Filtre Bölümü */}
-      <div className="filters-section">
-        <div className="filter-group">
-          <label htmlFor="sube-select">Şube Seçin:</label>
-          <select
-            id="sube-select"
-            value={selectedSube}
-            onChange={(e) => setSelectedSube(e.target.value)}
-            disabled={currentUser?.role !== 'sirket_yoneticisi'}
-          >
-            <option value="">Şube seçin...</option>
-            {subeler.map((sube) => {
-              const rrcId = sube.rrc_restaurant_id || sube.id; // rrc_restaurant_id yoksa doc id fallback
-              return (
-                <option key={sube.id} value={rrcId}>
-                  {sube.subeAdi} (RRC ID: {rrcId})
-                </option>
-              );
-            })}
-          </select>
-        </div>
+      <div className="filter-section-adisyon">
+        <div className="filter-row-adisyon">
+          {currentUser?.role === 'sirket_yoneticisi' && (
+            <div className="filter-group-adisyon">
+              <label>Şube</label>
+              <select value={selectedSube} onChange={e => setSelectedSube(e.target.value)}>
+                <option value="">Şube Seçin</option>
+                {subeler.map(s => (
+                  <option key={s.id} value={s.rrc_restaurant_id || s.id}>
+                    {s.ad || s.subeAdi || s.name || 'Şube ' + (s.rrc_restaurant_id || s.id)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-        <div className="filter-group">
-          <label>Rapor Tipi:</label>
-          <div className="report-mode-buttons">
-            <button
-              className={`filter-btn ${reportMode === 'daily' ? 'active' : ''}`}
-              onClick={() => setReportMode('daily')}
-            >
-              <span className="material-icons">today</span>
-              Günlük
-            </button>
-            <button
-              className={`filter-btn ${reportMode === 'range' ? 'active' : ''}`}
-              onClick={() => setReportMode('range')}
-            >
-              <span className="material-icons">date_range</span>
-              Tarih Aralığı
+          <div className="filter-group-adisyon">
+            <label>Mod</label>
+            <select value={reportMode} onChange={e => setReportMode(e.target.value)}>
+              <option value="daily">Günlük</option>
+              <option value="range">Tarih Aralığı</option>
+            </select>
+          </div>
+
+          {reportMode === 'daily' ? (
+            <>
+              <div className="filter-group-adisyon">
+                <label>Tarih</label>
+                <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
+              </div>
+              <div className="filter-group-adisyon filter-toggle-group">
+                <label className="toggle-label-adisyon">
+                  <input type="checkbox" checked={useDailyTimeFilter} onChange={e => setUseDailyTimeFilter(e.target.checked)} />
+                  <span className="toggle-switch-adisyon"></span>
+                  <span>Saat Filtresi</span>
+                </label>
+              </div>
+              {useDailyTimeFilter && (
+                <>
+                  <div className="filter-group-adisyon">
+                    <label>Başlangıç Saati</label>
+                    <input type="time" value={dailyStartTime} onChange={e => setDailyStartTime(e.target.value)} />
+                  </div>
+                  <div className="filter-group-adisyon">
+                    <label>Bitiş Saati</label>
+                    <input type="time" value={dailyEndTime} onChange={e => setDailyEndTime(e.target.value)} />
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="filter-group-adisyon">
+                <label>Başlangıç</label>
+                <div className="date-time-pair">
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+                </div>
+              </div>
+              <div className="filter-group-adisyon">
+                <label>Bitiş</label>
+                <div className="date-time-pair">
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                  <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="filter-group-adisyon filter-action-adisyon">
+            <button className="btn-fetch-adisyon" onClick={() => setReportTrigger(prev => prev + 1)} disabled={loading || !selectedSube}>
+              <span className="material-icons">search</span>
+              Rapor Getir
             </button>
           </div>
         </div>
 
-        {reportMode === 'daily' ? (
-          <div className="filter-group daily-filter-group">
-            <label htmlFor="date-select">Tarih Seçin:</label>
-            <input
-              type="date"
-              id="date-select"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-            
-            <div className="time-filter-toggle">
-              <label className="toggle-label">
-                <input
-                  type="checkbox"
-                  checked={useDailyTimeFilter}
-                  onChange={(e) => setUseDailyTimeFilter(e.target.checked)}
-                />
-                <span className="toggle-switch"></span>
-                <span className="toggle-text">Saat Filtresi</span>
-              </label>
-            </div>
-            
-            {useDailyTimeFilter && (
-              <div className="daily-time-inputs">
-                <div className="time-input-wrapper">
-                  <label>Başlangıç Saati:</label>
-                  <input
-                    type="time"
-                    value={dailyStartTime}
-                    onChange={(e) => setDailyStartTime(e.target.value)}
-                  />
-                </div>
-                <div className="time-input-wrapper">
-                  <label>Bitiş Saati:</label>
-                  <input
-                    type="time"
-                    value={dailyEndTime}
-                    onChange={(e) => setDailyEndTime(e.target.value)}
-                  />
-                </div>
-                <div className="quick-daily-buttons">
-                  <button
-                    type="button"
-                    className="quick-btn small"
-                    onClick={() => {
-                      setDailyStartTime('08:00');
-                      setDailyEndTime('23:59');
-                    }}
-                  >
-                    08:00 - 23:59
-                  </button>
-                  <button
-                    type="button"
-                    className="quick-btn small"
-                    onClick={() => {
-                      setDailyStartTime('00:00');
-                      setDailyEndTime('08:00');
-                    }}
-                  >
-                    00:00 - 08:00
-                  </button>
-                  <button
-                    type="button"
-                    className="quick-btn small"
-                    onClick={() => {
-                      setDailyStartTime('12:00');
-                      setDailyEndTime('23:59');
-                    }}
-                  >
-                    12:00 - 23:59
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="filter-group date-range-group">
-            <div className="date-range-info">
-              <span className="material-icons">info</span>
-              <span>24 saat çalışan işletmeler için saat seçimi yapabilirsiniz. Örn: Dün 08:00 - Bugün 08:00</span>
-            </div>
-            <div className="date-range-inputs">
-              <div className="date-time-input-wrapper">
-                <label>Başlangıç Tarihi ve Saati:</label>
-                <div className="date-time-inputs">
-                  <input
-                    type="date"
-                    id="start-date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    id="start-time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="date-time-input-wrapper">
-                <label>Bitiş Tarihi ve Saati:</label>
-                <div className="date-time-inputs">
-                  <input
-                    type="date"
-                    id="end-date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                  <input
-                    type="time"
-                    id="end-time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="quick-time-buttons">
-              <span className="quick-label">Hızlı Seçim:</span>
-              <button
-                type="button"
-                className="quick-btn"
-                onClick={() => {
-                  const today = new Date();
-                  const yesterday = new Date(today);
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  setStartDate(yesterday.toISOString().split('T')[0]);
-                  setEndDate(today.toISOString().split('T')[0]);
-                  setStartTime('08:00');
-                  setEndTime('08:00');
-                }}
-              >
-                <span className="material-icons">schedule</span>
-                Dün 08:00 - Bugün 08:00
-              </button>
-              <button
-                type="button"
-                className="quick-btn"
-                onClick={() => {
-                  const today = new Date();
-                  setStartDate(today.toISOString().split('T')[0]);
-                  setEndDate(today.toISOString().split('T')[0]);
-                  setStartTime('00:00');
-                  setEndTime('23:59');
-                }}
-              >
-                <span className="material-icons">today</span>
-                Bugün Tüm Gün
-              </button>
-              <button
-                type="button"
-                className="quick-btn"
-                onClick={() => {
-                  const today = new Date();
-                  const yesterday = new Date(today);
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  setStartDate(yesterday.toISOString().split('T')[0]);
-                  setEndDate(yesterday.toISOString().split('T')[0]);
-                  setStartTime('00:00');
-                  setEndTime('23:59');
-                }}
-              >
-                <span className="material-icons">history</span>
-                Dün Tüm Gün
-              </button>
-            </div>
+        {reportMode === 'range' && (
+          <div className="quick-buttons-adisyon">
+            <span className="quick-label-adisyon">Hızlı:</span>
+            <button className="quick-btn-adisyon" onClick={() => {
+              const t = new Date(); const y = new Date(t); y.setDate(y.getDate() - 1);
+              setStartDate(y.toISOString().split('T')[0]); setEndDate(t.toISOString().split('T')[0]);
+              setStartTime('08:00'); setEndTime('08:00');
+            }}>Dün 08:00 - Bugün 08:00</button>
+            <button className="quick-btn-adisyon" onClick={() => {
+              const t = new Date().toISOString().split('T')[0];
+              setStartDate(t); setEndDate(t); setStartTime('00:00'); setEndTime('23:59');
+            }}>Bugün Tüm Gün</button>
+            <button className="quick-btn-adisyon" onClick={() => {
+              const y = new Date(); y.setDate(y.getDate() - 1); const ys = y.toISOString().split('T')[0];
+              setStartDate(ys); setEndDate(ys); setStartTime('00:00'); setEndTime('23:59');
+            }}>Dün Tüm Gün</button>
           </div>
         )}
 
-        <div className="filter-group">
-          <label>Sipariş Tipi:</label>
-          <div className="order-type-buttons">
-            <button
-              className={`filter-btn ${orderTypeFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setOrderTypeFilter('all')}
-            >
-              <span className="material-icons">list</span>
-              Tümü
-            </button>
-            <button
-              className={`filter-btn ${orderTypeFilter === 'masa' ? 'active' : ''}`}
-              onClick={() => setOrderTypeFilter('masa')}
-            >
-              <span className="material-icons">table_restaurant</span>
-              Masa
-            </button>
-            <button
-              className={`filter-btn ${orderTypeFilter === 'online' ? 'active' : ''}`}
-              onClick={() => setOrderTypeFilter('online')}
-            >
-              <span className="material-icons">takeout_dining</span>
-              Paket
-            </button>
+        <div className="order-filter-adisyon">
+          <span className="order-filter-label">Sipariş Tipi:</span>
+          <div className="order-filter-buttons">
+            {[
+              { key: 'all', label: 'Tümü', icon: 'select_all' },
+              { key: 'masa', label: 'Masa', icon: 'table_restaurant' },
+              { key: 'online', label: 'Paket', icon: 'takeout_dining' },
+            ].map(opt => (
+              <button
+                key={opt.key}
+                className={'order-btn' + (orderTypeFilter === opt.key ? ' active' : '')}
+                onClick={() => setOrderTypeFilter(opt.key)}
+              >
+                <span className="material-icons">{opt.icon}</span>
+                {opt.label}
+              </button>
+            ))}
           </div>
-        </div>
-
-        {/* Rapor Getir Butonu */}
-        <div className="filter-group report-action-group">
-          <button
-            className="report-fetch-btn"
-            onClick={() => setReportTrigger(prev => prev + 1)}
-            disabled={!selectedSube || (reportMode === 'daily' && !selectedDate) || (reportMode === 'range' && (!startDate || !endDate))}
-          >
-            <span className="material-icons">search</span>
-            Rapor Getir
-          </button>
         </div>
       </div>
 
       {error && (
-        <div className="error-message">
-          <span className="material-icons">error</span>
-          {error}
-        </div>
+        <div className="msg-error"><span className="material-icons">error_outline</span><p>{error}</p></div>
       )}
-
       {success && (
-        <div className="success-message">
-          <span className="material-icons">check_circle</span>
-          {success}
-        </div>
+        <div className="msg-success"><span className="material-icons">check_circle</span><p>{success}</p></div>
       )}
 
-      {(!selectedSube || (reportMode === 'daily' && !selectedDate) || (reportMode === 'range' && (!startDate || !endDate))) && !loading && (
-        <div className="empty-state">
-          <span className="material-icons">receipt_long</span>
-          <h3>Filtre Seçin</h3>
-          <p>Adisyonları görüntülemek için yukarıdan şube ve tarih seçin.</p>
-        </div>
-      )}
-
-      {selectedSube && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate)) && loading && (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Adisyonlar yükleniyor...</p>
-        </div>
-      )}
-
-      {selectedSube && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate)) && !loading && adisyonlar.length === 0 && !error && (
-        <div className="empty-state">
-          <span className="material-icons">receipt_long</span>
-          <h3>Adisyon Bulunamadı</h3>
-          <p>Seçilen {reportMode === 'daily' ? 'tarih' : 'tarih aralığı'} ve şubede adisyon bulunmuyor.</p>
-        </div>
-      )}
-
-      {selectedSube && ((reportMode === 'daily' && selectedDate) || (reportMode === 'range' && startDate && endDate)) && !loading && adisyonlar.length > 0 && (
+      {loading ? (
+        <div className="loading-container-adisyon"><div className="loading-spinner-adisyon"></div><p>Yükleniyor...</p></div>
+      ) : !hasData ? (
+        <div className="empty-container-adisyon"><span className="material-icons">info</span><p>Lütfen şube ve tarih seçerek raporu getirin.</p></div>
+      ) : adisyonlar.length === 0 ? (
+        <div className="empty-container-adisyon"><span className="material-icons">receipt_long</span><p>Seçilen filtreler için adisyon bulunamadı.</p></div>
+      ) : (
         <>
-          {/* İstatistikler - Her zaman tüm veriden hesaplanır (filtreden bağımsız) */}
-          <div className="stats-grid">
-            {(() => {
-              const canceledAdisyonlar = adisyonlar.filter(isCanceled);
-              const nonCanceledAdisyonlar = adisyonlar.filter(a => !isCanceled(a));
-              const toplamNonCanceledTutar = nonCanceledAdisyonlar.reduce((t, a) => t + getAdisyonTutar(a), 0);
-              const toplamCanceledTutar = canceledAdisyonlar.reduce((t, a) => t + getAdisyonTutar(a), 0);
-              const masaNonCanceled = nonCanceledAdisyonlar.filter(a => Number(a.siparisnerden) === 88);
-              const paketNonCanceled = nonCanceledAdisyonlar.filter(a => Number(a.siparisnerden) !== 88);
-
-              return (
-                <>
-                  {/* Genel İstatistikler - İptaller hariç */}
-                  <div className="stat-card">
-                    <div className="stat-icon primary">
-                      <span className="material-icons">receipt</span>
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">{nonCanceledAdisyonlar.length}</div>
-                      <div className="stat-label">Toplam Adisyon</div>
+          {(() => {
+            const stats = getStats();
+            return (
+              <>
+                <div className="summary-cards-adisyon">
+                  <div className="summary-card-adisyon">
+                    <div className="card-icon-adisyon icon-blue"><span className="material-icons">receipt</span></div>
+                    <div className="card-body-adisyon">
+                      <span className="card-label-adisyon">Toplam Adisyon</span>
+                      <span className="card-value-adisyon">{stats.active.length}</span>
                     </div>
                   </div>
-
-                  <div className="stat-card">
-                    <div className="stat-icon danger">
-                      <span className="material-icons">payments</span>
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">{formatAmount(toplamNonCanceledTutar)}</div>
-                      <div className="stat-label">Genel Toplam</div>
+                  <div className="summary-card-adisyon">
+                    <div className="card-icon-adisyon icon-green"><span className="material-icons">payments</span></div>
+                    <div className="card-body-adisyon">
+                      <span className="card-label-adisyon">Toplam Ciro</span>
+                      <span className="card-value-adisyon">{formatAmount(stats.toplamCiro)}</span>
                     </div>
                   </div>
-
-                  {/* İptal İstatistiği (ayrı göster) */}
-                  <div className="stat-card">
-                    <div className="stat-icon secondary">
-                      <span className="material-icons">cancel</span>
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">{canceledAdisyonlar.length}</div>
-                      <div className="stat-label">İptal Adedi</div>
-                      <div className="stat-sublabel">{formatAmount(toplamCanceledTutar)}</div>
+                  <div className="summary-card-adisyon">
+                    <div className="card-icon-adisyon icon-red"><span className="material-icons">cancel</span></div>
+                    <div className="card-body-adisyon">
+                      <span className="card-label-adisyon">İptal</span>
+                      <span className="card-value-adisyon">{stats.canceled.length}</span>
+                      <span className="card-sub-adisyon">{formatAmount(stats.toplamIptal)}</span>
                     </div>
                   </div>
-
-                  {/* Masa Siparişleri İstatistikleri - İptalsiz */}
-                  <div className="stat-card">
-                    <div className="stat-icon success">
-                      <span className="material-icons">table_restaurant</span>
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">{masaNonCanceled.length}</div>
-                      <div className="stat-label">Masa Siparişi</div>
-                      <div className="stat-sublabel">{formatAmount(masaNonCanceled.reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
+                  <div className="summary-card-adisyon">
+                    <div className="card-icon-adisyon icon-purple"><span className="material-icons">table_restaurant</span></div>
+                    <div className="card-body-adisyon">
+                      <span className="card-label-adisyon">Masa</span>
+                      <span className="card-value-adisyon">{stats.masaList.length}</span>
+                      <span className="card-sub-adisyon">{formatAmount(stats.masaCiro)}</span>
                     </div>
                   </div>
-
-                  {/* Paket Siparişleri İstatistikleri - İptalsiz */}
-                  <div className="stat-card">
-                    <div className="stat-icon warning">
-                      <span className="material-icons">takeout_dining</span>
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">{paketNonCanceled.length}</div>
-                      <div className="stat-label">Paket Sipariş</div>
-                      <div className="stat-sublabel">{formatAmount(paketNonCanceled.reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
+                  <div className="summary-card-adisyon">
+                    <div className="card-icon-adisyon icon-orange"><span className="material-icons">takeout_dining</span></div>
+                    <div className="card-body-adisyon">
+                      <span className="card-label-adisyon">Paket</span>
+                      <span className="card-value-adisyon">{stats.paketList.length}</span>
+                      <span className="card-sub-adisyon">{formatAmount(stats.paketCiro)}</span>
                     </div>
                   </div>
-
-                  {/* Platform Bazlı İstatistikler - Yalnızca iptalsiz paket varsa göster */}
-                  {paketNonCanceled.length > 0 && (
-                    <>
-                      {/* Telefon Siparişleri */}
-                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 0) && (
-                        <div className="stat-card">
-                          <div className="stat-icon info">
-                            <span className="material-icons">phone</span>
-                          </div>
-                          <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 0).length}</div>
-                            <div className="stat-label">Telefon</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 0).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Yemek Sepeti */}
-                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 1) && (
-                        <div className="stat-card">
-                          <div className="stat-icon warning">
-                            <span className="material-icons">delivery_dining</span>
-                          </div>
-                          <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 1).length}</div>
-                            <div className="stat-label">Yemek Sepeti</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 1).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Getir */}
-                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 2) && (
-                        <div className="stat-card">
-                          <div className="stat-icon success">
-                            <span className="material-icons">motorcycle</span>
-                          </div>
-                          <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 2).length}</div>
-                            <div className="stat-label">Getir</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 2).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Trendyol */}
-                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 5) && (
-                        <div className="stat-card">
-                          <div className="stat-icon danger">
-                            <span className="material-icons">shopping_bag</span>
-                          </div>
-                          <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 5).length}</div>
-                            <div className="stat-label">Trendyol</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 5).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Migros */}
-                      {paketNonCanceled.some(a => Number(a.siparisnerden) === 8) && (
-                        <div className="stat-card">
-                          <div className="stat-icon secondary">
-                            <span className="material-icons">store</span>
-                          </div>
-                          <div className="stat-info">
-                            <div className="stat-number">{paketNonCanceled.filter(a => Number(a.siparisnerden) === 8).length}</div>
-                            <div className="stat-label">Migros</div>
-                            <div className="stat-sublabel">{formatAmount(paketNonCanceled.filter(a => Number(a.siparisnerden) === 8).reduce((t, a) => t + getAdisyonTutar(a), 0))}</div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-
-          {/* Adisyon Listesi */}
-          {/* Pagination Kontrolleri */}
-          {filteredAdisyonlar.length > 0 && (
-            <div className="pagination-controls">
-              <div className="pagination-info">
-                <span>
-                  {startIndex + 1}-{Math.min(endIndex, filteredAdisyonlar.length)} arası, 
-                  toplam {filteredAdisyonlar.length} adisyon gösteriliyor
-                </span>
-              </div>
-              
-              <div className="pagination-settings">
-                <div className="items-per-page">
-                  <label>Sayfa başına:</label>
-                  <select 
-                    value={itemsPerPage} 
-                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                  >
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={30}>30</option>
-                    <option value={40}>40</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="pagination-buttons">
-                    <button 
-                      onClick={() => handlePageChange(1)}
-                      disabled={currentPage === 1}
-                      className="pagination-btn"
-                    >
-                      <span className="material-icons">first_page</span>
-                    </button>
-                    
-                    <button 
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="pagination-btn"
-                    >
-                      <span className="material-icons">chevron_left</span>
-                    </button>
-
-                    <div className="page-numbers">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-                        
+                {Object.keys(stats.kaynakGruplari).length > 0 && (
+                  <div className="charts-grid-adisyon">
+                    <div className="chart-card-adisyon">
+                      <h3><span className="material-icons">donut_large</span> Sipariş Kaynağı — Ciro</h3>
+                      {(() => {
+                        const data = Object.entries(stats.kaynakGruplari)
+                          .map(([name, d]) => ({ name, value: Number(d.ciro.toFixed(2)) }))
+                          .sort((a, b) => b.value - a.value);
                         return (
-                          <button
-                            key={pageNum}
-                            onClick={() => handlePageChange(pageNum)}
-                            className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
-                          >
-                            {pageNum}
-                          </button>
+                          <>
+                            <ResponsiveContainer width="100%" height={280}>
+                              <PieChart>
+                                <Pie data={data} cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={3} dataKey="value"
+                                  label={({ name, percent, value }) => name + ' ' + formatAmount(value) + ' (' + (percent * 100).toFixed(0) + '%)'}>
+                                  {data.map((_, i) => <Cell key={'c-' + i} fill={COLORS[i % COLORS.length]} />)}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="pie-legend-adisyon">
+                              {data.map((entry, i) => (
+                                <div key={entry.name} className="legend-item-adisyon">
+                                  <span className="legend-dot" style={{ background: COLORS[i % COLORS.length] }}></span>
+                                  <span className="legend-name">{entry.name}</span>
+                                  <span className="legend-value">{formatAmount(entry.value)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
+                    <div className="chart-card-adisyon">
+                      <h3><span className="material-icons">bar_chart</span> Sipariş Kaynağı — Adet</h3>
+                      {(() => {
+                        const data = Object.entries(stats.kaynakGruplari)
+                          .map(([name, d]) => ({ name, adet: d.adet }))
+                          .sort((a, b) => b.adet - a.adet);
+                        return (
+                          <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={data}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+                              <YAxis tick={{ fill: '#475569', fontSize: 12 }} allowDecimals={false} />
+                              <Tooltip />
+                              <Bar dataKey="adet" name="Sipariş" radius={[6, 6, 0, 0]}>
+                                {data.map((_, i) => <Cell key={'b-' + i} fill={COLORS[i % COLORS.length]} />)}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
-                    <button 
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="pagination-btn"
-                    >
-                      <span className="material-icons">chevron_right</span>
-                    </button>
-                    
-                    <button 
-                      onClick={() => handlePageChange(totalPages)}
-                      disabled={currentPage === totalPages}
-                      className="pagination-btn"
-                    >
-                      <span className="material-icons">last_page</span>
-                    </button>
+          {filteredAdisyonlar.length > 0 && (
+            <div className="pagination-adisyon">
+              <span className="pagination-info-adisyon">
+                {startIndex + 1}-{Math.min(endIndex, filteredAdisyonlar.length)} / {filteredAdisyonlar.length} adisyon
+              </span>
+              <div className="pagination-right-adisyon">
+                <select value={itemsPerPage} onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}>
+                  <option value={10}>10</option><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option>
+                </select>
+                {totalPages > 1 && (
+                  <div className="page-btns-adisyon">
+                    <button disabled={currentPage === 1} onClick={() => handlePageChange(1)}><span className="material-icons">first_page</span></button>
+                    <button disabled={currentPage === 1} onClick={() => handlePageChange(currentPage - 1)}><span className="material-icons">chevron_left</span></button>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let p;
+                      if (totalPages <= 5) p = i + 1;
+                      else if (currentPage <= 3) p = i + 1;
+                      else if (currentPage >= totalPages - 2) p = totalPages - 4 + i;
+                      else p = currentPage - 2 + i;
+                      return <button key={p} className={currentPage === p ? 'active' : ''} onClick={() => handlePageChange(p)}>{p}</button>;
+                    })}
+                    <button disabled={currentPage === totalPages} onClick={() => handlePageChange(currentPage + 1)}><span className="material-icons">chevron_right</span></button>
+                    <button disabled={currentPage === totalPages} onClick={() => handlePageChange(totalPages)}><span className="material-icons">last_page</span></button>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          <div className="adisyonlar-grid">
-            {paginatedAdisyonlar.map((adisyon) => {
-              const tip = getAdisyonTipi(adisyon.siparisnerden);
-              const durum = getAdisyonDurum(adisyon.adisyon_durum, adisyon.durum);
-              return (
-                <div 
-                  key={adisyon.id} 
-                  className={`adisyon-card ${durum.bgColor} clickable`}
-                  onClick={() => showAdisyonDetail(adisyon)}
-                >
-                  <div className="adisyon-header">
-                    <div className="adisyon-code">
-                      <span className="material-icons">receipt</span>
-                      Adisyon Numarası: {adisyon.padsgnum || 'Numara Yok'}
-                    </div>
-                    <div className="adisyon-badges">
-                      <div className={`adisyon-type ${tip.color}`}>
-                        <span className="material-icons">{tip.icon}</span>
-                        {tip.text}
-                      </div>
-                      <div className={`adisyon-status ${durum.color}`}>
-                        <span className="material-icons">{durum.icon}</span>
-                        {durum.text}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="adisyon-details">
-                    <div className="detail-row">
-                      <span className="detail-label">Toplam:</span>
-                      <span className="detail-value amount">{formatAmount(adisyon.atop || adisyon.toplamTutar)}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Tarih:</span>
-                      <span className="detail-value">{formatDate(adisyon.tarih)}</span>
-                    </div>
-                  </div>
-
-                  <div className="adisyon-actions">
-                    <button 
-                      className="detail-btn"
-                      onClick={(e) => {
-                        e.stopPropagation(); // Kartın onClick'ini tetiklemeyi engelle
-                        showAdisyonDetail(adisyon);
-                      }}
-                      title="Detayları Gör"
-                    >
-                      <span className="material-icons">visibility</span>
-                      Detay
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="table-card-adisyon">
+            <h3><span className="material-icons">list_alt</span> Adisyon Listesi ({filteredAdisyonlar.length})</h3>
+            <div className="table-wrapper-adisyon">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Adisyon No</th>
+                    <th>Tarih</th>
+                    <th>Kaynak</th>
+                    <th>Durum</th>
+                    <th className="text-right">Tutar</th>
+                    <th className="text-center">Detay</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedAdisyonlar.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center">Kayıt bulunamadı</td></tr>
+                  ) : paginatedAdisyonlar.map((a, i) => {
+                    const durum = a._kaynak === 'masa'
+                      ? getAdisyonDurum(a.ads_durum, a.durum)
+                      : getAdisyonDurum(a.adisyon_durum, a.durum);
+                    const tipText = getAdisyonTipi(a.siparisnerden);
+                    const nerden = Number(a.siparisnerden) || 0;
+                    const isMasa = nerden === 88;
+                    return (
+                      <tr key={a.id || i} className={isCanceled(a) ? 'row-canceled' : ''} onClick={() => showAdisyonDetail(a)} style={{ cursor: 'pointer' }}>
+                        <td className="mono">{a.padsgnum || a.ads_no || a.adisyoncode || a.masaadi || a.id.slice(0, 8)}</td>
+                        <td>{formatDate(a.acilis || a.tarih)}</td>
+                        <td><span className={'badge ' + (isMasa ? 'badge-purple' : 'badge-blue')}>{tipText}</span></td>
+                        <td><span className={'badge ' + durum.badge}>{durum.text}</span></td>
+                        <td className="text-right bold">{formatAmount(getAdisyonTutar(a))}</td>
+                        <td className="text-center">
+                          <button className="detail-btn-adisyon" onClick={(e) => { e.stopPropagation(); showAdisyonDetail(a); }}>
+                            <span className="material-icons">visibility</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
 
-      {/* Adisyon Detay Modal */}
-      <AdisyonDetailModal 
-        isOpen={isModalOpen} 
-        onClose={closeModal} 
-        adisyon={selectedAdisyon}
-        masa={null}
-      />
+      <AdisyonDetailModal isOpen={isModalOpen} onClose={closeModal} adisyon={selectedAdisyon} masa={null} />
     </div>
   );
 };

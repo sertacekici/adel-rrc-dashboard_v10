@@ -23,8 +23,8 @@ import KuryeRaporuPage from './pages/KuryeRaporuPage';
 import DetayliKuryeRaporuPage from './pages/DetayliKuryeRaporuPage';
 import GiderKalemiKaydiPage from './pages/GiderKalemiKaydiPage';
 import GiderKaydiPage from './pages/GiderKaydiPage';
-import GenelRaporPage from './pages/GenelRaporPage';
 import IptalRaporlariPage from './pages/IptalRaporlariPage';
+import CiroRaporPage from './pages/CiroRaporPage';
 import './App.css'
 
 // Kurye dışı roller için dashboard erişimi
@@ -99,8 +99,8 @@ function App() {
                   <Route path="/subeler" element={<SubelerPage />} />
                   <Route path="/sube-personel/:subeId" element={<SubePersonelPage />} />
                   <Route path="/sube-bakiye-takip" element={<SubeBakiyeTakipPage />} />
-                  <Route path="/genel-rapor" element={<GenelRaporPage />} />
                   <Route path="/iptal-raporlari" element={<IptalRaporlariPage />} />
+                  <Route path="/ciro-rapor" element={<CiroRaporPage />} />
                 </Route>
 
                 {/* Şube Müdürü + Şirket Yöneticisi Sayfaları */}

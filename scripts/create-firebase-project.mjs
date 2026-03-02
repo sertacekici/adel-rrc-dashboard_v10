@@ -274,12 +274,7 @@ const main = async () => {
   if (!projectNumber) throw new Error("Project number gerekli.");
   logOk(`Project number: ${projectNumber}`);
 
-  // ── 6. API URL hesapla ────────────────────────────────────
-  const serviceName = `${projectId}_rrcapi`;
-  const apiUrl = `https://${serviceName}-${projectNumber}.${REGION}.run.app`;
-  logOk(`API URL: ${apiUrl}`);
-
-  // ── 7. Config dosyalarini olustur ─────────────────────────
+  // ── 6. Config dosyalarini olustur (API URL sonra eklenecek) ─
   log("Config dosyalari olusturuluyor...");
   const genDir = path.join(repoRoot, "scripts", "generated");
   fs.mkdirSync(genDir, { recursive: true });
@@ -289,23 +284,30 @@ const main = async () => {
   logOk(`JSON: ${configPath}`);
 
   const envPath = path.join(genDir, `.env.${alias}`);
-  const envLines = [
-    `VITE_FIREBASE_API_KEY=${sdkConfig.apiKey}`,
-    `VITE_FIREBASE_AUTH_DOMAIN=${sdkConfig.authDomain}`,
-    `VITE_FIREBASE_PROJECT_ID=${sdkConfig.projectId}`,
-    `VITE_FIREBASE_STORAGE_BUCKET=${sdkConfig.storageBucket}`,
-    `VITE_FIREBASE_MESSAGING_SENDER_ID=${sdkConfig.messagingSenderId}`,
-    `VITE_FIREBASE_APP_ID=${sdkConfig.appId}`,
-    `VITE_API_URL=${apiUrl}`,
-    "SECRETS_SCAN_ENABLED=false",
-    "",
-  ];
-  fs.writeFileSync(envPath, envLines.join("\n"), "utf8");
-  logOk(`ENV: ${envPath}`);
-
-  // ── 7b. Root .env dosyasini olustur (Vite icin) ──────────
   const rootEnvPath = path.join(repoRoot, ".env");
-  fs.copyFileSync(envPath, rootEnvPath);
+
+  // API URL placeholder - functions deploy sonrasi gercek URL ile guncellenecek
+  let apiUrl = "";
+
+  const writeEnvFiles = () => {
+    const envLines = [
+      `VITE_FIREBASE_API_KEY=${sdkConfig.apiKey}`,
+      `VITE_FIREBASE_AUTH_DOMAIN=${sdkConfig.authDomain}`,
+      `VITE_FIREBASE_PROJECT_ID=${sdkConfig.projectId}`,
+      `VITE_FIREBASE_STORAGE_BUCKET=${sdkConfig.storageBucket}`,
+      `VITE_FIREBASE_MESSAGING_SENDER_ID=${sdkConfig.messagingSenderId}`,
+      `VITE_FIREBASE_APP_ID=${sdkConfig.appId}`,
+      `VITE_API_URL=${apiUrl}`,
+      "SECRETS_SCAN_ENABLED=false",
+      "",
+    ];
+    fs.writeFileSync(envPath, envLines.join("\n"), "utf8");
+    fs.copyFileSync(envPath, rootEnvPath);
+  };
+
+  // Ilk olarak bos API URL ile yaz (deploy sirasinda gerekebilir)
+  writeEnvFiles();
+  logOk(`ENV: ${envPath}`);
   logOk(`Root .env kopyalandi: ${rootEnvPath}`);
 
   // ── 8a. Storage bucket olustur (US-CENTRAL1) ─────────────
@@ -337,10 +339,32 @@ const main = async () => {
 
   log("Functions deploy ediliyor...");
   try {
-    run(`firebase deploy --only functions --project ${projectId}`);
+    const functionsOutput = run(
+      `firebase deploy --only functions --project ${projectId}`,
+      { capture: true }
+    );
     logOk("Functions deploy edildi.");
-  } catch {
-    logErr("Functions deploy basarisiz (billing veya functions kaynaklı olabilir). Devam ediliyor...");
+
+    // Deploy ciktisından gercek Function URL'i parse et
+    const urlMatch = functionsOutput.match(/Function URL \(rrcapi.*?\):\s*(https:\/\/[^\s]+)/);
+    if (urlMatch) {
+      apiUrl = urlMatch[1];
+      logOk(`Gercek API URL (deploy ciktisından): ${apiUrl}`);
+    } else {
+      // Fallback: cloudfunctions.net URL kullan
+      apiUrl = `https://us-central1-${projectId}.cloudfunctions.net/rrcapi`;
+      logOk(`Fallback API URL: ${apiUrl}`);
+    }
+
+    // .env dosyalarini gercek URL ile guncelle
+    writeEnvFiles();
+    logOk(".env dosyalari gercek API URL ile guncellendi.");
+  } catch (e) {
+    // Deploy basarisiz olsa bile bir URL ata
+    apiUrl = `https://us-central1-${projectId}.cloudfunctions.net/rrcapi`;
+    writeEnvFiles();
+    logErr("Functions deploy basarisiz (billing veya functions kaynakli olabilir). Devam ediliyor...");
+    logErr(`Fallback API URL atandi: ${apiUrl}`);
   }
 
   // ── 9. Auth: Email/Password + admin kullanici ─────────────

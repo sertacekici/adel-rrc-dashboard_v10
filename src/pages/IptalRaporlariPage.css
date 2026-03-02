@@ -1,385 +1,522 @@
-/* IptalRaporlariPage.css */
+/* ═══════════════════════════════════════════════════
+   IptalRaporlariPage - Koyu Glass Tema
+   ═══════════════════════════════════════════════════ */
 
-.iptal-raporlari-container {
-  padding: 20px;
+.iptal-container {
+  padding: 14px 16px;
   margin: 0;
   background: #1e3884 !important;
   min-height: 100vh;
+  box-sizing: border-box;
 }
 
-/* Üst Kısım Tab ve Filtreler */
-.controls-section {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
+/* ─── HEADER ───────────────────────────────────── */
+.iptal-header { margin-bottom: 1.25rem; }
+
+.iptal-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(25px);
+  padding: 1.5rem 2rem;
   border-radius: 16px;
-  padding: 1.75rem;
-  margin-bottom: 24px;
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-/* Sayfa Başlığı */
-.page-header {
-  margin-bottom: 1.5rem;
+.iptal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
-.header-content {
+.iptal-header-icon {
+  font-size: 2.5rem;
+  color: #F87171;
+  background: rgba(248, 113, 113, 0.15);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.iptal-header-left h1 {
+  color: #F8FAFC;
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.iptal-header-left p {
+  color: #B0BEC5;
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+}
+
+/* ─── FİLTRELER ────────────────────────────────── */
+.iptal-filter-section {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.iptal-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.iptal-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.iptal-filter-group label {
+  color: #CBD5E1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.iptal-filter-group select,
+.iptal-filter-group input[type="date"] {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #F1F5F9;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  min-width: 150px;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.iptal-filter-group select:focus,
+.iptal-filter-group input[type="date"]:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.iptal-filter-group select option {
+  background: #1E293B;
+  color: #F1F5F9;
+}
+
+.iptal-filter-action { justify-content: flex-end; }
+
+.iptal-btn-fetch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  color: #FFFFFF;
+  border: 2px solid rgba(96, 165, 250, 0.5);
+  padding: 0.6rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.25s;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.3px;
+}
+
+.iptal-btn-fetch:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+  background: linear-gradient(135deg, #60A5FA, #2563EB);
+  border-color: rgba(96, 165, 250, 0.8);
+}
+.iptal-btn-fetch:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.iptal-btn-fetch .material-icons { font-size: 1.1rem; }
+
+/* ─── İSTATİSTİK KARTLARI ─────────────────────── */
+.iptal-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.iptal-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 14px;
+  padding: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.iptal-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iptal-stat-icon .material-icons { font-size: 1.5rem; color: white; }
+.isi-red { background: linear-gradient(135deg, #EF4444, #DC2626); }
+.isi-orange { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.isi-purple { background: linear-gradient(135deg, #8B5CF6, #7C3AED); }
+.isi-teal { background: linear-gradient(135deg, #14B8A6, #0D9488); }
+
+.iptal-stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.iptal-stat-label {
+  color: #CBD5E1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.iptal-stat-value {
+  color: #F8FAFC;
+  font-size: 1.25rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* ─── TAB NAVİGASYON ──────────────────────────── */
+.iptal-tab-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 12px;
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.iptal-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #CBD5E1;
+  font-weight: 600;
+  font-size: 0.84rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.iptal-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #F1F5F9;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.iptal-tab-btn.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(37, 99, 235, 0.25));
+  color: #93C5FD;
+  font-weight: 700;
+  border: 1.5px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.iptal-tab-btn .material-icons { font-size: 1.1rem; }
+
+/* ─── İPTAL KARTLARI ──────────────────────────── */
+.iptal-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.iptal-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(15px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.iptal-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(25px);
-  padding: 1.75rem;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(46, 91, 255, 0.15);
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.title-section h1 {
+.iptal-card-left {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: white;
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.title-section h1 .material-icons {
-  font-size: 2.5rem;
-  background: linear-gradient(135deg, #60A5FA, #3B82F6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.iptal-time-badge {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60A5FA;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
-.title-section p {
-  color: rgba(255, 255, 255, 0.95);
+.iptal-card-code {
+  color: #CBD5E1;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.iptal-card-amount {
+  color: #F87171;
   font-size: 1.1rem;
-  margin: 0.5rem 0 0 0;
-  font-weight: 400;
-  line-height: 1.6;
+  font-weight: 700;
 }
-  
-  .tabs-container {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 16px;
-  }
-  
-  .tab-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    background: #f1f5f9;
-    color: #64748b;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .tab-button.active {
-    background: #2563eb;
-    color: white;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
-  }
-  
-  .tab-button:hover:not(.active) {
-    background: #e2e8f0;
-  }
-  
-  .filters-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: center;
-  }
-  
-  .report-mode-buttons {
-    display: flex;
-    background: #f1f5f9;
-    padding: 4px;
-    border-radius: 8px;
-    gap: 4px;
-  }
-  
-  .filter-btn {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: none;
-    background: transparent;
-    color: #64748b;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  
-  .filter-btn.active {
-    background: white;
-    color: #0f172a;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  }
-  
-  .date-input {
-    padding: 8px 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    color: #334155;
-    outline: none;
-    font-family: inherit;
-  }
-  
-  .sube-select {
-    padding: 8px 36px 8px 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    background-color: white;
-    color: #334155;
-    outline: none;
-    cursor: pointer;
-  }
-  
-  /* Rapor Listesi ve Kartları */
-  .report-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  
-  .report-card {
-    background: white;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  }
-  
-  .card-header {
-    background: #f8fafc;
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  
-  .date-badge {
-    background: #e0e7ff;
-    color: #4338ca;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-  
-  .order-code {
-    font-weight: 600;
-    color: #334155;
-  }
-  
-  .total-amount {
-    font-size: 16px;
-    font-weight: 700;
-    color: #0f172a;
-  }
-  
-  .card-body {
-    padding: 16px;
-  }
-  
-  .card-footer {
-    padding: 12px 16px;
-    background: #f8fafc;
-    border-top: 1px solid #e2e8f0;
-    font-size: 13px;
-    color: #475569;
-    display: flex;
-    gap: 24px;
-  }
-  
-  /* Ürün Tablosu */
-  .items-table {
+
+/* ─── ÜRÜN TABLOSU ─────────────────────────────── */
+.iptal-card-body {
+  padding: 1rem 1.25rem;
+}
+
+.iptal-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.iptal-items-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  color: #B0BEC5;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.iptal-items-table td {
+  padding: 0.6rem 0.75rem;
+  color: #CBD5E1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.iptal-items-table tr:last-child td { border-bottom: none; }
+
+/* ─── ÖDEMELER ─────────────────────────────────── */
+.iptal-card-payments {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.iptal-section-label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #B0BEC5;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.iptal-payment-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.iptal-payment-tag {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ─── KART FOOTER ──────────────────────────────── */
+.iptal-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.8rem;
+  color: #CBD5E1;
+}
+
+.iptal-card-footer strong { color: #CBD5E1; }
+
+/* ─── TOPLAM ÖZET ──────────────────────────────── */
+.iptal-summary {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 14px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  margin-top: 0.5rem;
+}
+
+.iptal-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.iptal-summary-row h3 {
+  margin: 0;
+  color: #CBD5E1;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.iptal-grand-total {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #F8FAFC;
+}
+
+.iptal-payment-breakdown {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.iptal-payment-breakdown h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.8rem;
+  color: #CBD5E1;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.iptal-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.iptal-breakdown-item {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.75rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.iptal-bd-label {
+  font-size: 0.7rem;
+  color: #B0BEC5;
+  text-transform: uppercase;
+}
+
+.iptal-bd-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #F8FAFC;
+}
+
+/* ─── YÜKLEME / HATA / BOŞ ────────────────────── */
+.iptal-loading {
+  text-align: center;
+  padding: 3rem;
+  color: #CBD5E1;
+}
+
+.iptal-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top: 4px solid #3B82F6;
+  border-radius: 50%;
+  animation: iptalSpin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes iptalSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.iptal-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  color: #FCA5A5;
+  margin-bottom: 1rem;
+}
+
+.iptal-error .material-icons { font-size: 1.5rem; color: #F87171; }
+.iptal-error p { margin: 0; }
+
+.iptal-empty {
+  text-align: center;
+  padding: 3rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  color: #B0BEC5;
+}
+
+.iptal-empty .material-icons {
+  font-size: 3rem;
+  color: #475569;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.iptal-empty p { margin: 0; font-size: 0.9rem; }
+
+/* ─── RESPONSIVE ───────────────────────────────── */
+@media (max-width: 1024px) {
+  .iptal-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .iptal-filter-row { flex-direction: column; align-items: stretch; }
+
+  .iptal-filter-group select,
+  .iptal-filter-group input[type="date"] {
+    min-width: unset;
     width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
   }
-  
-  .items-table th {
-    text-align: left;
-    padding: 8px 12px;
-    color: #64748b;
-    font-weight: 500;
-    border-bottom: 1px solid #e2e8f0;
-    font-size: 12px;
-    text-transform: uppercase;
-  }
-  
-  .items-table td {
-    padding: 12px;
-    color: #334155;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  
-  .items-table tr:last-child td {
-    border-bottom: none;
-  }
-  
-  .section-label {
-    font-size: 12px;
-    text-transform: uppercase;
-    color: #94a3b8;
-    font-weight: 600;
-    margin-bottom: 8px;
-    margin-top: 16px;
-  }
-  
-  .section-label:first-child {
-    margin-top: 0;
-  }
-  
-  /* Ödeme Etiketleri */
-  .payment-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  
-  .payment-tag {
-    background: #ecfdf5;
-    color: #047857;
-    border: 1px solid #a7f3d0;
-    padding: 4px 10px;
-    border-radius: 9999px;
-    font-size: 13px;
-    font-weight: 500;
-  }
-  
-  /* Alt Özet */
-  .summary-footer {
-    background: #1e293b;
-    color: white;
-    padding: 24px;
-    border-radius: 12px;
-    margin-top: 12px;
-  }
-  
-  .summary-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  
-  .summary-row h3 {
-    margin: 0;
-    font-weight: 500;
-    color: #94a3b8;
-  }
-  
-  .grand-total {
-    font-size: 24px;
-    font-weight: 700;
-    color: #fff;
-  }
-  
-  .payment-breakdown {
-    border-top: 1px solid #334155;
-    padding-top: 16px;
-  }
-  
-  .payment-breakdown h4 {
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    color: #94a3b8;
-    font-weight: 500;
-  }
-  
-  .breakdown-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
-  }
-  
-  .breakdown-item {
-    background: #334155;
-    padding: 10px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .breakdown-item .label {
-    font-size: 12px;
-    color: #cbd5e1;
-  }
-  
-  .breakdown-item .value {
-    font-size: 16px;
-    font-weight: 600;
-    color: #fff;
-  }
-  
-  /* Genel */
-  .empty-state {
-    text-align: center;
-    padding: 48px;
-    background: white;
-    border-radius: 12px;
-    border: 1px dashed #cbd5e1;
-    color: #64748b;
-    font-weight: 500;
-  }
-  
-  .loading-container {
-    text-align: center;
-    padding: 40px;
-  }
-  
-  .loading-spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3b82f6;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 16px;
-  }
-  
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-  
-  @media (max-width: 768px) {
-    .filters-row {
-      flex-direction: column;
-      align-items: stretch;
-    }
-  
-    .card-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-    }
-  
-    .header-right {
-      align-self: flex-end;
-    }
-    
-    .card-footer {
-      flex-direction: column;
-      gap: 8px;
-    }
-  }
+
+  .iptal-stats { grid-template-columns: repeat(2, 1fr); }
+
+  .iptal-tab-nav { flex-direction: column; }
+
+  .iptal-card-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .iptal-card-right { align-self: flex-end; }
+  .iptal-card-footer { flex-direction: column; gap: 0.5rem; }
+
+  .iptal-header-content { padding: 1.25rem; }
+  .iptal-header-left h1 { font-size: 1.25rem; }
+}
+
+@media (max-width: 480px) {
+  .iptal-stats { grid-template-columns: 1fr; }
+  .iptal-stat-value { font-size: 1rem; }
+}
