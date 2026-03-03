@@ -11,7 +11,8 @@ const SettingsPage = () => {
   const [settings, setSettings] = useState({
     showBranchOperations: true,
     showCourierOperations: true,
-    showReportOperations: true
+    showReportOperations: true,
+    showGelAlOrders: true
   });
   const [saveStatus, setSaveStatus] = useState(null);
 
@@ -31,7 +32,8 @@ const SettingsPage = () => {
         setSettings({
           showBranchOperations: data.showBranchOperations !== undefined ? data.showBranchOperations : true,
           showCourierOperations: data.showCourierOperations !== undefined ? data.showCourierOperations : true,
-          showReportOperations: data.showReportOperations !== undefined ? data.showReportOperations : true
+          showReportOperations: data.showReportOperations !== undefined ? data.showReportOperations : true,
+          showGelAlOrders: data.showGelAlOrders !== undefined ? data.showGelAlOrders : true
         });
       } else {
         // Doküman yoksa varsayılanları oluştur
@@ -40,6 +42,7 @@ const SettingsPage = () => {
           showBranchOperations: true,
           showCourierOperations: true,
           showReportOperations: true,
+          showGelAlOrders: true,
           updatedAt: new Date(),
           updatedBy: currentUser.uid
         });
@@ -113,6 +116,23 @@ const SettingsPage = () => {
           <div className="section-title">
             <span className="material-icons">visibility</span>
             Menü Görünürlüğü
+          </div>
+          
+          <div className="settings-list">
+            <div className="setting-item">
+              <div className="setting-info">
+                <h3>GEL AL Siparişleri</h3>
+                <p>Kurye sipariş listesinde GEL AL (kisikod 1000000) siparişlerini göster/gizle</p>
+              </div>
+              <label className="switch">
+                <input 
+                  type="checkbox" 
+                  checked={settings.showGelAlOrders}
+                  onChange={() => handleToggle('showGelAlOrders')}
+                />
+                <span className="slider"></span>
+              </label>
+            </div>
           </div>
           
           <div className="settings-list">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, addDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import AdisyonDetailModal from '../components/AdisyonDetailModal';
@@ -23,6 +23,7 @@ const KuryeAtamaPage = () => {
   const [atanacakAdisyon, setAtanacakAdisyon] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const [rrcId, setRrcId] = useState(null);
+  const [showGelAlOrders, setShowGelAlOrders] = useState(true);
   const { currentUser } = useAuth();
 
   const isCourier = currentUser?.role === 'kurye';
@@ -33,6 +34,17 @@ const KuryeAtamaPage = () => {
     setNotification({ show: true, message, type });
     setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
   };
+
+  // Sistem ayarlarını dinle
+  useEffect(() => {
+    const unsubSettings = onSnapshot(doc(db, 'system', 'settings'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setShowGelAlOrders(data.showGelAlOrders !== undefined ? data.showGelAlOrders : true);
+      }
+    });
+    return () => unsubSettings();
+  }, []);
 
   // Şube rrc_restaurant_id'sini al
   useEffect(() => {
@@ -82,8 +94,8 @@ const KuryeAtamaPage = () => {
         .map(d => ({ id: d.id, ...d.data() }))
         // Motorcu boş olanlar
         .filter(a => !a.motorcu || a.motorcu === '')
-        // kisikod 1000000 olanları çıkar
-        .filter(a => String(a.kisikod) !== '1000000')
+        // GEL AL (kisikod 1000000) toggle'a göre filtrele
+        .filter(a => showGelAlOrders || String(a.kisikod) !== '1000000')
         // Onaylandı ve İptal durumundakileri hariç tut
         .filter(a => {
           if (!a.durum) return true;
@@ -104,7 +116,7 @@ const KuryeAtamaPage = () => {
     });
 
     return () => unsubscribe();
-  }, [currentUser, rrcId]);
+  }, [currentUser, rrcId, showGelAlOrders]);
 
   // Kurye atama (şube müdürü)
   const handleKuryeAtama = async (adisyonId, kuryeAdi) => {
@@ -121,20 +133,11 @@ const KuryeAtamaPage = () => {
 
       await updateDoc(doc(db, 'PaketAdisyonlar', adisyonId), { motorcu: kuryeAdiUpper });
 
-      await addDoc(collection(db, 'kuryeatama'), {
-        adisyonCode: siparis.padsgnum || siparis.adisyoncode || siparis.id,
-        kuryeAdi: kuryeAdiUpper,
-        kuryeId: null,
-        atamaTarihi: serverTimestamp(),
-        siparisTarihi: siparis.acilis || siparis.tarih || new Date().toISOString(),
-        subeId: currentUser.subeId || siparis.subeId || '',
-        subeAdi: currentUser.subeAdi || siparis.subeAdi || '',
-        toplam: siparis.atop || 0,
-        durum: 'Atandı',
-        atayanId: currentUser.uid,
-        atayanAdi: currentUser.displayName || currentUser.email,
-        atayanRole: currentUser.role,
+      const atamaDoc = await addDoc(collection(db, 'kuryeatama'), {
+        adisyoncode: siparis.adisyoncode || siparis.padsgnum || siparis.id,
+        motorcu: kuryeAdiUpper,
       });
+      console.log('kuryeatama kaydı oluşturuldu:', atamaDoc.id);
 
       setAtanacakAdisyon(null);
       setSelectedKurye('');
@@ -155,18 +158,11 @@ const KuryeAtamaPage = () => {
 
       await updateDoc(doc(db, 'PaketAdisyonlar', adisyonId), { motorcu: kuryeAdi });
 
-      await addDoc(collection(db, 'kuryeatama'), {
-        adisyonCode: siparis.padsgnum || siparis.adisyoncode || siparis.id,
-        kuryeAdi,
-        kuryeId: currentUser.uid,
-        atamaTarihi: serverTimestamp(),
-        siparisTarihi: siparis.acilis || siparis.tarih || new Date().toISOString(),
-        subeId: currentUser.subeId || siparis.subeId || '',
-        subeAdi: siparis.subeAdi || '',
-        toplam: siparis.atop || 0,
-        durum: 'Atandı',
-        atayanRole: 'kurye',
+      const atamaDoc = await addDoc(collection(db, 'kuryeatama'), {
+        adisyoncode: siparis.adisyoncode || siparis.padsgnum || siparis.id,
+        motorcu: kuryeAdi,
       });
+      console.log('kuryeatama kaydı oluşturuldu (kurye):', atamaDoc.id);
 
       showNotification('Sipariş başarıyla üzerinize alındı!');
     } catch (err) {
