@@ -26,6 +26,7 @@ import GiderKaydiPage from './pages/GiderKaydiPage';
 import IptalRaporlariPage from './pages/IptalRaporlariPage';
 import CiroRaporPage from './pages/CiroRaporPage';
 import TeslimRaporuPage from './pages/TeslimRaporuPage';
+import GenelRaporPage from './pages/GenelRaporPage';
 import './App.css'
 
 // Kurye dışı roller için dashboard erişimi
@@ -102,6 +103,7 @@ function App() {
                   <Route path="/sube-bakiye-takip" element={<SubeBakiyeTakipPage />} />
                   <Route path="/iptal-raporlari" element={<IptalRaporlariPage />} />
                   <Route path="/ciro-rapor" element={<CiroRaporPage />} />
+                  <Route path="/genel-rapor" element={<GenelRaporPage />} />
                 </Route>
 
                 {/* Şube Müdürü + Şirket Yöneticisi Sayfaları */}

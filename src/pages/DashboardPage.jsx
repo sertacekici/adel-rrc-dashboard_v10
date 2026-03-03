@@ -69,20 +69,12 @@ const DashboardPage = () => {
       
       // Şube Yöneticisi
       {
-        title: 'Şube Personel',
-        description: 'Şube personellerini yönet',
-        path: '/sube-personel',
-        icon: 'badge',
-        color: 'indigo',
-        roles: ['sube_yoneticisi']
-      },
-      {
         title: 'Ürün İşlemleri',
         description: 'Ürün bilgilerini yönet',
         path: '/urun-islemleri',
         icon: 'inventory_2',
         color: 'red',
-        roles: ['sube_yoneticisi']
+        roles: ['sirket_yoneticisi']
       },
       {
         title: 'Sipariş Oluştur',
@@ -147,12 +139,52 @@ const DashboardPage = () => {
         roles: ['kurye', 'sube_yoneticisi']
       },
       {
+        title: 'Teslim Raporu',
+        description: 'Teslim edilen siparişleri görüntüle',
+        path: '/teslim-raporu',
+        icon: 'local_shipping',
+        color: 'teal',
+        roles: ['kurye', 'sube_yoneticisi']
+      },
+      {
         title: 'Kurye Raporu',
         description: 'Teslimat raporlarını görüntüle',
         path: '/kurye-raporu',
         icon: 'assessment',
         color: 'green',
-        roles: ['kurye', 'sube_yoneticisi', 'sirket_yoneticisi']
+        roles: ['sube_yoneticisi', 'sirket_yoneticisi']
+      },
+      {
+        title: 'Detaylı Kurye Raporu',
+        description: 'Kurye bazlı detaylı analiz',
+        path: '/detayli-kurye-raporu',
+        icon: 'summarize',
+        color: 'indigo',
+        roles: ['sube_yoneticisi', 'sirket_yoneticisi']
+      },
+      {
+        title: 'İptal Raporları',
+        description: 'İptal edilen siparişleri incele',
+        path: '/iptal-raporlari',
+        icon: 'cancel',
+        color: 'red',
+        roles: ['sirket_yoneticisi', 'sube_yoneticisi']
+      },
+      {
+        title: 'Ciro Raporu',
+        description: 'Günlük ve dönemsel ciro analizi',
+        path: '/ciro-rapor',
+        icon: 'monetization_on',
+        color: 'amber',
+        roles: ['sirket_yoneticisi', 'sube_yoneticisi']
+      },
+      {
+        title: 'Sistem Ayarları',
+        description: 'Uygulama ayarlarını yönet',
+        path: '/settings',
+        icon: 'settings',
+        color: 'gray',
+        roles: ['sirket_yoneticisi']
       }
     ];
     
