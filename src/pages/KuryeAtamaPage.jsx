@@ -117,11 +117,13 @@ const KuryeAtamaPage = () => {
       const siparis = adisyonlar.find(a => a.id === adisyonId);
       if (!siparis) throw new Error('Sipariş bulunamadı');
 
-      await updateDoc(doc(db, 'PaketAdisyonlar', adisyonId), { motorcu: kuryeAdi });
+      const kuryeAdiUpper = kuryeAdi.toLocaleUpperCase('tr-TR');
+
+      await updateDoc(doc(db, 'PaketAdisyonlar', adisyonId), { motorcu: kuryeAdiUpper });
 
       await addDoc(collection(db, 'kuryeatama'), {
         adisyonCode: siparis.padsgnum || siparis.adisyoncode || siparis.id,
-        kuryeAdi,
+        kuryeAdi: kuryeAdiUpper,
         kuryeId: null,
         atamaTarihi: serverTimestamp(),
         siparisTarihi: siparis.acilis || siparis.tarih || new Date().toISOString(),
@@ -149,7 +151,7 @@ const KuryeAtamaPage = () => {
       const siparis = adisyonlar.find(a => a.id === adisyonId);
       if (!siparis) throw new Error('Sipariş bulunamadı');
 
-      const kuryeAdi = currentUser.displayName || currentUser.email;
+      const kuryeAdi = (currentUser.displayName || currentUser.email).toLocaleUpperCase('tr-TR');
 
       await updateDoc(doc(db, 'PaketAdisyonlar', adisyonId), { motorcu: kuryeAdi });
 
