@@ -50,12 +50,16 @@ const KuryeAtamaPage = () => {
     fetchRrcId();
   }, [currentUser]);
 
-  // Kuryeleri getir
+  // Kuryeleri getir (sadece aynı şubeye bağlı kuryeler)
   useEffect(() => {
     if (!currentUser || isCourier) return;
     const fetchKuryeler = async () => {
       try {
-        const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'kurye')));
+        const constraints = [where('role', '==', 'kurye')];
+        if (currentUser.subeId) {
+          constraints.push(where('subeId', '==', currentUser.subeId));
+        }
+        const snap = await getDocs(query(collection(db, 'users'), ...constraints));
         setKuryeler(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       } catch (err) {
         console.error('Kuryeler getirilirken hata:', err);

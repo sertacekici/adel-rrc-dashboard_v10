@@ -265,7 +265,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             <div className="menu-section">
               <p className="menu-label">Kurye İşlemleri</p>
               <ul className="menu-items">
-                {kuryeMenuItems.map((item) => (
+                {kuryeMenuItems
+                  .filter((item) => {
+                    // Kurye rolü: sadece Kurye Atama ve Teslim Raporu görsün
+                    if (currentUser?.role === 'kurye') {
+                      return ['/kurye-atama', '/teslim-raporu'].includes(item.path);
+                    }
+                    return true;
+                  })
+                  .map((item) => (
                   <li 
                     key={item.path} 
                     className={location.pathname === item.path ? 'active' : ''}
