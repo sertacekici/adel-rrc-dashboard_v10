@@ -1,4 +1,5 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const express = require("express");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
@@ -282,7 +283,6 @@ app.get("/kuryeatama", async (req, res) => {
         const subeId = req.headers.subeid;
         
         console.log("Gelen subeId:", subeId);
-        console.log("Headers:", req.headers);
         
         if (!subeId) {
             return res.status(400).json({
@@ -293,36 +293,37 @@ app.get("/kuryeatama", async (req, res) => {
 
         const kuryeAtamaRef = db.collection("kuryeatama");
         
-        // Önce tüm dokümanları çek ve kontrol et
-        const allDocs = await kuryeAtamaRef.get();
-        console.log("Toplam doküman sayısı:", allDocs.size);
+        // EĞER FİREBASE'DEKİ KAYITLARDA SUBEID EKLENMEMİŞSE BURASI BOŞ DÖNER.
+        // O yüzden önce filtrelemesiz tüm dokümanları çekip, kodu test edelim.
+        // (Sistemin tam oturduğunda .where() kısmını geri açabilirsin)
+        // const snapshot = await kuryeAtamaRef.where("subeId", "==", subeId).get(); 
         
-        if (!allDocs.empty) {
-            allDocs.forEach(doc => {
-                const data = doc.data();
-                console.log("Doküman ID:", doc.id);
-                console.log("Doküman data:", data);
-                console.log("subeId field değeri:", data.subeId);
-                console.log("Tip kontrolü - aranan:", typeof subeId, "bulunan:", typeof data.subeId);
-            });
-        }
-        
-        // Şimdi filtreleme yap
-        const snapshot = await kuryeAtamaRef.where("subeId", "==", subeId).get();
-        console.log("Filtrelenmiş doküman sayısı:", snapshot.size);
+        // ŞİMDİLİK TÜMÜNÜ ÇEK (Test için)
+        const snapshot = await kuryeAtamaRef.get();
         
         const kuryeAtamaList = [];
         snapshot.forEach(doc => {
-            kuryeAtamaList.push({
-                id: doc.id,
-                ...doc.data()
-            });
+            const data = doc.data();
+            
+            // Eğer gelen veride subeId yoksa veya şimdilik şubeye göre filtreleme yapıyorsak (manuel kodda yapalım)
+            if(data.subeId === subeId || !data.subeId) 
+            {
+                kuryeAtamaList.push({
+                    Id: doc.id, // C# tarafı Id bekliyor olabilir
+                    // Firebase'deki 'adisyoncode'u C#'ın beklediği 'AdisyonCode'a çeviriyoruz
+                    AdisyonCode: data.adisyoncode || data.AdisyonCode || "",
+                    // Firebase'deki 'motorcu'yu C#'ın beklediği 'KuryeAdi'ne çeviriyoruz
+                    KuryeAdi: data.motorcu || data.kuryeAdi || "Bilinmiyor",
+                    // Diğer alanlar lazımsa ekle...
+                });
+            }
         });
 
         res.status(200).json({
             status: "success",
             message: "Successful",
-            data: kuryeAtamaList,
+            // C# modelin 'Data' bekliyorsa burası küçük harfle 'data' olarak kalabilir, Newtonsoft onu otomatik eşler.
+            data: kuryeAtamaList, 
         });
 
     } catch (error) {
@@ -599,9 +600,9 @@ app.post("/uptblmasaiptalads", async (req, res) => {
 // GLOBAL SYNC ENDPOINT
 app.post("/globalsync", async (req, res) => {
     try {
-        const collectionName = req.body.collection; // Collection name from body
-        const data = req.body.data; // Data object from body
-        const syncID = req.header("sync-id"); // Sync ID from header (for updates)
+        const collectionName = req.body.collection; 
+        const data = req.body.data; 
+        const rawSyncID = req.header("sync-id"); // Header'dan gelen ham ID
 
         if (!collectionName) {
             return res.status(400).json({
@@ -612,26 +613,24 @@ app.post("/globalsync", async (req, res) => {
 
         const colRef = db.collection(collectionName);
 
-        if (syncID) {
-            // Update Operation
-            const docRef = colRef.doc(syncID);
-            const doc = await docRef.get();
+        if (rawSyncID) {
+            // KRİTİK DÜZELTME: Firestore'un çökmemesi için '/' işaretlerini '_' ile değiştiriyoruz.
+            const safeSyncID = rawSyncID.replace(/\//g, '_');
 
-            if (!doc.exists) {
-                return res.status(404).json({
-                    status: "error",
-                    message: "Document not found"
-                });
-            }
-
-            await docRef.update(data);
+            // UPSERT OPERATION 
+            const docRef = colRef.doc(safeSyncID);
+            
+            await docRef.set(data, { merge: true });
 
             res.status(200).json({
                 status: "success",
-                message: "Record updated successfully"
+                message: "Record synced (upserted) successfully",
+                data: {
+                    syncID: docRef.id,
+                }
             });
         } else {
-            // Insert Operation
+            // INSERT OPERATION (Fallback)
             const docRef = await colRef.add(data);
 
             res.status(201).json({
@@ -655,19 +654,20 @@ app.post("/globalsync", async (req, res) => {
 app.delete("/globaldelete", async (req, res) => {
     try {
         // Headers veya Body'den parametreleri almayı dene
-        // Header'da gönderilirse: 'collection' ve 'doc-id'
-        // Body'de gönderilirse: 'collection' ve 'docId'
         const collectionName = req.header("collection") || req.body.collection;
-        const docId = req.header("doc-id") || req.body.docId;
+        const rawDocId = req.header("doc-id") || req.body.docId; // Ham ID'yi alıyoruz
 
-        if (!collectionName || !docId) {
+        if (!collectionName || !rawDocId) {
             return res.status(400).json({
                 status: "error",
                 message: "Collection and docId are required (check headers or body)"
             });
         }
 
-        const docRef = db.collection(collectionName).doc(docId);
+        // KRİTİK DÜZELTME: '/' karakterlerini '_' ile değiştirerek Firestore'un çökmesini önle
+        const safeDocId = rawDocId.replace(/\//g, '_');
+
+        const docRef = db.collection(collectionName).doc(safeDocId);
         const doc = await docRef.get();
 
         if (!doc.exists) {
@@ -680,7 +680,8 @@ app.delete("/globaldelete", async (req, res) => {
         // Adisyonlar siliniyorsa, bağlı AdisyonIcerik verilerini de sil
         if (collectionName === "Adisyonlar") {
             const contentSnapshot = await db.collection("AdisyonIcerik")
-                .where("adisyonfbid", "==", docId)
+                // Eşleştirme yaparken de temizlenmiş ID'yi kullanıyoruz
+                .where("adisyonfbid", "==", safeDocId) 
                 .get();
 
             if (!contentSnapshot.empty) {
@@ -699,7 +700,7 @@ app.delete("/globaldelete", async (req, res) => {
             message: "Document deleted successfully",
             data: {
                 collection: collectionName,
-                deletedDocID: docId
+                deletedDocID: safeDocId
             }
         });
 
@@ -783,4 +784,41 @@ app.post("/cleancollections", async (req, res) => {
 
 
 exports.rrcapi = onRequest(app);
+
+exports.kuryeatandigindatetikle = onDocumentUpdated("PaketAdisyonlar/{adisyoncode}", async (event) => {
+    console.log("TRIGGER ÇALIŞTI! Tetiklenen Adisyon:", event.params.adisyoncode);
+
+    if (!event.data) {
+        console.log("Veri bulunamadı (event.data boş)");
+        return;
+    }
+
+    const previousValue = event.data.before.data() || {};
+    const newValue = event.data.after.data() || {};
+    const adisyonCode = event.params.adisyoncode;
+
+    const eskiMotorcu = previousValue.motorcu || "";
+    const yeniMotorcu = newValue.motorcu || "";
+
+    console.log(`Durum Kontrolü - Eski Motorcu: '${eskiMotorcu}', Yeni Motorcu: '${yeniMotorcu}'`);
+
+    if (yeniMotorcu !== eskiMotorcu && yeniMotorcu !== "") {
+        console.log("Şartlar sağlandı, kuryeatama tablosuna yazılıyor...");
+
+        const queueData = {
+            adisyonCode: adisyonCode, 
+            kuryeAdi: yeniMotorcu,
+            subeId: newValue.rrc_restaurant_id || "TanimsizSube", 
+        };
+
+        try {
+            await db.collection("kuryeatama").add(queueData);
+            console.log("BAŞARILI! Görev kuyruğa eklendi.");
+        } catch (error) {
+            console.error("HATA! Kuyruğa eklenirken çöktü:", error);
+        }
+    } else {
+        console.log("Şartlar sağlanmadı. (Motorcu değişmemiş veya boş yapılmış)");
+    }
+});
 

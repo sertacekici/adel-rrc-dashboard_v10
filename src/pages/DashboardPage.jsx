@@ -121,9 +121,9 @@ const DashboardPage = () => {
       
       // Genel Rapor - Şirket Yöneticisi ve Şube Müdürü
       {
-        title: 'Genel Rapor',
-        description: 'Kapsamlı analiz ve raporlar',
-        path: '/genel-rapor',
+        title: 'Ciro ve Analiz',
+        description: 'Günlük ve dönemsel ciro analizi ve raporlar',
+        path: '/ciro-rapor',
         icon: 'analytics',
         color: 'deep-purple',
         roles: ['sirket_yoneticisi', 'sube_yoneticisi']
@@ -168,14 +168,6 @@ const DashboardPage = () => {
         path: '/iptal-raporlari',
         icon: 'cancel',
         color: 'red',
-        roles: ['sirket_yoneticisi', 'sube_yoneticisi']
-      },
-      {
-        title: 'Ciro Raporu',
-        description: 'Günlük ve dönemsel ciro analizi',
-        path: '/ciro-rapor',
-        icon: 'monetization_on',
-        color: 'amber',
         roles: ['sirket_yoneticisi', 'sube_yoneticisi']
       },
       {
